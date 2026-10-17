@@ -52,3 +52,25 @@ Claude:
 3. В адмінці додати перші справжні товари з фото.
 
 > База на справжньому сайті спочатку порожня: тестові товари з емулятора туди не потрапляють.
+
+## Автопублікація з GitHub
+
+Справжній проєкт: **succulents-shop-ua**, сайт https://succulents-shop-ua.web.app.
+
+- Кожен `git push` у гілку `main` запускає GitHub Actions (`.github/workflows/deploy.yml`):
+  встановлення залежностей → перевірка коду → публікація сайту, функцій і правил. Хід — на вкладці **Actions** репозиторію.
+  Якщо перевірка не пройде, на сайт нічого не потрапить.
+- Перепублікувати вручну: Actions → Deploy → **Run workflow**.
+- Доступ GitHub до Firebase — сервісний акаунт `github-deploy` (Google Cloud → IAM → Service accounts),
+  його ключ — у секреті репозиторію `FIREBASE_SERVICE_ACCOUNT`. Щоб замінити ключ: створити новий JSON-ключ
+  для `github-deploy`, вставити його вміст у цей секрет, а старий ключ видалити в Google Cloud.
+- Публічні налаштування справжнього проєкту лежать у git: `web/.env.production` (ключі Firebase для сайту,
+  `VITE_SELLER_EMAILS`) і `functions/.env.succulents-shop-ua` (`SELLER_EMAILS`).
+  Новий продавець — додати email у обидва файли **і** в `firestore.rules` та `storage.rules`.
+
+## Локальна розробка і справжній сайт — різні бази
+
+- `npm run emulators` + `npm run dev` — сайт на http://localhost:5173 з **локальною тестовою базою** (емулятори Firebase,
+  тестові товари з `npm run seed`). Тут можна ламати що завгодно: справжніх покупців і замовлень це не стосується,
+  а після вимкнення комп'ютера тестова база очищається.
+- https://succulents-shop-ua.web.app — **справжня база** магазину. Змінюється лише через сайт/адмінку та push у `main`.
