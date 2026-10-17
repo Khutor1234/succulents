@@ -257,7 +257,23 @@ export function ProductPage() {
   const { isVisible, nameOf } = useCategories()
 
   if (isLoading || isError) return <Status isLoading={isLoading} isError={isError} />
-  if (!product || !isVisible(product.category)) return <p>{t('product.notFound')}</p>
+  // Товар прибрали чи приховали (напр. посилання збережене раніше) — пропонуємо, куди піти далі.
+  if (!product || !isVisible(product.category)) {
+    return (
+      <div className="py-8 text-center">
+        <PageTitle>{t('product.notFound')}</PageTitle>
+        <p className="-mt-2 text-sand-700">{t('product.notFoundHint')}</p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Link to="/c/plants" className="rounded-xl bg-brand-600 px-6 py-3.5 font-bold text-sand-50 hover:bg-brand-700">
+            {t('home.toCatalog')}
+          </Link>
+          <Link to="/search" className="rounded-xl bg-sand-200 px-6 py-3.5 font-bold hover:bg-sand-300">
+            {t('search.title')}
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   const name = pick(product.name, lang)
 

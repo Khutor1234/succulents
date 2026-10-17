@@ -15,7 +15,9 @@ import { useLang } from '../../i18n'
 import { formatPrice, pick } from '../../lib/format'
 import { Button, Input, PageTitle, Section } from '../../shared/ui'
 import { useAuth } from '../auth/authStore'
+import { CartChanges } from '../cart/CartChanges'
 import { selectTotal, useCart } from '../cart/cartStore'
+import { useCartChanges, useCartSync } from '../cart/useCartSync'
 import { MIN_ORDER } from '../../lib/shop'
 import { checkoutSchema, type CheckoutData, type CheckoutInput } from './schema'
 
@@ -70,8 +72,10 @@ export function CheckoutPage() {
   const user = useAuth((s) => s.user)
   const { balance } = useBonusBalance()
   const [applyBonuses, setApplyBonuses] = useState(true)
-  const [submitError, setSubmitError] = useState<'generic' | 'min' | null>(null)
+  const [submitError, setSubmitError] = useState<'generic' | 'min' | 'changed' | null>(null)
   const [placed, setPlaced] = useState<CreateOrderResponse | null>(null)
+  // Перед оформленням звіряємо кошик (ціни й наявність могли змінитися, поки людина вибирала)
+  const { sync: syncCart } = useCartSync()
   const [lastDelivery] = useState(loadLastDelivery)
   const filledFromDevice = !!lastDelivery
 
@@ -94,7 +98,8 @@ export function CheckoutPage() {
 
   // Firebase може повідомити про залогіненого користувача вже після першого рендера форми.
   useEffect(() => {
-    if (user?.email && !getValues('email')) setValue('email', user.email)
+    // Залогіненому — завжди email акаунта (навіть якщо з минулого гостьового замовлення підставився інший)
+    if (user?.email && getValues('email') !== user.email) setValue('email', user.email)
   }, [user, getValues, setValue])
 
   // Збережені в кабінеті дані доставки підставляємо в порожні поля (те, що покупець уже ввів, не чіпаємо).
@@ -138,13 +143,21 @@ export function CheckoutPage() {
       track('order_placed', { orderId: data.orderId, number: data.number, total: data.total, bonusUsed: data.bonusUsed })
       setPlaced(data)
       clear()
+      useCartChanges.getState().dismiss()
       void queryClient.invalidateQueries({ queryKey: ['bonuses'] })
       void queryClient.invalidateQueries({ queryKey: ['orders', 'mine'] })
     } catch (e) {
       // Невдале замовлення — найважливіша помилка магазину: шлемо в Sentry з кошиком (без особистих даних).
-      const details = (e as { details?: { reason?: string } }).details
+      const details = (e as { details?: { reason?: string; productId?: string } }).details
       if (details?.reason === 'min-order') {
         setSubmitError('min')
+        return
+      }
+      // Товар розкупили, приховали чи змінили — це не збій: звіряємо кошик, пояснюємо, що змінилось.
+      if (details?.productId) {
+        track('checkout_cart_outdated', { productId: details.productId })
+        await syncCart()
+        setSubmitError('changed')
         return
       }
       reportError(e, {
@@ -164,6 +177,7 @@ export function CheckoutPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div>
           <PageTitle>{t('checkout.title')}</PageTitle>
+          <CartChanges />
           {!user && <p className="-mt-3 text-sand-700">{t(filledFromDevice ? 'checkout.filledFromDevice' : 'checkout.guestHint')}</p>}
           {user && filledFromProfile && <p className="-mt-3 text-brand-600">{t('profile.filledFromProfile')}</p>}
         </div>
@@ -217,7 +231,11 @@ export function CheckoutPage() {
 
         {submitError && (
           <p className="text-red-700">
-            {submitError === 'min' ? t('checkout.errorMinOrder', { amount: formatPrice(MIN_ORDER, lang) }) : t('checkout.error')}
+            {submitError === 'min'
+              ? t('checkout.errorMinOrder', { amount: formatPrice(MIN_ORDER, lang) })
+              : submitError === 'changed'
+                ? t('checkout.errorCartChanged')
+                : t('checkout.error')}
           </p>
         )}
         <Button type="submit" disabled={isSubmitting} className="w-full">

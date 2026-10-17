@@ -144,7 +144,14 @@ function ProductForm({ product }: { product: Product | null }) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form
+      onSubmit={(e) => {
+        // Посилання сховане й заповнюється саме — якщо воно ще порожнє (назву не чіпали), складаємо його з назви.
+        if (!getValues('slug').trim()) setValue('slug', slugify(getValues('name.uk')))
+        return handleSubmit(onSubmit)(e)
+      }}
+      className="space-y-6"
+    >
       <h1 className="font-display text-3xl font-extrabold text-brand-600">{product ? t('admin.editProduct') : t('admin.createProduct')}</h1>
 
       {/* На широкому екрані — дві колонки на всю ширину: зліва назва й опис, справа фото, ціна, характеристики */}

@@ -8,19 +8,24 @@ import { useLang } from '../../i18n'
 import { formatPrice, pick } from '../../lib/format'
 import { MIN_ORDER } from '../../lib/shop'
 import { PageTitle, ProductImage } from '../../shared/ui'
+import { CartChanges } from './CartChanges'
 import { selectTotal, useCart } from './cartStore'
+import { useCartSync } from './useCartSync'
 
 export function CartPage() {
   const { t } = useTranslation()
   const lang = useLang()
   const { items, setQty, remove } = useCart()
   const total = useCart(selectTotal)
+  // Звіряємо кошик із магазином: ціни, наявність, приховані товари
+  useCartSync()
   const belowMin = total < MIN_ORDER
 
   if (items.length === 0) {
     return (
       <div>
         <PageTitle>{t('cart.title')}</PageTitle>
+        <CartChanges />
         <p className="text-sand-700">{t('cart.empty')}</p>
         <Link to="/" className="mt-6 inline-block rounded-xl bg-brand-600 px-6 py-3.5 font-bold text-sand-50">
           {t('home.toCatalog')}
@@ -35,6 +40,7 @@ export function CartPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageTitle>{t('cart.title')}</PageTitle>
+      <CartChanges />
       <ul className="divide-y-2 divide-sand-200 rounded-3xl border-2 border-sand-200 bg-sand-50">
         {items.map((item) => {
           const name = pick(item.name, lang)
