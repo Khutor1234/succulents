@@ -56,6 +56,8 @@ const GENUS_STEMS: [string, (typeof GENERA)[number]][] = [
   ['еоні', 'Aeonium'],
   ['эони', 'Aeonium'],
   ['седум', 'Sedum'],
+  ['агав', 'Agave'],
+  ['дудлей', 'Dudleya'],
 ]
 
 /** Рід за першим словом назви — латиною («Echeveria») чи українською в будь-якій формі («Ехеверії»). */

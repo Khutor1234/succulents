@@ -7,9 +7,11 @@ export const PLANT_CATEGORY = 'plants'
  */
 export const GENERA = [
   'Aeonium',
+  'Agave',
   'Corpuscularia',
   'Cotyledon',
   'Crassula',
+  'Dudleya',
   'Echeveria',
   'Graptopetalum',
   'Graptoveria',
