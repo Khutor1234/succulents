@@ -86,6 +86,8 @@
 html {
   @apply bg-sand-100;
   overscroll-behavior-y: none;
+  /* Шапка закріплена зверху — прокрутка до якоря зупиняється під нею, а не за нею */
+  scroll-padding-top: var(--header-h, 0px);
 }
 
 body {

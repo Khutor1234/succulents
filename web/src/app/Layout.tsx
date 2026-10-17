@@ -1,4 +1,5 @@
 import { signOut } from 'firebase/auth'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { AccountBanner } from '../features/auth/AccountBanner'
@@ -14,6 +15,26 @@ import { LogIn, LogOut, ShieldCheck, ShoppingBag, User } from 'lucide-react'
 
 const YEAR = new Date().getFullYear()
 const NAV_BTN = 'inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl px-3 font-medium transition-colors'
+
+/**
+ * Поточна висота елемента (оновлюється при зміні розміру: поворот телефона, другий рядок шапки тощо).
+ * Ще й записує її в CSS-змінну --header-h — для відступу прокрутки до якорів.
+ */
+function useElementHeight<T extends HTMLElement>() {
+  const [el, setEl] = useState<T | null>(null)
+  const [height, setHeight] = useState(0)
+  useEffect(() => {
+    if (!el) return
+    const observer = new ResizeObserver(() => {
+      const h = el.getBoundingClientRect().height
+      setHeight(h)
+      document.documentElement.style.setProperty('--header-h', `${h}px`)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [el])
+  return [setEl, height] as const
+}
 
 function Logo({ className = '' }: { className?: string }) {
   const { t } = useTranslation()
@@ -33,13 +54,17 @@ export function Layout() {
   const { balance } = useBonusBalance()
   const { pathname } = useLocation()
   const hasCategoryPills = pathname === '/' || pathname.startsWith('/c/')
+  const [headerRef, headerHeight] = useElementHeight<HTMLElement>()
 
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Шапка прикріплена до верху екрана; напівпрозорий фон з розмиттям, щоб під нею було видно прокрутку */}
-      {/* Прикріплена до самого верху екрана: суцільний фон (крізь нього нічого не просвічує), а на iPhone —
-          відступ під годинник і «чубчик», щоб над шапкою не прокручувався вміст. */}
-      <header className="sticky top-0 z-40 border-b border-sand-200 bg-sand-100 pt-[env(safe-area-inset-top)] shadow-[0_1px_0_rgb(0_0_0/0.02)]">
+      {/* Шапка закріплена (fixed) до самого верху екрана з суцільним фоном. Не sticky: Safari на iPhone фарбує
+          смужку з годинником кольором саме fixed-шапки — тоді над нею не видно сторінки, що прокручується.
+          Місце під шапкою тримає розпірка нижче (висоту міряємо, бо шапка буває у два рядки). */}
+      <header
+        ref={headerRef}
+        className="fixed inset-x-0 top-0 z-40 border-b border-sand-200 bg-sand-100 pt-[env(safe-area-inset-top)] shadow-[0_1px_0_rgb(0_0_0/0.02)]"
+      >
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-7 gap-y-2 px-4 py-3">
           <Link to="/" className="text-2xl text-brand-600">
             <Logo />
@@ -107,6 +132,7 @@ export function Layout() {
           </div>
         </div>
       </header>
+      <div aria-hidden="true" style={{ height: headerHeight }} />
       <AccountBanner />
       {/* key — щоб анімація появи спрацьовувала на кожному переході між сторінками */}
       <main key={pathname} className="mx-auto w-full max-w-6xl flex-1 animate-page-in px-4 pt-6 pb-16">
