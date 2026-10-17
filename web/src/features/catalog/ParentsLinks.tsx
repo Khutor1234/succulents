@@ -75,9 +75,17 @@ export function ParentsLinks({
     </Kicker>
   )
 
-  const cross = <span aria-label="×" className={`shrink-0 font-display font-extrabold text-sunset-600 ${big ? 'text-2xl' : 'text-xs'}`}>×</span>
+  const cross = big ? (
+    <span aria-label="×" className="shrink-0 font-display text-2xl font-extrabold text-sunset-600">×</span>
+  ) : (
+    <span aria-label="×" className="flex h-5 w-5 shrink-0 items-center justify-center self-center rounded-full bg-sunset-100 font-display text-xs font-extrabold text-sunset-600">×</span>
+  )
   const unknown = (
-    <span className={`shrink-0 rounded-full border border-dashed whitespace-nowrap border-sand-300 italic text-sand-700 ${big ? 'px-3.5 py-1.5 text-sm' : 'px-2 py-0.5 text-[11px]'}`}>
+    <span
+      className={`border border-dashed border-sand-300 italic text-sand-700 ${
+        big ? 'shrink-0 rounded-full px-3.5 py-1.5 text-sm whitespace-nowrap' : 'flex flex-1 basis-0 items-center justify-center rounded-lg px-1.5 py-0.5 text-[11px]'
+      }`}
+    >
       {t('search.unknownParent')}
     </span>
   )
@@ -95,7 +103,8 @@ export function ParentsLinks({
           {/* Для природного виду слово видно (поруч лише країна), для гібрида — лише для екранних читалок */}
           <span className={natural ? 'text-xs font-semibold' : 'sr-only'}>{kind}</span>
         </span>
-        <div className="flex min-w-0 items-center gap-1">
+        {/* На всю ширину плашки; чипи однакової висоти, навіть якщо одна назва у два рядки */}
+        <div className="flex min-w-0 flex-1 items-stretch gap-1.5">
           {natural && habitat && (
             <Chip to={habitat} title={find(habitat)} icon={<MapPin size={11} strokeWidth={2.5} aria-hidden />}>
               {habitat}
@@ -103,7 +112,7 @@ export function ParentsLinks({
           )}
           {cultivar && names[0] && (
             <>
-              <span className="shrink-0 text-xs text-sand-700">{t('search.from')}</span>
+              <span className="shrink-0 self-center text-xs text-sand-700">{t('search.from')}</span>
               <Chip to={names[0]} title={find(names[0])}>{names[0]}</Chip>
             </>
           )}

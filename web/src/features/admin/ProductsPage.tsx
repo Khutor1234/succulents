@@ -19,8 +19,10 @@ const ALL = 'all'
 // Скільки товарів показуємо за раз (решта — коли догортали донизу)
 const PAGE = 30
 
-const SORTS = ['name', 'shownFirst', 'hiddenFirst', 'stock', 'priceAsc', 'priceDesc', 'new'] as const
+const SORTS = ['shownFirst', 'name', 'hiddenFirst', 'stock', 'priceAsc', 'priceDesc', 'new'] as const
 type Sort = (typeof SORTS)[number]
+// Без вибору — спершу показані на сайті (всередині за назвою)
+const DEFAULT_SORT: Sort = 'shownFirst'
 
 /** Порядок списку. «new» — як прийшло з бази (найновіші спершу). */
 function sortProducts(list: Product[], sort: Sort, nameOf: (p: Product) => string): Product[] {
@@ -58,7 +60,7 @@ export function ProductsPage() {
   const category = param === ALL ? '' : param
   // Сортування й пошук теж в адресі (?sort=stock&q=lola) — щоб після редагування повернутись до того ж списку.
   const sortParam = params.get('sort') as Sort | null
-  const sort: Sort = sortParam && SORTS.includes(sortParam) ? sortParam : 'name'
+  const sort: Sort = sortParam && SORTS.includes(sortParam) ? sortParam : DEFAULT_SORT
   const query = params.get('q') ?? ''
   const update = (changes: Record<string, string>) => {
     const next = new URLSearchParams(params)
@@ -88,7 +90,8 @@ export function ProductsPage() {
   const list = useProgressive(shown ?? [], PAGE, `${category}|${query}|${sort}`)
 
   // Абетка — коли список за назвою: перший товар кожної літери отримує якір, до якого прокручує кнопка.
-  const byName = sort === 'name'
+  // «Спершу показані» теж за назвою всередині — абетка веде до літери серед показаних
+  const byName = sort === 'name' || sort === 'shownFirst'
   const letterOf = (name: string) => name.trim().charAt(0).toLocaleUpperCase('uk')
   const firstOfLetter = new Map<string, { id: string; index: number }>()
   if (byName)
@@ -186,7 +189,7 @@ export function ProductsPage() {
             <span className="shrink-0 text-sand-700">{t('admin.sort.label')}</span>
             <select
               value={sort}
-              onChange={(e) => update({ sort: e.target.value === 'name' ? '' : e.target.value })}
+              onChange={(e) => update({ sort: e.target.value === DEFAULT_SORT ? '' : e.target.value })}
               className="min-h-12 w-full rounded-xl border-2 border-sand-200 bg-sand-50 px-3 font-bold outline-none focus:border-brand-500"
             >
               {SORTS.map((s) => (

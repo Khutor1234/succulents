@@ -46,7 +46,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
             parents={product.parents}
             origin={product.origin}
             habitat={product.habitat}
-            className="absolute right-2 bottom-2 left-2 w-fit max-w-[calc(100%-1rem)] rounded-2xl bg-sand-50/90 p-1 pl-2 shadow-sm backdrop-blur"
+            className="absolute inset-x-2 bottom-2 rounded-2xl bg-sand-50/90 p-1.5 shadow-sm backdrop-blur"
           />
         )}
       </div>
