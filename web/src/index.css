@@ -90,6 +90,12 @@ html {
   scroll-padding-top: var(--header-h, 0px);
 }
 
+/* Браузери не дають fieldset стискатися вужче за вміст (min-inline-size: min-content) —
+   через це секції форм розтягували сторінку на телефоні й доводилось гортати вбік. */
+fieldset {
+  min-inline-size: 0;
+}
+
 body {
   @apply bg-sand-100 font-sans text-ink antialiased;
   overscroll-behavior-y: none;

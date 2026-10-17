@@ -148,7 +148,7 @@ function ProductForm({ product }: { product: Product | null }) {
       <h1 className="font-display text-3xl font-extrabold text-brand-600">{product ? t('admin.editProduct') : t('admin.createProduct')}</h1>
 
       {/* На широкому екрані — дві колонки на всю ширину: зліва назва й опис, справа фото, ціна, характеристики */}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] [&>*]:min-w-0">
       <div className="space-y-6">
       <Section title={t('admin.name')}>
         <Select
@@ -262,14 +262,13 @@ function ProductForm({ product }: { product: Product | null }) {
             ) : origin === 'cultivar' ? (
               <Input label={t('admin.fields.cultivarOf')} className="[&>span]:sr-only" placeholder="Echeveria lilacina" {...register('parents.0')} />
             ) : (
-              <div className="grid items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-                <Input label={t('admin.fields.parentA')} className="[&>span]:sr-only" placeholder="Echeveria Lola" {...register('parents.0')} />
-                <span className="hidden text-center font-display text-xl font-extrabold text-sand-700 sm:block" aria-hidden>
+              <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+                <Input label={t('admin.fields.parentA')} placeholder="Echeveria Lola" {...register('parents.0')} />
+                <span className="hidden pb-3 text-center font-display text-xl font-extrabold text-sand-700 sm:block" aria-hidden>
                   ×
                 </span>
                 <Input
                   label={t('admin.fields.parentB')}
-                  className="[&>span]:sr-only"
                   placeholder={t('admin.fields.parentUnknown')}
                   {...register('parents.1')}
                 />

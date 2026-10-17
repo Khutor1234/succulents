@@ -1,22 +1,31 @@
 import { FirebaseError } from 'firebase/app'
 import {
   createUserWithEmailAndPassword,
+  getRedirectResult,
   GoogleAuthProvider,
   sendEmailVerification,
   signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
 } from 'firebase/auth'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { auth } from '../../firebase/config'
 import { reportError, track } from '../../lib/monitoring'
 import { Button, Input, PageTitle, PasswordInput } from '../../shared/ui'
+import { useAuth } from './authStore'
 
 const google = new GoogleAuthProvider()
 // Завжди показувати вікно вибору акаунта Google, навіть якщо в браузері вже є один залогінений.
 google.setCustomParameters({ prompt: 'select_account' })
+
+/**
+ * Телефони й вбудовані браузери (Telegram, Instagram…) погано працюють зі спливними вікнами:
+ * вікно відкривається новою вкладкою й не може повернути результат. Там одразу переходимо на сторінку Google.
+ */
+const preferRedirect = () =>
+  window.matchMedia('(pointer: coarse)').matches || /Telegram|FBAN|FBAV|Instagram|Line\/|; wv\)/i.test(navigator.userAgent)
 
 /** Людина сама закрила вікно Google — це не помилка, нічого не показуємо. */
 const CANCELLED = ['auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/user-cancelled']
@@ -29,6 +38,22 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(false)
+  const user = useAuth((s) => s.user)
+
+  // Повернулись зі сторінки Google (вхід переходом): якщо щось пішло не так — показуємо помилку,
+  // а коли вхід вдався — ведемо на головну, як і після звичайного входу.
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => result && track('login', { method: 'google-redirect' }))
+      .catch((e) => {
+        if (e instanceof FirebaseError && CANCELLED.includes(e.code)) return
+        reportError(e, { action: 'login', method: 'google-redirect', code: e instanceof FirebaseError ? e.code : undefined })
+        setError(true)
+      })
+  }, [])
+  useEffect(() => {
+    if (user) navigate('/', { replace: true })
+  }, [user, navigate])
 
   async function run(action: () => Promise<unknown>, method: string) {
     setError(false)
@@ -50,6 +75,10 @@ export function LoginPage() {
   }
 
   async function signInWithGoogle() {
+    if (preferRedirect()) {
+      await signInWithRedirect(auth, google)
+      return
+    }
     try {
       await signInWithPopup(auth, google)
     } catch (e) {

@@ -4,7 +4,7 @@ import { Link, Navigate, NavLink, useParams } from 'react-router'
 import { ICON } from '../../shared/icon'
 import { useLang } from '../../i18n'
 import { formatPrice, pick } from '../../lib/format'
-import { PageTitle, ProductImage, Select } from '../../shared/ui'
+import { PageTitle, Select } from '../../shared/ui'
 import { useBonusBalance } from '../account/api'
 import { SellerOrdersPanel } from '../admin/SellerOrdersPanel'
 import { useAuth } from '../auth/authStore'
@@ -16,6 +16,7 @@ import { ParentsLinks } from './ParentsLinks'
 import { PlantFilters, TagBadges } from './PlantFilters'
 import { SORTS, usePlantFilters, type SortOrder } from './usePlantFilters'
 import { ProductGrid } from './ProductCard'
+import { ProductGallery } from './ProductGallery'
 
 function Status({ isLoading, isError }: { isLoading: boolean; isError: boolean }) {
   const { t } = useTranslation()
@@ -267,9 +268,7 @@ export function ProductPage() {
         {t('product.backShort')}
       </Link>
       <div className="mt-5 grid gap-8 md:grid-cols-2">
-        <div className="rounded-[32px] bg-sand-50 p-3">
-          <ProductImage src={product.images[0]} alt={name} tint="bg-sand-300/60" />
-        </div>
+        <ProductGallery images={product.images} alt={name} />
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-block rounded-full bg-sand-200 px-4 py-1.5 text-sm font-bold">{nameOf(product.category)}</span>
