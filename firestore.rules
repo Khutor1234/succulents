@@ -1,0 +1,65 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Роль задається custom claim через Admin SDK — клієнт змінити її не може.
+    function isSeller() {
+      return isSignedIn() && request.auth.token.role == 'seller';
+    }
+
+    match /products/{productId} {
+      allow read: if resource.data.isActive == true || isSeller();
+      allow write: if isSeller();
+    }
+
+    // Профіль покупця (збережені дані доставки). Покупець пише лише в delivery/updatedAt свого документа.
+    match /users/{uid} {
+      allow read: if (isSignedIn() && request.auth.uid == uid) || isSeller();
+      allow create, update: if isSignedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['delivery', 'updatedAt'])
+        && request.resource.data.delivery is map
+        && request.resource.data.delivery.keys().hasOnly(['fullName', 'phone', 'city', 'warehouse']);
+      allow delete: if false;
+    }
+
+    match /orders/{orderId} {
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isSeller();
+      // Створення тільки через Cloud Function createOrder (і для гостей, і для клієнтів).
+      allow create, delete: if false;
+      // Продавець міняє лише статус і оплату. Скасоване замовлення не можна «розскасувати»:
+      // залишок товарів уже повернуто тригером onOrderCancelled.
+      allow update: if isSeller()
+        && resource.data.status != 'cancelled'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'payment', 'updatedAt'])
+        && request.resource.data.status in ['new', 'confirmed', 'shipped', 'done', 'cancelled'];
+    }
+
+    // Бонусний рахунок і його історія. Змінюють лише Cloud Functions (createOrder і тригер статусу замовлення),
+    // тож покупець не може «намалювати» собі бонуси.
+    match /bonuses/{uid} {
+      allow read: if (isSignedIn() && request.auth.uid == uid) || isSeller();
+      allow write: if false;
+
+      match /history/{entryId} {
+        allow read: if (isSignedIn() && request.auth.uid == uid) || isSeller();
+        allow write: if false;
+      }
+    }
+
+    // Налаштування магазину (видимість і порядок категорій) — читають усі, змінює продавець.
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isSeller();
+    }
+
+    // Службові документи (лічильник номерів замовлень тощо) — тільки для Functions.
+    match /counters/{id} {
+      allow read, write: if false;
+    }
+  }
+}

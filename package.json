@@ -1,0 +1,11 @@
+{
+  "name": "succulents",
+  "private": true,
+  "scripts": {
+    "setup": "npm --prefix web install && npm --prefix functions install",
+    "emulators": "npm --prefix functions run build && firebase emulators:start --project demo-succulents",
+    "dev": "npm --prefix web run dev -- --host",
+    "seed": "npm --prefix functions run seed",
+    "build": "npm --prefix web run build && npm --prefix functions run build"
+  }
+}

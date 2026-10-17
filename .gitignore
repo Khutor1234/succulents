@@ -1,0 +1,10 @@
+node_modules
+.emulator-data
+*-debug.log
+.firebase
+.secret.local
+.env.production
+.env.local
+
+# Намальовані картинки тестових товарів (генерує npm run seed)
+web/public/seed

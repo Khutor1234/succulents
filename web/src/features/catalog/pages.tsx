@@ -1,0 +1,308 @@
+import { ArrowLeft, ArrowRight, Gift, Shovel, Truck } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Link, Navigate, NavLink, useParams } from 'react-router'
+import { ICON } from '../../shared/icon'
+import { useLang } from '../../i18n'
+import { formatPrice, pick } from '../../lib/format'
+import { PageTitle, ProductImage, Select } from '../../shared/ui'
+import { useBonusBalance } from '../account/api'
+import { SellerOrdersPanel } from '../admin/SellerOrdersPanel'
+import { useAuth } from '../auth/authStore'
+import { AddToCart } from '../cart/AddToCart'
+import { useLatestProducts, useProduct, useProducts } from './api'
+import { PLANT_CATEGORY } from '../../lib/plants'
+import { useCategories } from './categories'
+import { PlantFilters, TagBadges } from './PlantFilters'
+import { SORTS, usePlantFilters, type SortOrder } from './usePlantFilters'
+import { ProductGrid } from './ProductCard'
+
+function Status({ isLoading, isError }: { isLoading: boolean; isError: boolean }) {
+  const { t } = useTranslation()
+  if (isLoading) return <p className="text-sand-700">{t('loading')}</p>
+  if (isError) return <p className="text-red-700">{t('errors.loading')}</p>
+  return null
+}
+
+/** Кактус на пагорбах під сонцем — ілюстрація для першого екрана. */
+function DesertIllustration() {
+  return (
+    <svg
+      viewBox="0 0 200 140"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="w-72 max-w-full"
+    >
+      <path d="M100 140V46c0-10 12-10 12 0v94" />
+      <path d="M112 82h10c6 0 8-4 8-10V58c0-8 10-8 10 0v16c0 12-8 20-18 20h-10" />
+      <path d="M100 96H88c-10 0-16-8-16-18V66c0-8 10-8 10 0v10c0 6 2 9 8 9h10" />
+      <path d="M0 132c40-14 70-14 100-4s70 8 100-6" />
+      <circle cx="160" cy="30" r="14" />
+    </svg>
+  )
+}
+
+export function CategoryPills() {
+  const { visible, nameOf } = useCategories()
+  return (
+    <nav className="flex flex-wrap gap-2.5">
+      {visible.map((c, i) => (
+        <NavLink
+          key={c}
+          to={`/c/${c}`}
+          className={({ isActive }) =>
+            `rounded-full px-5 py-3 font-bold ${isActive ? 'bg-brand-600 text-sand-50' : i % 2 ? 'bg-sand-200 hover:bg-sand-300' : 'bg-sand-300 hover:bg-sand-400'}`
+          }
+        >
+          {nameOf(c)}
+        </NavLink>
+      ))}
+    </nav>
+  )
+}
+
+/**
+ * Банер бонусної програми.
+ * Гість бачить «100 грн за реєстрацію + 10%». Залогінений вітальні 100 грн уже отримав (або отримає після
+ * підтвердження пошти — про це окрема смужка під шапкою), тож йому лише про 10% і його баланс.
+ */
+function BonusPromo({ compact = false }: { compact?: boolean }) {
+  const { t } = useTranslation()
+  const lang = useLang()
+  const user = useAuth((s) => s.user)
+  const { balance } = useBonusBalance()
+
+  // Компактна смужка — для сторінок категорій, щоб не відсувати товари вниз.
+  if (compact) {
+    const text = user
+      ? balance > 0
+        ? t('welcome.stripBalance', { amount: formatPrice(balance, lang) })
+        : t('welcome.cashbackTitle')
+      : t('welcome.stripGuest')
+    return (
+      <Link
+        to={user ? '/account' : '/login?mode=signup'}
+        className="group flex items-center gap-3 rounded-2xl border-2 border-dashed border-sunset-500 bg-sand-50 px-4 py-3 transition-colors hover:bg-sand-200"
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sunset-600 text-sand-50">
+          <Gift {...ICON} />
+        </span>
+        <span className="flex-1 text-sm font-bold">{text}</span>
+        <ArrowRight {...ICON} className="shrink-0 text-sunset-600 transition-transform group-hover:translate-x-1" />
+      </Link>
+    )
+  }
+
+  if (user) {
+    return (
+      <section className="flex flex-wrap items-center gap-x-8 gap-y-4 rounded-[32px] border-2 border-dashed border-brand-500 bg-sand-50 px-6 py-6 sm:px-8">
+        <span className="flex items-center gap-3 font-display text-5xl font-extrabold text-brand-600">
+          <Gift size={40} strokeWidth={2} aria-hidden />
+          10%
+        </span>
+        <div className="min-w-60 flex-1">
+          <p className="font-display text-2xl font-extrabold text-brand-600">{t('welcome.cashbackTitle')}</p>
+          <p className="mt-1 text-sand-700">
+            {balance > 0 ? t('welcome.cashbackBalance', { amount: formatPrice(balance, lang) }) : t('welcome.cashbackText')}
+          </p>
+        </div>
+        <Link to="/account" className="rounded-xl bg-sand-200 px-6 py-3.5 font-bold hover:bg-sand-300">
+          {t('welcome.toAccount')}
+        </Link>
+      </section>
+    )
+  }
+
+  return (
+    <section className="flex flex-wrap items-center gap-x-8 gap-y-4 rounded-[32px] border-2 border-dashed border-sunset-500 bg-sand-50 px-6 py-6 sm:px-8">
+      <div className="flex items-baseline gap-3">
+        <Gift size={40} strokeWidth={2} aria-hidden className="self-center text-sunset-600" />
+        <span className="font-display text-5xl font-extrabold text-sunset-600">100 ₴</span>
+        <span className="font-display text-3xl font-extrabold text-brand-600">+10%</span>
+      </div>
+      <div className="min-w-60 flex-1">
+        <p className="font-display text-2xl font-extrabold text-brand-600">{t('welcome.promoTitle')}</p>
+        <p className="mt-1 text-sand-700">{t('welcome.promoText')}</p>
+      </div>
+      <Link to="/login?mode=signup" className="rounded-xl bg-sunset-600 px-6 py-3.5 font-bold text-sand-50 hover:bg-sunset-700">
+        {t('welcome.promoCta')}
+      </Link>
+    </section>
+  )
+}
+
+export function HomePage() {
+  const { t } = useTranslation()
+  const latest = useLatestProducts()
+  const { visible, isVisible } = useCategories()
+  const firstCategory = visible[0] ?? 'plants'
+  const shown = latest.data?.filter((p) => isVisible(p.category))
+
+  return (
+    <div className="space-y-12">
+      <SellerOrdersPanel />
+      <section className="grid gap-5 md:grid-cols-2">
+        <div className="flex min-h-[420px] flex-col justify-between gap-8 rounded-[32px] bg-sunset-600 p-8 text-sand-50 sm:p-10">
+          <p className="text-[13px] font-bold tracking-[0.14em] uppercase">{t('home.eyebrow')}</p>
+          <h1 className="font-display text-5xl leading-[0.98] font-extrabold sm:text-6xl">{t('home.title')}</h1>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              to={`/c/${firstCategory}`}
+              className="group inline-flex items-center gap-2 rounded-xl bg-sand-50 px-6 py-3.5 font-bold text-ink transition-transform hover:bg-sand-100 active:scale-[0.97]"
+            >
+              {t('home.toCatalog')}
+              <ArrowRight {...ICON} className="transition-transform group-hover:translate-x-1" />
+            </Link>
+            {isVisible('soil') && (
+              <Link
+                to="/c/soil"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97]"
+              >
+                <Shovel {...ICON} />
+                {t('home.soil')}
+              </Link>
+            )}
+          </div>
+        </div>
+        <div className="grid grid-rows-[1fr_auto] gap-5">
+          <div className="flex min-h-[260px] items-end justify-center overflow-hidden rounded-[32px] bg-sand-300 text-brand-600">
+            <DesertIllustration />
+          </div>
+          <div className="flex items-start gap-4 rounded-3xl bg-brand-600 px-6 py-5 text-sand-100">
+            <Truck size={32} strokeWidth={2} aria-hidden className="mt-1 shrink-0 text-sand-300" />
+            <div>
+              <p className="font-display text-2xl font-extrabold">{t('home.deliveryTitle')}</p>
+              <p className="mt-1">{t('home.deliveryText')}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <BonusPromo />
+
+      <CategoryPills />
+
+      <section>
+        <div className="mb-5 flex flex-wrap items-baseline gap-4">
+          <h2 className="font-display text-4xl font-extrabold text-brand-600">{t('home.newArrivals')}</h2>
+          <Link to={`/c/${firstCategory}`} className="group ml-auto inline-flex items-center gap-1.5 font-bold text-brand-600 hover:underline">
+            {t('home.allProductsShort')}
+            <ArrowRight {...ICON} className="transition-transform group-hover:translate-x-1" />
+          </Link>
+        </div>
+        <Status isLoading={latest.isLoading} isError={latest.isError} />
+        {shown && <ProductGrid products={shown} />}
+      </section>
+    </div>
+  )
+}
+
+export function CategoryPage() {
+  const { t } = useTranslation()
+  const { category } = useParams()
+  const { isVisible, nameOf, isLoading: settingsLoading } = useCategories()
+  const products = useProducts(category ?? '')
+  const filters = usePlantFilters()
+
+  if (!category || (!settingsLoading && !isVisible(category))) return <Navigate to="/" replace />
+
+  const shown = products.data ? filters.apply(products.data) : undefined
+
+  return (
+    <div className="space-y-6">
+      <PageTitle>{nameOf(category)}</PageTitle>
+      <CategoryPills />
+      <BonusPromo compact />
+      <Status isLoading={products.isLoading} isError={products.isError} />
+      {products.data?.length === 0 && <p className="text-sand-700">{t('catalog.empty')}</p>}
+      {products.data && products.data.length > 0 && <PlantFilters products={products.data} filters={filters} category={category} />}
+      {shown && products.data!.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="font-bold">
+            {t(category === PLANT_CATEGORY ? 'catalog.found' : 'catalog.foundProducts', { count: shown.length })}
+          </p>
+          {filters.active && (
+            <button onClick={filters.reset} className="min-h-10 rounded-xl px-3 font-bold text-brand-600 underline hover:bg-sand-200">
+              {t('catalog.resetFilters')}
+            </button>
+          )}
+          <label className="ml-auto flex items-center gap-2 text-sm font-bold text-sand-700">
+            {t('catalog.sort')}
+            <Select compact value={filters.sort} onChange={(e) => filters.setSort(e.target.value as SortOrder)}>
+              {SORTS.map((s) => (
+                <option key={s} value={s}>
+                  {t(`catalog.sorts.${s}`)}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </div>
+      )}
+      {shown && shown.length === 0 && products.data!.length > 0 && <p className="text-sand-700">{t('catalog.noMatches')}</p>}
+      {shown && <ProductGrid products={shown} />}
+    </div>
+  )
+}
+
+export function ProductPage() {
+  const { t } = useTranslation()
+  const lang = useLang()
+  const { slug = '' } = useParams()
+  const { data: product, isLoading, isError } = useProduct(slug)
+  const { isVisible, nameOf } = useCategories()
+
+  if (isLoading || isError) return <Status isLoading={isLoading} isError={isError} />
+  if (!product || !isVisible(product.category)) return <p>{t('product.notFound')}</p>
+
+  const name = pick(product.name, lang)
+
+  return (
+    <div>
+      <Link to={`/c/${product.category}`} className="group inline-flex items-center gap-1.5 font-bold text-brand-600 hover:underline">
+        <ArrowLeft {...ICON} className="transition-transform group-hover:-translate-x-1" />
+        {t('product.backShort')}
+      </Link>
+      <div className="mt-5 grid gap-8 md:grid-cols-2">
+        <div className="rounded-[32px] bg-sand-50 p-3">
+          <ProductImage src={product.images[0]} alt={name} tint="bg-sand-300/60" />
+        </div>
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-block rounded-full bg-sand-200 px-4 py-1.5 text-sm font-bold">{nameOf(product.category)}</span>
+            {product.genus && (
+              <Link
+                to={`/c/${product.category}?genus=${encodeURIComponent(product.genus)}`}
+                className="rounded-full border-2 border-sand-200 px-4 py-1 text-sm font-bold italic hover:border-brand-500"
+              >
+                {product.genus}
+              </Link>
+            )}
+          </div>
+          <h1 className="mt-4 font-display text-4xl leading-tight font-extrabold text-brand-600 sm:text-5xl">{name}</h1>
+          <TagBadges tags={product.tags} className="mt-3" />
+          <p className="mt-4 font-display text-3xl font-extrabold text-sunset-600">{formatPrice(product.price, lang)}</p>
+          <p className="mt-1 text-sm text-sand-700">
+            {product.stock > 0 ? t('product.inStock', { count: product.stock }) : t('product.outOfStock')}
+          </p>
+          <div className="mt-6 max-w-xs">
+            <AddToCart product={product} size="lg" />
+          </div>
+          <p className="mt-8 leading-relaxed whitespace-pre-line">{pick(product.description, lang)}</p>
+          {product.specs && product.specs.length > 0 && (
+            <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border-2 border-sand-200 bg-sand-200 text-sm">
+              {product.specs.map((spec, i) => (
+                <div key={i} className="contents">
+                  <dt className="bg-sand-50 px-4 py-3 text-sand-700">{pick(spec.label, lang)}</dt>
+                  <dd className="bg-sand-50 px-4 py-3 font-medium">{pick(spec.value, lang)}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
