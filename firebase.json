@@ -34,7 +34,7 @@
     ],
     "rewrites": [
       {
-        "regex": "^/(?!assets/).*",
+        "source": "**",
         "destination": "/index.html"
       }
     ],
@@ -58,7 +58,7 @@
         ]
       },
       {
-        "regex": "^/(?!assets/)[^.]*$",
+        "regex": "^/[^.]*$",
         "headers": [
           {
             "key": "Cache-Control",
