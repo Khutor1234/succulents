@@ -19,7 +19,7 @@ const ALL = 'all'
 // Скільки товарів показуємо за раз (решта — коли догортали донизу)
 const PAGE = 30
 
-const SORTS = ['name', 'stock', 'priceAsc', 'priceDesc', 'new'] as const
+const SORTS = ['name', 'shownFirst', 'hiddenFirst', 'stock', 'priceAsc', 'priceDesc', 'new'] as const
 type Sort = (typeof SORTS)[number]
 
 /** Порядок списку. «new» — як прийшло з бази (найновіші спершу). */
@@ -28,6 +28,11 @@ function sortProducts(list: Product[], sort: Sort, nameOf: (p: Product) => strin
   switch (sort) {
     case 'name':
       return [...list].sort(byName)
+    // Спершу показані на сайті (або спершу приховані), всередині — за назвою
+    case 'shownFirst':
+      return [...list].sort((a, b) => Number(b.isActive) - Number(a.isActive) || byName(a, b))
+    case 'hiddenFirst':
+      return [...list].sort((a, b) => Number(a.isActive) - Number(b.isActive) || byName(a, b))
     // Спершу ті, яких на складі найбільше; закінчені — в кінці
     case 'stock':
       return [...list].sort((a, b) => b.stock - a.stock || byName(a, b))
@@ -274,7 +279,7 @@ export function ProductsPage() {
                 </Link>
                 <button
                   disabled={toggle.isPending}
-                  onClick={() => toggle.mutate({ id: p.id, isActive: !p.isActive })}
+                  onClick={() => toggle.mutate({ id: p.id, isActive: !p.isActive, stock: p.stock })}
                   className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 font-bold transition-transform active:scale-[0.97] disabled:opacity-50 sm:w-40 ${
                     p.isActive ? 'bg-sand-200 text-ink hover:bg-sand-300' : 'bg-sunset-600 text-sand-50 hover:bg-sunset-700'
                   }`}

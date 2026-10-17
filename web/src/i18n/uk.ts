@@ -334,6 +334,8 @@ export const uk = {
     sort: {
       label: 'Сортувати',
       name: 'За назвою (А–Я)',
+      shownFirst: 'Спершу показані',
+      hiddenFirst: 'Спершу приховані',
       stock: 'За наявністю',
       priceAsc: 'Спершу дешевші',
       priceDesc: 'Спершу дорожчі',

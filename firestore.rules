@@ -24,7 +24,7 @@ service cloud.firestore {
       allow write: if isSeller();
     }
 
-    // Профіль покупця (збережені дані доставки). Покупець пише лише в delivery/updatedAt свого документа.
+    // Профіль покупця (дані доставки й улюблене). Покупець пише лише в delivery/favorites/updatedAt свого документа.
     match /users/{uid} {
       allow read: if (isSignedIn() && request.auth.uid == uid) || isSeller();
       allow create, update: if isSignedIn() && request.auth.uid == uid
