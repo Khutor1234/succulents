@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
-import { Check, ChevronDown, Link2, Lock, X } from 'lucide-react'
+import { Check, ChevronDown, Link2, Lock, X, Trash2 } from 'lucide-react'
 import { detectGenus, parseForms, withForms } from '../../lib/plantName'
 import { ICON } from '../../shared/icon'
 import { HABITATS, ORIGINS } from '../../lib/types'
@@ -12,7 +12,7 @@ import { slugify } from '../../lib/slug'
 import type { Product } from '../../lib/types'
 import { Button, Input, Section, Select, Textarea } from '../../shared/ui'
 import { useCategories } from '../catalog/categories'
-import { isSlugTaken, useProductById, useSaveProduct } from './api'
+import { isSlugTaken, useDeleteProduct, useProductById, useSaveProduct } from './api'
 import { ImagesEditor } from './ImagesEditor'
 import {
   cultivarOf,
@@ -71,6 +71,13 @@ function ProductForm({ product }: { product: Product | null }) {
   const categoryTags = tagsFor(category)
 
   const err = (key?: string) => (key ? t(key) : undefined)
+
+  const remove = useDeleteProduct()
+  async function onDelete() {
+    if (!product || !window.confirm(t('admin.deleteProductConfirm', { name: product.name.uk }))) return
+    await remove.mutateAsync(product.id)
+    navigate(`/admin/products?category=${product.category}`)
+  }
 
   async function onSubmit(data: ProductFormData) {
     if (await isSlugTaken(data.slug, product?.id)) {
@@ -369,6 +376,23 @@ function ProductForm({ product }: { product: Product | null }) {
 
       {save.isError && <p className="text-red-700">{t('admin.saveError')}</p>}
       {/* На телефоні кнопки прикріплені до низу екрана — не треба гортати довгу форму до кінця */}
+      {/* Видалення — окремо від «Зберегти», щоб не натиснути випадково; лише для вже існуючого товару */}
+      {product && (
+        <div className="rounded-3xl border-2 border-dashed border-red-200 p-4">
+          <p className="text-sm text-sand-700">{t('admin.deleteProductHint')}</p>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={remove.isPending}
+            className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-red-700 px-4 font-bold text-red-700 transition-colors hover:bg-red-700 hover:text-white disabled:opacity-50"
+          >
+            <Trash2 {...ICON} />
+            {remove.isPending ? t('admin.deleting') : t('admin.deleteProduct')}
+          </button>
+          {remove.isError && <p className="mt-2 text-sm text-red-700">{t('admin.saveError')}</p>}
+        </div>
+      )}
+
       <div className="sticky bottom-0 z-30 -mx-4 flex gap-3 border-t-2 border-sand-200 bg-sand-100/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
         <Button type="submit" disabled={isSubmitting || uploading} className="flex-1 sm:flex-none">
           <Check {...ICON} />

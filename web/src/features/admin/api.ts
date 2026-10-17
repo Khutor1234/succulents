@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   addDoc,
+  deleteDoc,
   collection,
   doc,
   getDoc,
@@ -72,6 +73,18 @@ export function useToggleProductActive() {
   return useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       updateDoc(doc(db, 'products', id), { isActive, updatedAt: serverTimestamp() }),
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+}
+
+/**
+ * Видаляє товар назавжди. Фото у сховищі не чіпаємо: на них посилаються вже оформлені замовлення
+ * (в історії покупця й в адмінці вони мають лишитися з картинкою).
+ */
+export function useDeleteProduct() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => deleteDoc(doc(db, 'products', id)),
     onSuccess: () => queryClient.invalidateQueries(),
   })
 }
