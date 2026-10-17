@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import type { Order, OrderStatus, Product } from '../../lib/types'
+import { withKnownTags } from '../catalog/api'
 
 /** Усі товари, включно з прихованими (Rules дозволяють це тільки продавцю). */
 export function useAllProducts() {
@@ -21,7 +22,7 @@ export function useAllProducts() {
     queryKey: ['admin', 'products'],
     queryFn: async () => {
       const snap = await getDocs(query(collection(db, 'products'), orderBy('createdAt', 'desc')))
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Product)
+      return snap.docs.map((d) => withKnownTags({ id: d.id, ...d.data() } as Product))
     },
     staleTime: 0,
   })
@@ -33,7 +34,7 @@ export function useProductById(id: string | undefined) {
     enabled: !!id,
     queryFn: async () => {
       const snap = await getDoc(doc(db, 'products', id!))
-      return snap.exists() ? ({ id: snap.id, ...snap.data() } as Product) : null
+      return snap.exists() ? withKnownTags({ id: snap.id, ...snap.data() } as Product) : null
     },
     staleTime: 0,
   })

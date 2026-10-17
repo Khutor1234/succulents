@@ -29,6 +29,8 @@ const products = [
     ),
     price: 15000,
     stock: 12,
+    origin: 'natural',
+    habitat: 'Мексика',
     genus: 'Echeveria',
     specs: [pot(8), spec(l('Освітлення', 'Light'), l('Яскраве', 'Bright'))],
   },
@@ -42,6 +44,8 @@ const products = [
     stock: 2,
     genus: 'Echeveria',
     tags: ['variegata'],
+    parents: ['Echeveria lilacina', 'Echeveria Deresina'],
+    breeder: 'Dick Wright',
   },
   {
     slug: 'echeveria-agavoides-cristata',
@@ -89,8 +93,22 @@ const products = [
     ['Sedum', 'Buritto', [], 8000],
     ['Senecio', 'Agave Cream Spike', ['variegata'], 40000],
     ['Echeveria', 'lilacina', ['monstrose'], 20000],
-    ['Echeveria', 'Romeo x Rubin', ['hybrid'], 20000],
+    ['Echeveria', 'Romeo x Rubin', [], 20000],
   ].map(([genus, cultivar, tags, price, stock = 1]) => {
+    // Батьки деяких гібридів — щоб на сайті було видно посилання «A × B» (деякі з батьків є і в магазині).
+    const aliases = {
+      Buritto: ['Sedum morganianum burrito', 'Ослячий хвіст', "Burro's tail"],
+      Fedchenkoi: ['Bryophyllum fedtschenkoi', 'Каланхое Федченка'],
+      'Agave Cream Spike': ['Senecio kleiniiformis', 'Kleinia'],
+    }[cultivar]
+    const parents = {
+      'Romeo x Rubin': ['Echeveria Romeo', 'Echeveria Rubin'],
+      Debbie: ['Graptopetalum amethystinum', 'Echeveria lilacina'],
+      Alycia: ['Graptopetalum', "Echeveria 'Lola'"],
+      Coco: ['Pachyphytum oviferum'],
+      lilacina: ['Echeveria lilacina'],
+    }[cultivar]
+    const origin = cultivar === 'lilacina' ? 'cultivar' : undefined
     // Назва у форматі адмінки: «Вид Сорт форми» (форми — без «f.»), напр. «Graptoveria Debbie monstrose»
     const name = [genus, cultivar, ...tags].filter(Boolean).join(' ')
     return {
@@ -102,6 +120,9 @@ const products = [
       stock,
       genus,
       tags,
+      ...(aliases ? { aliases } : {}),
+      ...(parents ? { parents } : {}),
+      ...(origin ? { origin } : {}),
     }
   }),
   {
@@ -131,6 +152,9 @@ const products = [
     price: 22000,
     stock: 5,
     genus: 'Crassula',
+    aliases: ['Грошове дерево', 'Товстянка', 'Jade plant'],
+    origin: 'natural',
+    habitat: 'ПАР',
     specs: [pot(10)],
   },
   {

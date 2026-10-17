@@ -27,7 +27,19 @@ export function ProductsPage() {
   const selectCategory = (id: string) => setParams({ category: id || ALL }, { replace: true })
 
   const countBy = (id: string) => products?.filter((p) => p.category === id).length ?? 0
-  const shown = category ? products?.filter((p) => p.category === category) : products
+  const filtered = category ? products?.filter((p) => p.category === category) : products
+  // Рослини — за абеткою, щоб працював швидкий перехід до літери (їх найбільше, і шукають їх за назвою).
+  const isPlants = category === PLANT_CATEGORY
+  const shown = isPlants && filtered ? [...filtered].sort((a, b) => pick(a.name, lang).localeCompare(pick(b.name, lang), 'uk')) : filtered
+  const letterOf = (name: string) => name.trim().charAt(0).toLocaleUpperCase('uk')
+  // Перший товар кожної літери отримує якір, до якого прокручує кнопка абетки.
+  const firstOfLetter = new Map<string, string>()
+  if (isPlants) for (const p of shown ?? []) {
+    const letter = letterOf(pick(p.name, lang))
+    if (letter && !firstOfLetter.has(letter)) firstOfLetter.set(letter, p.id)
+  }
+  const jumpTo = (letter: string) =>
+    document.getElementById(`letter-${letter}`)?.scrollIntoView({ block: 'start' })
 
   const chip = (on: boolean) =>
     `inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border-2 py-1.5 pr-1.5 pl-4 text-sm font-bold whitespace-nowrap transition-colors ${
@@ -82,13 +94,33 @@ export function ProductsPage() {
       {products?.length === 0 && <p className="text-sand-700">{t('admin.noProducts')}</p>}
       {shown && shown.length === 0 && products!.length > 0 && <p className="text-sand-700">{t('catalog.empty')}</p>}
 
+      {/* Абетка для рослин: прикріплена під шапкою, лише літери, на які є рослини; натиснули — список прокрутився */}
+      {isPlants && firstOfLetter.size > 1 && (
+        <nav
+          aria-label={t('admin.alphabet')}
+          className="sticky top-[var(--header-h,0px)] z-20 -mx-4 mb-3 flex gap-1 overflow-x-auto border-b border-sand-200 bg-sand-100/95 px-4 py-2 backdrop-blur sm:mx-0 sm:flex-wrap sm:rounded-2xl sm:border sm:px-2"
+        >
+          {[...firstOfLetter.keys()].map((letter) => (
+            <button
+              key={letter}
+              type="button"
+              onClick={() => jumpTo(letter)}
+              className="flex h-10 min-w-10 shrink-0 items-center justify-center rounded-xl bg-sand-50 font-display text-lg font-extrabold text-brand-600 transition-colors hover:bg-brand-600 hover:text-sand-50 active:scale-95"
+            >
+              {letter}
+            </button>
+          ))}
+        </nav>
+      )}
+
       {shown && shown.length > 0 && (
         <ul className="space-y-3">
           {shown.map((p, i) => (
             <li
               key={p.id}
+              id={isPlants && firstOfLetter.get(letterOf(pick(p.name, lang))) === p.id ? `letter-${letterOf(pick(p.name, lang))}` : undefined}
               style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}
-              className={`grid animate-rise grid-cols-[64px_minmax(0,1fr)] items-center gap-x-3 gap-y-3 rounded-3xl border-2 bg-sand-50 p-3 sm:grid-cols-[72px_minmax(0,1fr)_auto_auto] sm:gap-x-4 ${
+              className={`grid animate-rise scroll-mt-[5.5rem] grid-cols-[64px_minmax(0,1fr)] items-center gap-x-3 gap-y-3 rounded-3xl border-2 bg-sand-50 p-3 sm:grid-cols-[72px_minmax(0,1fr)_auto_auto] sm:gap-x-4 ${
                 p.isActive ? 'border-sand-200' : 'border-dashed border-sand-300 bg-sand-100'
               }`}
             >

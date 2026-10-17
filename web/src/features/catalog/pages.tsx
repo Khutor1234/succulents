@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Gift, Shovel, Truck } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Gift, Shovel, Sprout, Truck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, NavLink, useParams } from 'react-router'
 import { ICON } from '../../shared/icon'
@@ -12,6 +12,7 @@ import { AddToCart } from '../cart/AddToCart'
 import { useLatestProducts, useProduct, useProducts } from './api'
 import { PLANT_CATEGORY } from '../../lib/plants'
 import { useCategories } from './categories'
+import { ParentsLinks } from './ParentsLinks'
 import { PlantFilters, TagBadges } from './PlantFilters'
 import { SORTS, usePlantFilters, type SortOrder } from './usePlantFilters'
 import { ProductGrid } from './ProductCard'
@@ -283,6 +284,25 @@ export function ProductPage() {
           </div>
           <h1 className="mt-4 font-display text-4xl leading-tight font-extrabold text-brand-600 sm:text-5xl">{name}</h1>
           <TagBadges tags={product.tags} className="mt-3" />
+          {product.aliases && product.aliases.length > 0 && (
+            <p className="mt-3 text-sand-700">
+              <span className="font-bold">{t('search.aliases')}:</span> {product.aliases.join(', ')}
+            </p>
+          )}
+          <ParentsLinks parents={product.parents} origin={product.origin} habitat={product.habitat} label className="mt-3" />
+          {product.breeder && (
+            <p className="mt-2 flex flex-wrap items-center gap-x-1.5 text-sand-700">
+              <Sprout size={16} strokeWidth={2.25} className="shrink-0" aria-hidden />
+              <span className="font-bold">{t('search.breeder')}:</span>
+              <Link
+                to={`/search?q=${encodeURIComponent(product.breeder)}`}
+                title={t('search.findBreeder', { name: product.breeder })}
+                className="font-medium text-brand-600 underline decoration-brand-500/40 underline-offset-2 hover:decoration-brand-600"
+              >
+                {product.breeder}
+              </Link>
+            </p>
+          )}
           <p className="mt-4 font-display text-3xl font-extrabold text-sunset-600">{formatPrice(product.price, lang)}</p>
           <p className="mt-1 text-sm text-sand-700">
             {product.stock > 0 ? t('product.inStock', { count: product.stock }) : t('product.outOfStock')}

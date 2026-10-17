@@ -51,7 +51,7 @@ export function PlantFilters({ products, filters, category }: { products: Produc
     if (filters.genus && p.genus !== filters.genus) continue
     for (const tag of p.tags ?? []) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1)
   }
-  // Теги категорії показуємо завжди (рослини — Зріз і форми, горщики й інструменти — Б/У),
+  // Теги категорії показуємо завжди (рослини — Живець і форми, горщики й інструменти — Б/У),
   // навіть якщо зараз таких товарів немає.
   const tags = tagsFor(category)
 

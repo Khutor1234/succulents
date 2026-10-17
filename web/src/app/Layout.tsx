@@ -1,19 +1,20 @@
 import { signOut } from 'firebase/auth'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, NavLink, Outlet, useLocation } from 'react-router'
+import { Link, Outlet, useLocation } from 'react-router'
 import { AccountBanner } from '../features/auth/AccountBanner'
 import { useAuth } from '../features/auth/authStore'
 import { CartToast } from '../features/cart/CartToast'
 import { selectCount, useCart } from '../features/cart/cartStore'
 import { useBonusBalance } from '../features/account/api'
-import { useCategories } from '../features/catalog/categories'
 import { auth } from '../firebase/config'
 import { formatPrice } from '../lib/format'
 import { ICON } from '../shared/icon'
-import { LogIn, LogOut, ShieldCheck, ShoppingBag, User } from 'lucide-react'
+import { Construction, LogIn, LogOut, Search, ShieldCheck, ShoppingBag, User } from 'lucide-react'
 
 const YEAR = new Date().getFullYear()
+/** Плашка «у розробці» над шапкою. Прибрати — VITE_UNDER_CONSTRUCTION=false у web/.env.production і опублікувати. */
+const UNDER_CONSTRUCTION = import.meta.env.VITE_UNDER_CONSTRUCTION === 'true'
 const NAV_BTN = 'inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl px-3 font-medium transition-colors'
 
 /**
@@ -50,10 +51,9 @@ export function Layout() {
   const { t } = useTranslation()
   const count = useCart(selectCount)
   const { user, role } = useAuth()
-  const { visible: categories, nameOf } = useCategories()
   const { balance } = useBonusBalance()
   const { pathname } = useLocation()
-  const hasCategoryPills = pathname === '/' || pathname.startsWith('/c/')
+  // У шапці лише логотип і кнопки — категорії є великими кнопками на головній і в каталозі.
   const [headerRef, headerHeight] = useElementHeight<HTMLElement>()
 
   return (
@@ -65,28 +65,25 @@ export function Layout() {
         ref={headerRef}
         className="fixed inset-x-0 top-0 z-40 border-b border-sand-200 bg-sand-100 pt-[env(safe-area-inset-top)] shadow-[0_1px_0_rgb(0_0_0/0.02)]"
       >
+        {/* Плашка «магазин у розробці» — частина шапки, тож видна завжди. Вмикається VITE_UNDER_CONSTRUCTION=true. */}
+        {UNDER_CONSTRUCTION && (
+          <div role="status" className="bg-sunset-600 text-sand-50">
+            <p className="mx-auto flex max-w-6xl items-center justify-center gap-2 px-4 py-1.5 text-center text-xs font-bold sm:text-sm">
+              <Construction size={16} strokeWidth={2.25} className="shrink-0" aria-hidden />
+              <span className="sm:hidden">{t('underConstructionShort')}</span>
+              <span className="hidden sm:inline">{t('underConstruction')}</span>
+            </p>
+          </div>
+        )}
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-7 gap-y-2 px-4 py-3">
           <Link to="/" className="text-2xl text-brand-600">
             <Logo />
           </Link>
-          {/* На головній і в категоріях під шапкою вже є великі кнопки категорій — тут їх не дублюємо */}
-          {!hasCategoryPills && (
-          <nav className="order-last flex w-full gap-5 overflow-x-auto text-[15px] font-medium xl:order-none xl:w-auto">
-            {categories.map((c) => (
-              <NavLink
-                key={c}
-                to={`/c/${c}`}
-                className={({ isActive }) =>
-                  `py-1 whitespace-nowrap ${isActive ? 'text-sunset-600 underline decoration-2 underline-offset-4' : 'text-ink hover:text-brand-600'}`
-                }
-              >
-                {nameOf(c)}
-              </NavLink>
-            ))}
-          </nav>
-          )}
           {/* На телефоні лише іконки (підписи ховаються, але лишаються для екранних читалок) */}
           <div className="ml-auto flex items-center gap-1.5 text-sm sm:gap-2">
+            <Link to="/search" aria-label={t('search.open')} title={t('search.open')} className={NAV_BTN + ' hover:bg-sand-200'}>
+              <Search {...ICON} />
+            </Link>
             {role === 'seller' && (
               <Link to="/admin" aria-label={t('nav.admin')} className={NAV_BTN + ' hover:bg-sand-200'}>
                 <ShieldCheck {...ICON} />

@@ -6,6 +6,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { Check, ChevronDown, Link2, Lock, X } from 'lucide-react'
 import { detectGenus, parseForms, withForms } from '../../lib/plantName'
 import { ICON } from '../../shared/icon'
+import { HABITATS, ORIGINS } from '../../lib/types'
 import { DEFAULT_GENUS, GENERA, PLANT_CATEGORY, TAG_STYLES, tagsFor, type PlantTag } from '../../lib/plants'
 import { slugify } from '../../lib/slug'
 import type { Product } from '../../lib/types'
@@ -65,6 +66,7 @@ function ProductForm({ product }: { product: Product | null }) {
   const genusValue = useWatch({ control, name: 'genus' })
   const fullName = useWatch({ control, name: 'name.uk' })
   const slugValue = useWatch({ control, name: 'slug' })
+  const origin = useWatch({ control, name: 'origin' })
   const isPlant = category === PLANT_CATEGORY
   const categoryTags = tagsFor(category)
 
@@ -80,6 +82,7 @@ function ProductForm({ product }: { product: Product | null }) {
     const clean = {
       ...data,
       genus: data.category === PLANT_CATEGORY ? data.genus : '',
+      parents: (data.category === PLANT_CATEGORY ? data.parents : ['', '']) as [string, string],
       tags: data.tags.filter((tg) => allowed.includes(tg)),
     }
     await save.mutateAsync({ id: product?.id, data: toProductInput(clean, images) })
@@ -205,6 +208,82 @@ function ProductForm({ product }: { product: Product | null }) {
               ))}
             </div>
             {isPlant && <p className="mt-2 text-sm text-sand-700">{t('admin.fields.tagsHint')}</p>}
+          </fieldset>
+        )}
+        {/* Інші назви — синоніми й народні назви; за ними теж знаходить пошук */}
+        <div>
+          <Input
+            label={t('admin.fields.aliases')}
+            placeholder={isPlant ? 'Sedum morganianum, Ослячий хвіст' : undefined}
+            {...register('aliases')}
+          />
+          <p className="mt-1.5 text-sm text-sand-700">{t('admin.fields.aliasesHint')}</p>
+        </div>
+        {/* Походження: гібрид двох рослин (можна знати лише одного з батьків) або сорт/форма від однієї рослини.
+            На сайті кожне ім'я клікабельне — веде в пошук. */}
+        {isPlant && (
+          <fieldset>
+            <legend className="mb-2 text-sm font-medium text-sand-700">{t('admin.fields.origin')}</legend>
+            <div className="mb-2 inline-flex rounded-xl bg-sand-200 p-1" role="radiogroup" aria-label={t('admin.fields.origin')}>
+              {ORIGINS.map((o) => (
+                <label
+                  key={o}
+                  className="cursor-pointer rounded-lg px-3 py-1.5 text-sm font-bold text-sand-700 transition-colors has-checked:bg-sand-50 has-checked:text-ink has-checked:shadow-sm"
+                >
+                  <input
+                    type="radio"
+                    value={o}
+                    className="sr-only"
+                    {...register('origin', {
+                      // Найчастіше рослини з природи — з Мексики: підставляємо, якщо ареал ще порожній.
+                      onChange: (e) => e.target.value === 'natural' && !getValues('habitat') && setValue('habitat', 'Мексика'),
+                    })}
+                  />
+                  {t(`admin.fields.origins.${o}`)}
+                </label>
+              ))}
+            </div>
+            {origin === 'natural' ? (
+              <>
+                <Input label={t('admin.fields.habitat')} list="habitats" placeholder="Мексика" {...register('habitat')} />
+                <datalist id="habitats">
+                  {HABITATS.map((h) => (
+                    <option key={h} value={h} />
+                  ))}
+                </datalist>
+              </>
+            ) : origin === 'cultivar' ? (
+              <Input label={t('admin.fields.cultivarOf')} className="[&>span]:sr-only" placeholder="Echeveria lilacina" {...register('parents.0')} />
+            ) : (
+              <div className="grid items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+                <Input label={t('admin.fields.parentA')} className="[&>span]:sr-only" placeholder="Echeveria Lola" {...register('parents.0')} />
+                <span className="hidden text-center font-display text-xl font-extrabold text-sand-700 sm:block" aria-hidden>
+                  ×
+                </span>
+                <Input
+                  label={t('admin.fields.parentB')}
+                  className="[&>span]:sr-only"
+                  placeholder={t('admin.fields.parentUnknown')}
+                  {...register('parents.1')}
+                />
+              </div>
+            )}
+            <p className="mt-1.5 text-sm text-sand-700">
+              {t(
+                origin === 'natural'
+                  ? 'admin.fields.habitatHint'
+                  : origin === 'cultivar'
+                    ? 'admin.fields.cultivarOfHint'
+                    : 'admin.fields.parentsHint',
+              )}
+            </p>
+            {/* Хто вивів — лише для гібрида чи відбору; у природного виду селекціонера немає */}
+            {origin !== 'natural' && (
+              <div className="mt-4">
+                <Input label={t('admin.fields.breeder')} placeholder="Dick Wright" {...register('breeder')} />
+                <p className="mt-1.5 text-sm text-sand-700">{t('admin.fields.breederHint')}</p>
+              </div>
+            )}
           </fieldset>
         )}
         {/* Підсумок: так назва буде на сайті. Поле лише для читання — міняється через вид, назву й галочки. */}

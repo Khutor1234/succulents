@@ -5,6 +5,7 @@ import { LoginPage } from '../features/auth/LoginPage'
 import { RequireSignIn } from '../features/auth/RequireRole'
 import { CartPage } from '../features/cart/CartPage'
 import { CategoryPage, HomePage, ProductPage } from '../features/catalog/pages'
+import { SearchPage } from '../features/catalog/SearchPage'
 import { CheckoutPage } from '../features/checkout/CheckoutPage'
 import { OrderSuccessPage } from '../features/checkout/OrderSuccessPage'
 import { ErrorPage } from './ErrorPage'
@@ -19,6 +20,7 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'c/:category', element: <CategoryPage /> },
       { path: 'product/:slug', element: <ProductPage /> },
+      { path: 'search', element: <SearchPage /> },
       { path: 'cart', element: <CartPage /> },
       { path: 'checkout', element: <CheckoutPage /> },
       { path: 'order/success/:number', element: <OrderSuccessPage /> },

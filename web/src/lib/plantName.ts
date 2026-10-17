@@ -3,7 +3,7 @@ import { GENERA, STATE_TAGS, type PlantTag } from './plants'
 /**
  * Назва рослини будується як у таблиці продавця:
  *   «Echeveria 'Lola' variegata» = <вид> <сорт/назва> <форми>.
- * Форми пишуться латиною/англійською в кінці: variegata, cristata, monstrose, hybrid.
+ * Форми пишуться латиною/англійською в кінці: variegata, cristata, monstrose.
  */
 
 /**
@@ -14,7 +14,6 @@ const FORM_LABELS: Partial<Record<PlantTag, string>> = {
   variegata: 'variegata',
   cristata: 'cristata',
   monstrose: 'monstrose',
-  hybrid: 'hybrid',
 }
 
 /** Слова, за якими впізнаємо форму в кінці назви (англійською й латиною, у різних варіантах написання). */
@@ -23,7 +22,6 @@ const FORM_PATTERNS: [PlantTag, RegExp][] = [
   ['variegata', /^variegat(a|ed|e)?$/i],
   ['cristata', /^(cristat(a|ed|e)?|crest(ed)?)$/i],
   ['monstrose', /^(monstros(a|e|us)?|monstr\.?)$/i],
-  ['hybrid', /^hybrid(a|e)?$/i],
 ]
 
 /**

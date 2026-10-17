@@ -4,6 +4,7 @@ import { formatPrice, pick } from '../../lib/format'
 import type { Product } from '../../lib/types'
 import { ProductImage } from '../../shared/ui'
 import { AddToCart } from '../cart/AddToCart'
+import { ParentsLinks } from './ParentsLinks'
 import { TagBadges } from './PlantFilters'
 
 // Картки по черзі отримують теплий пісочний і оливковий фон — як у макеті «Пустеля».
@@ -28,14 +29,16 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           </div>
           <TagBadges tags={product.tags} className="absolute top-2 left-2 right-2" />
         </div>
-        {product.genus && <p className="mx-1.5 mt-3 text-xs font-bold tracking-wide text-sand-700 italic">{product.genus}</p>}
-        <div className={`mx-1.5 flex justify-between gap-3 ${product.genus ? 'mt-0.5' : 'mt-3.5'}`}>
+        {/* Вид окремо не пишемо — він і так перше слово назви («Echeveria Lola») */}
+        <div className="mx-1.5 mt-3.5 flex justify-between gap-3">
           <h3 className="line-clamp-2 font-bold group-hover:text-brand-600">{name}</h3>
           <span className="font-display text-lg font-extrabold whitespace-nowrap text-sunset-600">
             {formatPrice(product.price, lang)}
           </span>
         </div>
       </Link>
+      {/* Поза посиланням картки: кожен батько — окреме посилання в пошук */}
+      <ParentsLinks parents={product.parents} origin={product.origin} habitat={product.habitat} className="mx-1.5 mt-1.5 text-xs" />
       <div className="mt-3">
         <AddToCart product={product} />
       </div>

@@ -38,12 +38,31 @@ export interface Product {
   isActive: boolean
   /** Вид (рід) рослини латиною, напр. «Echeveria». Для не-рослин порожньо. */
   genus?: string
-  /** Теги: 'cutting' (зріз) і стани 'variegata' | 'cristata' | 'monstrose'. */
+  /** Теги: 'cutting' (живець) і стани 'variegata' | 'cristata' | 'monstrose'. */
   tags?: PlantTag[]
+  /** Інші назви, під якими рослину теж знають: «Sedum morganianum», «Ослячий хвіст». Шукаються пошуком. */
+  aliases?: string[]
+  /** Батьки гібрида: [материнська ♀, батьківська ♂], напр. «Echeveria lilacina», «Echeveria Deresina». Лише для рослин; порожньо — не вказано. */
+  parents?: string[]
+  /**
+   * Як рослина пов'язана з parents: 'hybrid' (за замовчуванням) — гібрид «A × B», можна знати лише одного з батьків;
+   * 'cultivar' — відбір або мутація (спорт) від однієї рослини (parents[0]), напр. монстрозна форма виду;
+   * 'natural' — природний вид, без батьків; природний ареал — у habitat.
+   */
+  origin?: PlantOrigin
+  /** Природний ареал для 'natural': країна чи регіон, напр. «Мексика». */
+  habitat?: string
+  /** Хто вивів гібрид чи сорт: людина або розплідник/компанія, напр. «Dick Wright». Для природного виду порожньо. */
+  breeder?: string
   /** Характеристики, напр. «Діаметр горщика: 8 см». */
   specs?: { label: Localized; value: Localized }[]
   createdAt?: Timestamp
 }
+
+export const ORIGINS = ['natural', 'hybrid', 'cultivar'] as const
+/** Підказки для поля ареалу — найчастіші батьківщини сукулентів. */
+export const HABITATS = ['Мексика', 'ПАР', 'Намібія', 'Мадагаскар', 'Канарські острови', 'США', 'Перу', 'Чилі', 'Болівія', 'Бразилія', 'Ємен', 'Китай'] as const
+export type PlantOrigin = (typeof ORIGINS)[number]
 
 export const ORDER_STATUSES = ['new', 'confirmed', 'shipped', 'done', 'cancelled'] as const
 export type OrderStatus = (typeof ORDER_STATUSES)[number]
