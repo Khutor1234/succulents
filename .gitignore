@@ -12,3 +12,7 @@ web/public/seed
 # Налаштування справжнього проєкту (email-и продавців)
 functions/.env.*
 !functions/.env.example
+
+# Публічні налаштування справжнього проєкту — потрібні GitHub Actions для публікації (секретів у них немає)
+!web/.env.production
+!functions/.env.succulents-shop-ua

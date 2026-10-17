@@ -1,0 +1,49 @@
+# Автоматична публікація: кожен push у гілку main оновлює справжній сайт succulents-shop-ua.web.app —
+# сам сайт, серверні функції та правила доступу до бази й фото.
+# Доступ до Firebase — через сервісний акаунт github-deploy; його ключ лежить у секреті FIREBASE_SERVICE_ACCOUNT
+# (Settings → Secrets and variables → Actions). Як його оновити — docs/deploy.md.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  # Кнопка «Run workflow» на вкладці Actions — щоб перепублікувати вручну.
+  workflow_dispatch:
+
+# Дві публікації одночасно не запускаються: нова чекає, поки закінчиться попередня.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            functions/package-lock.json
+
+      - name: Встановити залежності
+        run: |
+          npm ci --prefix web
+          npm ci --prefix functions
+
+      # Перевірка стилю коду; типи перевіряє збірка (tsc у build). Якщо щось зламано — на сайт не потрапить.
+      - name: Перевірити код
+        run: npm --prefix web run lint
+
+      - name: Увійти в Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      # Збірка сайту й функцій запускається сама (predeploy у firebase.json).
+      - name: Опублікувати
+        run: npx --yes firebase-tools@15.34.0 deploy --project prod --non-interactive --force
