@@ -2,9 +2,8 @@ import { initializeApp } from 'firebase/app'
 import { connectAuthEmulator, getAuth } from 'firebase/auth'
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions'
-import { connectStorageEmulator, getStorage } from 'firebase/storage'
 
-const useEmulators = import.meta.env.VITE_USE_EMULATORS === 'true'
+export const useEmulators = import.meta.env.VITE_USE_EMULATORS === 'true'
 
 // Проєкт "demo-*" працює тільки з емуляторами і не потребує справжнього Firebase-проєкту.
 export const app = initializeApp({
@@ -18,7 +17,6 @@ export const app = initializeApp({
 export const auth = getAuth(app)
 export const db = getFirestore(app)
 export const functions = getFunctions(app, 'europe-central2')
-export const storage = getStorage(app)
 
 // Емулятори шукаємо на тому ж комп'ютері, з якого відкрито сайт:
 // localhost — з цього ПК, 192.168.x.x — з телефона в тій самій Wi-Fi мережі.
@@ -28,7 +26,6 @@ if (useEmulators) {
   connectAuthEmulator(auth, `http://${emulatorHost}:9099`, { disableWarnings: true })
   connectFirestoreEmulator(db, emulatorHost, 8080)
   connectFunctionsEmulator(functions, emulatorHost, 5001)
-  connectStorageEmulator(storage, emulatorHost, 9199)
 }
 
 /**

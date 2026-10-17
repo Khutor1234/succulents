@@ -1,85 +1,169 @@
-import { GitFork, Leaf } from 'lucide-react'
-import { Fragment } from 'react'
+import { GitFork, Leaf, MapPin, Sprout, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import type { PlantOrigin } from '../../lib/types'
 
-const LINK = 'font-medium text-brand-600 underline decoration-brand-500/40 underline-offset-2 hover:decoration-brand-600'
+/** Ім'я рослини чи країни — «чип», що веде в пошук (одразу видно, чи є в магазині сам батько або його інші «діти»). */
+function Chip({ to, title, big, grow, icon, children }: { to: string; title: string; big?: boolean; grow?: boolean; icon?: React.ReactNode; children: string }) {
+  return (
+    <Link
+      to={`/search?q=${encodeURIComponent(to)}`}
+      title={title}
+      className={`inline-flex max-w-full items-center gap-1 border border-brand-500/25 ${big ? 'rounded-2xl' : 'rounded-lg'} bg-brand-100/70 font-semibold text-brand-700 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-sand-50 ${
+        big ? 'justify-center px-3.5 py-1.5 text-center text-sm leading-snug' : 'min-w-0 px-1.5 py-0.5 text-[11px] leading-tight'
+      } ${grow ? 'flex-1 basis-0 justify-center text-center' : ''}`}
+    >
+      {icon}
+      {/* На картці довга назва переноситься щонайбільше на два рядки */}
+      <span className={big ? 'break-words' : 'line-clamp-2 break-words'}>{children}</span>
+    </Link>
+  )
+}
+
+/** Невеликий підпис над чипами: іконка + «Гібрид» / «Природний вид» / «Відбір або мутація». */
+function Kicker({ icon, children, big }: { icon: React.ReactNode; children: string; big?: boolean }) {
+  return (
+    <p className={`flex items-center gap-1.5 font-bold tracking-wider text-sand-700 uppercase ${big ? 'text-xs' : 'text-[10px]'}`}>
+      {icon}
+      {children}
+    </p>
+  )
+}
 
 /**
- * Походження рослини, кожне ім'я — посилання в пошук (одразу видно, чи є в магазині сам батько або інші його «діти»):
- * - гібрид: «Батьки: Echeveria Lola × Echeveria Romeo»; якщо відомий лише один — «Echeveria Lola × невідомий»;
- * - сорт: «Сорт від: Echeveria lilacina»;
- * - з природи: «З природи · ареал: Мексика».
+ * Походження рослини.
+ * - На картці (компактно): підпис типу і чипи — «Lola × Romeo», «від lilacina» або «Мексика».
+ * - На сторінці товару (`label`): окрема картка «Походження» — для гібрида дві плитки ♀ материнська × ♂ батьківська,
+ *   для природного виду — ареал, плюс селекціонер, якщо відомий.
  */
 export function ParentsLinks({
   parents,
   origin = 'hybrid',
   habitat,
+  breeder,
   label = false,
   className = '',
 }: {
   parents?: string[]
   origin?: PlantOrigin
   habitat?: string
+  breeder?: string
   label?: boolean
   className?: string
 }) {
   const { t } = useTranslation()
   const names = (parents ?? []).filter(Boolean)
+  const big = label
+  const iconSize = big ? 14 : 11
+  const find = (name: string) => t('search.findParent', { name })
 
-  // Природна рослина: «З природи · ареал: Мексика» (країна — посилання в пошук: інші рослини звідти ж).
-  if (origin === 'natural') {
+  const natural = origin === 'natural'
+  const cultivar = origin === 'cultivar'
+  if (!natural && names.length === 0 && !(big && breeder)) return null
+
+  const kicker = natural ? (
+    <Kicker big={big} icon={<Leaf size={iconSize} strokeWidth={2.5} aria-hidden />}>
+      {t('search.natural')}
+    </Kicker>
+  ) : cultivar ? (
+    <Kicker big={big} icon={<Sparkles size={iconSize} strokeWidth={2.5} aria-hidden />}>
+      {t('search.cultivar')}
+    </Kicker>
+  ) : (
+    <Kicker big={big} icon={<GitFork size={iconSize} strokeWidth={2.5} className="rotate-180" aria-hidden />}>
+      {t('search.hybrid')}
+    </Kicker>
+  )
+
+  const cross = <span aria-label="×" className={`shrink-0 font-display font-extrabold text-sunset-600 ${big ? 'text-2xl' : 'text-xs'}`}>×</span>
+  const unknown = (
+    <span className={`shrink-0 rounded-full border border-dashed whitespace-nowrap border-sand-300 italic text-sand-700 ${big ? 'px-3.5 py-1.5 text-sm' : 'px-2 py-0.5 text-[11px]'}`}>
+      {t('search.unknownParent')}
+    </span>
+  )
+
+  // Компактний вигляд на картці — один тонкий рядок: значок типу + чипи.
+  // Обидва батьки завжди в одному рядку; кожна назва повністю, а якщо довга — у два рядки.
+  if (!big) {
+    const kind = t(natural ? 'search.natural' : cultivar ? 'search.cultivar' : 'search.hybrid')
+    const Icon = natural ? Leaf : cultivar ? Sparkles : GitFork
     return (
-      <p className={`flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sand-700 ${className}`}>
-        <Leaf size={label ? 16 : 13} strokeWidth={2.25} className="shrink-0" aria-hidden />
-        <span className={label ? 'font-bold' : ''}>{t('search.natural')}</span>
-        {habitat && (
-          <>
-            <span aria-hidden>·</span>
-            <span>{t('search.habitat')}:</span>
-            <Link to={`/search?q=${encodeURIComponent(habitat)}`} title={t('search.findParent', { name: habitat })} className={LINK}>
+      <div className={`flex min-w-0 items-center gap-1 ${className}`}>
+        {/* Для гібрида значок не потрібен — «×» між батьками і так це показує, а місце назвам потрібніше */}
+        <span title={kind} className={natural || cultivar ? 'flex shrink-0 items-center gap-1 text-sand-700' : 'sr-only'}>
+          <Icon size={13} strokeWidth={2.5} className={natural || cultivar ? '' : 'rotate-180'} aria-hidden />
+          {/* Для природного виду слово видно (поруч лише країна), для гібрида — лише для екранних читалок */}
+          <span className={natural ? 'text-xs font-semibold' : 'sr-only'}>{kind}</span>
+        </span>
+        <div className="flex min-w-0 items-center gap-1">
+          {natural && habitat && (
+            <Chip to={habitat} title={find(habitat)} icon={<MapPin size={11} strokeWidth={2.5} aria-hidden />}>
               {habitat}
-            </Link>
-          </>
-        )}
-      </p>
+            </Chip>
+          )}
+          {cultivar && names[0] && (
+            <>
+              <span className="shrink-0 text-xs text-sand-700">{t('search.from')}</span>
+              <Chip to={names[0]} title={find(names[0])}>{names[0]}</Chip>
+            </>
+          )}
+          {!natural && !cultivar && (
+            <>
+              {/* Дві назви ділять рядок порівну */}
+              <Chip to={names[0]} title={find(names[0])} grow>{names[0]}</Chip>
+              {cross}
+              {names[1] ? <Chip to={names[1]} title={find(names[1])} grow>{names[1]}</Chip> : unknown}
+            </>
+          )}
+        </div>
+      </div>
     )
   }
 
-  if (names.length === 0) return null
-
-  const cultivar = origin === 'cultivar'
-  const title = t(cultivar ? 'search.cultivarOf' : 'search.parents')
-  const link = (name: string) => (
-    <Link to={`/search?q=${encodeURIComponent(name)}`} title={t('search.findParent', { name })} className={LINK}>
-      {name}
-    </Link>
+  // Детальна картка на сторінці товару
+  const parentTile = (sign: string, role: string, name?: string) => (
+    <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5 rounded-2xl bg-sand-100 px-2 py-3 text-center">
+      <span className="text-xs font-bold text-sand-700">
+        <span aria-hidden className="mr-1 text-base text-sunset-600">{sign}</span>
+        {role}
+      </span>
+      {name ? <Chip to={name} title={find(name)} big>{name}</Chip> : unknown}
+    </div>
   )
 
   return (
-    <p className={`flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sand-700 ${className}`}>
-      <GitFork size={label ? 16 : 13} strokeWidth={2.25} className="shrink-0 rotate-180" aria-hidden />
-      {label ? <span className="font-bold">{title}:</span> : <span className={cultivar ? '' : 'sr-only'}>{cultivar ? `${title}` : `${title}:`}</span>}
-      {cultivar ? (
-        link(names[0])
-      ) : (
-        <>
-          {names.map((name, i) => (
-            <Fragment key={name + i}>
-              {i > 0 && <span aria-hidden>×</span>}
-              {link(name)}
-            </Fragment>
-          ))}
-          {/* Відомий лише один із батьків — другий позначаємо як невідомий */}
-          {names.length === 1 && (
-            <>
-              <span aria-hidden>×</span>
-              <span className="italic">{t('search.unknownParent')}</span>
-            </>
+    <section aria-label={t('search.origin')} className={`rounded-3xl border-2 border-sand-200 bg-sand-50 p-4 ${className}`}>
+      {kicker}
+      {natural && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-sand-700">
+          <span>{t('search.naturalHint')}</span>
+          {habitat && (
+            <Chip to={habitat} title={find(habitat)} big icon={<MapPin size={14} strokeWidth={2.5} aria-hidden />}>
+              {habitat}
+            </Chip>
           )}
-        </>
+        </div>
       )}
-    </p>
+      {cultivar && names[0] && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-sand-700">
+          <span>{t('search.cultivarHint')}</span>
+          <Chip to={names[0]} title={find(names[0])} big>{names[0]}</Chip>
+        </div>
+      )}
+      {!natural && !cultivar && names.length > 0 && (
+        <div className="mt-3 flex items-center gap-2">
+          {parentTile('♀', t('search.mother'), names[0])}
+          {cross}
+          {parentTile('♂', t('search.father'), names[1])}
+        </div>
+      )}
+      {breeder && !natural && (
+        <p className="mt-3 flex flex-wrap items-center gap-2 border-t border-sand-200 pt-3 text-sm text-sand-700">
+          <Sprout size={16} strokeWidth={2.25} className="shrink-0" aria-hidden />
+          <span className="font-bold">{t('search.breeder')}:</span>
+          <Chip to={breeder} title={t('search.findBreeder', { name: breeder })} big>{breeder}</Chip>
+        </p>
+      )}
+    </section>
   )
 }

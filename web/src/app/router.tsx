@@ -1,15 +1,14 @@
-import { createBrowserRouter } from 'react-router'
-import { AccountPage } from '../features/account/AccountPage'
+import type React from 'react'
+import { createBrowserRouter, Navigate } from 'react-router'
 import { AdminRoute } from '../features/admin/AdminRoute'
-import { LoginPage } from '../features/auth/LoginPage'
 import { RequireSignIn } from '../features/auth/RequireRole'
 import { CartPage } from '../features/cart/CartPage'
 import { CategoryPage, HomePage, ProductPage } from '../features/catalog/pages'
-import { SearchPage } from '../features/catalog/SearchPage'
-import { CheckoutPage } from '../features/checkout/CheckoutPage'
-import { OrderSuccessPage } from '../features/checkout/OrderSuccessPage'
 import { ErrorPage } from './ErrorPage'
 import { Layout } from './Layout'
+
+// Рідкісні сторінки вантажимо окремо, лише коли їх відкривають — так головна й каталог відкриваються швидше.
+const lazyPage = (load: () => Promise<{ default: React.ComponentType }>) => () => load().then((m) => ({ Component: m.default }))
 
 export const router = createBrowserRouter([
   {
@@ -20,17 +19,47 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'c/:category', element: <CategoryPage /> },
       { path: 'product/:slug', element: <ProductPage /> },
-      { path: 'search', element: <SearchPage /> },
+      { path: 'search', lazy: lazyPage(() => import('../features/catalog/SearchPage').then((m) => ({ default: m.SearchPage }))) },
       { path: 'cart', element: <CartPage /> },
-      { path: 'checkout', element: <CheckoutPage /> },
-      { path: 'order/success/:number', element: <OrderSuccessPage /> },
-      { path: 'login', element: <LoginPage /> },
+      // Улюблене живе в кабінеті; стара адреса веде туди
+      { path: 'favorites', element: <Navigate to="/account/favorites" replace /> },
+      { path: 'checkout', lazy: lazyPage(() => import('../features/checkout/CheckoutPage').then((m) => ({ default: m.CheckoutPage }))) },
+      { path: 'order/success/:number', lazy: lazyPage(() => import('../features/checkout/OrderSuccessPage').then((m) => ({ default: m.OrderSuccessPage }))) },
+      { path: 'login', lazy: lazyPage(() => import('../features/auth/LoginPage').then((m) => ({ default: m.LoginPage }))) },
       {
         path: 'account',
-        element: (
-          <RequireSignIn>
-            <AccountPage />
-          </RequireSignIn>
+        lazy: lazyPage(() =>
+          import('../features/account/AccountPage').then(({ AccountPage }) => ({
+            default: () => (
+              <RequireSignIn>
+                <AccountPage />
+              </RequireSignIn>
+            ),
+          })),
+        ),
+      },
+      {
+        path: 'account/favorites',
+        lazy: lazyPage(() =>
+          import('../features/favorites/FavoritesPage').then(({ FavoritesPage }) => ({
+            default: () => (
+              <RequireSignIn>
+                <FavoritesPage />
+              </RequireSignIn>
+            ),
+          })),
+        ),
+      },
+      {
+        path: 'account/orders',
+        lazy: lazyPage(() =>
+          import('../features/account/OrdersPage').then(({ OrdersPage }) => ({
+            default: () => (
+              <RequireSignIn>
+                <OrdersPage />
+              </RequireSignIn>
+            ),
+          })),
         ),
       },
       { path: 'admin/*', element: <AdminRoute /> },

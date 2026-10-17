@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Gift, Shovel, Sprout, Truck } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Gift, Pencil, Shovel, Truck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, NavLink, useParams } from 'react-router'
 import { ICON } from '../../shared/icon'
@@ -9,6 +9,7 @@ import { useBonusBalance } from '../account/api'
 import { SellerOrdersPanel } from '../admin/SellerOrdersPanel'
 import { useAuth } from '../auth/authStore'
 import { AddToCart } from '../cart/AddToCart'
+import { FavoriteButton } from '../favorites/FavoriteButton'
 import { useLatestProducts, useProduct, useProducts } from './api'
 import { PLANT_CATEGORY } from '../../lib/plants'
 import { useCategories } from './categories'
@@ -255,6 +256,7 @@ export function ProductPage() {
   const { slug = '' } = useParams()
   const { data: product, isLoading, isError } = useProduct(slug)
   const { isVisible, nameOf } = useCategories()
+  const isSeller = useAuth((s) => s.role === 'seller')
 
   if (isLoading || isError) return <Status isLoading={isLoading} isError={isError} />
   // Товар прибрали чи приховали (напр. посилання збережене раніше) — пропонуємо, куди піти далі.
@@ -279,13 +281,25 @@ export function ProductPage() {
 
   return (
     <div>
-      <Link to={`/c/${product.category}`} className="group inline-flex items-center gap-1.5 font-bold text-brand-600 hover:underline">
-        <ArrowLeft {...ICON} className="transition-transform group-hover:-translate-x-1" />
-        {t('product.backShort')}
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link to={`/c/${product.category}`} className="group inline-flex items-center gap-1.5 font-bold text-brand-600 hover:underline">
+          <ArrowLeft {...ICON} className="transition-transform group-hover:-translate-x-1" />
+          {t('product.backShort')}
+        </Link>
+        {/* Продавець бачить товар як покупець, але може одразу перейти до редагування */}
+        {isSeller && (
+          <Link
+            to={`/admin/products/${product.id}`}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97]"
+          >
+            <Pencil {...ICON} />
+            {t('admin.edit')}
+          </Link>
+        )}
+      </div>
       <div className="mt-5 grid gap-8 md:grid-cols-2">
         <ProductGallery images={product.images} alt={name} />
-        <div>
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-block rounded-full bg-sand-200 px-4 py-1.5 text-sm font-bold">{nameOf(product.category)}</span>
             {product.genus && (
@@ -304,26 +318,21 @@ export function ProductPage() {
               <span className="font-bold">{t('search.aliases')}:</span> {product.aliases.join(', ')}
             </p>
           )}
-          <ParentsLinks parents={product.parents} origin={product.origin} habitat={product.habitat} label className="mt-3" />
-          {product.breeder && (
-            <p className="mt-2 flex flex-wrap items-center gap-x-1.5 text-sand-700">
-              <Sprout size={16} strokeWidth={2.25} className="shrink-0" aria-hidden />
-              <span className="font-bold">{t('search.breeder')}:</span>
-              <Link
-                to={`/search?q=${encodeURIComponent(product.breeder)}`}
-                title={t('search.findBreeder', { name: product.breeder })}
-                className="font-medium text-brand-600 underline decoration-brand-500/40 underline-offset-2 hover:decoration-brand-600"
-              >
-                {product.breeder}
-              </Link>
-            </p>
-          )}
+          <ParentsLinks
+            parents={product.parents}
+            origin={product.origin}
+            habitat={product.habitat}
+            breeder={product.breeder}
+            label
+            className="mt-4"
+          />
           <p className="mt-4 font-display text-3xl font-extrabold text-sunset-600">{formatPrice(product.price, lang)}</p>
           <p className="mt-1 text-sm text-sand-700">
             {product.stock > 0 ? t('product.inStock', { count: product.stock }) : t('product.outOfStock')}
           </p>
-          <div className="mt-6 max-w-xs">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             <AddToCart product={product} size="lg" />
+            <FavoriteButton product={product} variant="lg" />
           </div>
           <p className="mt-8 leading-relaxed whitespace-pre-line">{pick(product.description, lang)}</p>
           {product.specs && product.specs.length > 0 && (

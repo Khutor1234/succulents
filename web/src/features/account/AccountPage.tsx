@@ -1,25 +1,45 @@
-import { Clock, Package, Wallet } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Clock, Heart, Package, Wallet } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { ICON } from '../../shared/icon'
 import { useLang } from '../../i18n'
 import { formatPrice } from '../../lib/format'
-import type { Order } from '../../lib/types'
 import { PageTitle } from '../../shared/ui'
-import { OrderItems } from '../orders/OrderItems'
-import { OrderTotals } from '../orders/OrderTotals'
 import { useBonusBalance, useBonusHistory, useMyOrders } from './api'
+import { useFavorites } from '../favorites/favoritesStore'
 import { DeliveryProfileSection } from './DeliveryProfileForm'
 
-const STATUS_COLORS: Record<Order['status'], string> = {
-  new: 'bg-sand-300',
-  confirmed: 'bg-brand-100',
-  shipped: 'bg-brand-100',
-  done: 'bg-brand-600 text-sand-50',
-  cancelled: 'bg-sand-200 text-sand-700',
+export function formatDate(order: { createdAt?: { toDate(): Date } }) {
+  return order.createdAt?.toDate().toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }) ?? ''
 }
 
-function formatDate(order: { createdAt?: { toDate(): Date } }) {
-  return order.createdAt?.toDate().toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }) ?? ''
+/** Посилання «← Кабінет» над окремими екранами кабінету. */
+export function BackToAccount() {
+  const { t } = useTranslation()
+  return (
+    <Link to="/account" className="group mb-4 inline-flex items-center gap-1.5 font-bold text-brand-600 hover:underline">
+      <ArrowLeft {...ICON} className="transition-transform group-hover:-translate-x-1" />
+      {t('account.title')}
+    </Link>
+  )
+}
+
+/** Велика кнопка-плитка в кабінеті, що веде на окремий екран. */
+function Tile({ to, icon, title, hint }: { to: string; icon: ReactNode; title: string; hint: string }) {
+  return (
+    <Link
+      to={to}
+      className="group flex items-center gap-4 rounded-[28px] border-2 border-sand-200 bg-sand-50 p-5 transition-[transform,border-color] hover:-translate-y-0.5 hover:border-brand-500"
+    >
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-100 text-brand-600">{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-xl font-extrabold text-brand-600">{title}</span>
+        <span className="block text-sm text-sand-700">{hint}</span>
+      </span>
+      <ChevronRight {...ICON} className="shrink-0 text-sand-700 transition-transform group-hover:translate-x-1" />
+    </Link>
+  )
 }
 
 export function AccountPage() {
@@ -28,10 +48,26 @@ export function AccountPage() {
   const { balance } = useBonusBalance()
   const history = useBonusHistory()
   const orders = useMyOrders()
+  const favorites = useFavorites((s) => s.ids.length)
 
   return (
     <div className="space-y-10">
       <PageTitle>{t('account.title')}</PageTitle>
+
+      <nav className="-mt-4 grid gap-3 sm:grid-cols-2" aria-label={t('account.title')}>
+        <Tile
+          to="/account/favorites"
+          icon={<Heart {...ICON} />}
+          title={t('favorites.title')}
+          hint={favorites ? t('favorites.summary', { count: favorites }) : t('favorites.tileEmpty')}
+        />
+        <Tile
+          to="/account/orders"
+          icon={<Package {...ICON} />}
+          title={t('account.orders')}
+          hint={orders.data?.length ? t('account.ordersCount', { count: orders.data.length }) : t('account.noOrdersShort')}
+        />
+      </nav>
 
       <section className="grid gap-5 md:grid-cols-[1fr_1.4fr]">
         <div className="flex flex-col justify-between gap-6 rounded-[32px] bg-sunset-600 p-8 text-sand-50">
@@ -68,42 +104,6 @@ export function AccountPage() {
       </section>
 
       <DeliveryProfileSection />
-
-      <section>
-        <h2 className="mb-4 flex items-center gap-2 font-display text-3xl font-extrabold text-brand-600">
-          <Package size={26} strokeWidth={2.25} aria-hidden />
-          {t('account.orders')}
-        </h2>
-        {orders.isLoading && <p className="text-sand-700">{t('loading')}</p>}
-        {orders.isError && <p className="text-red-700">{t('errors.loading')}</p>}
-        {orders.data?.length === 0 && <p className="text-sand-700">{t('account.noOrders')}</p>}
-        <ul className="space-y-3">
-          {orders.data?.map((o) => (
-            <li key={o.id} className="rounded-3xl border-2 border-sand-200 bg-sand-50 p-5">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <span className="font-display text-xl font-extrabold">{o.number}</span>
-                <span className={`rounded-full px-3 py-1 text-sm font-bold ${STATUS_COLORS[o.status]}`}>
-                  {t(`admin.statuses.${o.status}`)}
-                </span>
-                <span className="text-sm text-sand-700">{formatDate(o)}</span>
-                <span className="ml-auto font-display text-xl font-extrabold text-sunset-600">{formatPrice(o.total, lang)}</span>
-              </div>
-              <div className="mt-3">
-                <OrderItems items={o.items} />
-              </div>
-              {o.adjustedAt && <p className="text-sm text-sand-700">{t('orders.adjusted')}</p>}
-              {((o.bonusUsed ?? 0) > 0 || (o.adjustment ?? 0) !== 0) && <OrderTotals order={o} />}
-              {(o.bonusEarned ?? 0) > 0 && o.status !== 'cancelled' && (
-                <p className="mt-2 text-sm font-bold text-brand-600">
-                  {o.bonusCredited
-                    ? t('account.creditedBonus', { amount: formatPrice(o.bonusEarned!, lang) })
-                    : t('account.pendingBonus', { amount: formatPrice(o.bonusEarned!, lang) })}
-                </p>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
     </div>
   )
 }

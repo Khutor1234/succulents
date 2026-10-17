@@ -28,9 +28,13 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if (isSignedIn() && request.auth.uid == uid) || isSeller();
       allow create, update: if isSignedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['delivery', 'updatedAt'])
-        && request.resource.data.delivery is map
-        && request.resource.data.delivery.keys().hasOnly(['fullName', 'phone', 'city', 'warehouse']);
+        && request.resource.data.keys().hasOnly(['delivery', 'favorites', 'updatedAt'])
+        // Дані доставки (необов'язкові: користувач міг лише додати рослину в улюблене)
+        && (!('delivery' in request.resource.data) || (request.resource.data.delivery is map
+          && request.resource.data.delivery.keys().hasOnly(['fullName', 'phone', 'city', 'warehouse'])))
+        // Улюблені товари — список id, не більше 300
+        && (!('favorites' in request.resource.data) || (request.resource.data.favorites is list
+          && request.resource.data.favorites.size() <= 300));
       allow delete: if false;
     }
 

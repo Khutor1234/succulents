@@ -5,6 +5,7 @@ import { Link, Outlet, useLocation } from 'react-router'
 import { AccountBanner } from '../features/auth/AccountBanner'
 import { useAuth } from '../features/auth/authStore'
 import { CartToast } from '../features/cart/CartToast'
+import { useFavoritesSync } from '../features/favorites/favoritesStore'
 import { selectCount, useCart } from '../features/cart/cartStore'
 import { useBonusBalance } from '../features/account/api'
 import { auth } from '../firebase/config'
@@ -37,12 +38,37 @@ function useElementHeight<T extends HTMLElement>() {
   return [setEl, height] as const
 }
 
-function Logo({ className = '' }: { className?: string }) {
+/**
+ * Мінімалістична ехеверія згори — лише тонкі лінії: вісім зовнішніх листків, п'ять внутрішніх і серединка.
+ * Внутрішні листки зафарбовані кольором фону (`bg`), щоб перекривати лінії зовнішніх — без зайвих перетинів.
+ */
+function EcheveriaIcon({ className = '', bg = 'fill-sand-100' }: { className?: string; bg?: string }) {
+  const leaf = (length: number, width: number) =>
+    `M0 0C${-width} ${-length * 0.35} ${-width * 0.75} ${-length * 0.8} 0 ${-length}C${width * 0.75} ${-length * 0.8} ${width} ${-length * 0.35} 0 0Z`
+  return (
+    <svg viewBox="0 0 32 32" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" aria-hidden="true" className={className}>
+      <g transform="translate(16 16)" className={bg}>
+        {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+          <path key={a} d={leaf(14, 5.5)} transform={`rotate(${a + 22.5})`} />
+        ))}
+        {[0, 72, 144, 216, 288].map((a) => (
+          <path key={a} d={leaf(9, 4.5)} transform={`rotate(${a})`} />
+        ))}
+        <circle r="1.4" fill="currentColor" stroke="none" />
+      </g>
+    </svg>
+  )
+}
+
+function Logo({ className = '', bg }: { className?: string; bg?: string }) {
   const { t } = useTranslation()
   return (
-    <span className={`font-display font-extrabold lowercase ${className}`}>
-      {t('brand')}
-      <span className="text-sunset-500">.</span>
+    <span className={`inline-flex items-center gap-1.5 font-display font-extrabold lowercase ${className}`}>
+      <span>
+        {t('brand')}
+        <span className="text-sunset-500">.</span>
+      </span>
+      <EcheveriaIcon bg={bg} className="h-[1.2em] w-[1.2em] shrink-0" />
     </span>
   )
 }
@@ -53,6 +79,7 @@ export function Layout() {
   const { user, role } = useAuth()
   const { balance } = useBonusBalance()
   const { pathname } = useLocation()
+  useFavoritesSync()
   // У шапці лише логотип і кнопки — категорії є великими кнопками на головній і в каталозі.
   const [headerRef, headerHeight] = useElementHeight<HTMLElement>()
 
@@ -138,7 +165,7 @@ export function Layout() {
       <CartToast />
       <footer className="bg-ink text-sand-300">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-9 text-sm">
-          <Logo className="text-xl text-sand-100" />
+          <Logo className="text-xl text-sand-100" bg="fill-ink" />
           <span>{t('footer.delivery')}</span>
           <span className="ml-auto">© {YEAR}</span>
         </div>

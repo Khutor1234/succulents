@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/react'
+type SentryModule = typeof import('@sentry/react')
 
 /**
  * Моніторинг сайту через Sentry: помилки (з тим, що людина робила перед ними) і повільні сторінки.
@@ -10,8 +10,24 @@ import * as Sentry from '@sentry/react'
 const dsn = import.meta.env.VITE_SENTRY_DSN as string | undefined
 export const monitoringEnabled = !!dsn
 
+/**
+ * Sentry (~100 КБ) вантажимо окремо й лише коли він увімкнений — щоб не гальмувати перше відкриття сайту.
+ * Події, що трапились до завантаження, складаємо в чергу й відправляємо, щойно він готовий.
+ */
+let sentry: SentryModule | null = null
+const queue: ((s: SentryModule) => void)[] = []
+const withSentry = (fn: (s: SentryModule) => void) => (sentry ? fn(sentry) : queue.push(fn))
+
 export function initMonitoring() {
   if (!dsn) return
+  void import('@sentry/react').then((Sentry) => {
+    initSentry(Sentry)
+    sentry = Sentry
+    queue.splice(0).forEach((fn) => fn(Sentry))
+  })
+}
+
+function initSentry(Sentry: SentryModule) {
   Sentry.init({
     dsn,
     environment: import.meta.env.MODE,
@@ -28,8 +44,10 @@ export function initMonitoring() {
 /** Хто зараз на сайті — щоб у Sentry знайти всі помилки конкретного покупця за uid. */
 export function setMonitoringUser(user: { uid: string; role: string } | null) {
   if (!dsn) return
-  Sentry.setUser(user ? { id: user.uid } : null)
-  Sentry.setTag('role', user?.role ?? 'guest')
+  withSentry((Sentry) => {
+    Sentry.setUser(user ? { id: user.uid } : null)
+    Sentry.setTag('role', user?.role ?? 'guest')
+  })
 }
 
 /**
@@ -39,16 +57,18 @@ export function setMonitoringUser(user: { uid: string; role: string } | null) {
 export function track(action: string, data?: Record<string, unknown>) {
   if (import.meta.env.DEV) console.debug(`[track] ${action}`, data ?? '')
   if (!dsn) return
-  Sentry.addBreadcrumb({ category: 'user', message: action, data, level: 'info' })
+  withSentry((Sentry) => Sentry.addBreadcrumb({ category: 'user', message: action, data, level: 'info' }))
 }
 
 /** Помилка, яку ми зловили самі (напр. замовлення не створилось) — з контекстом, щоб зрозуміти причину. */
 export function reportError(error: unknown, context: { action: string } & Record<string, unknown>) {
   console.error(`[${context.action}]`, error, context)
   if (!dsn) return
-  Sentry.withScope((scope) => {
-    scope.setTag('action', context.action)
-    scope.setContext('details', context)
-    Sentry.captureException(error)
-  })
+  withSentry((Sentry) =>
+    Sentry.withScope((scope) => {
+      scope.setTag('action', context.action)
+      scope.setContext('details', context)
+      Sentry.captureException(error)
+    }),
+  )
 }

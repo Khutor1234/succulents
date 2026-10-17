@@ -1,5 +1,9 @@
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { storage } from '../../firebase/config'
+import { connectStorageEmulator, getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage'
+import { app, emulatorHost, useEmulators } from '../../firebase/config'
+
+// Сховище фото потрібне лише адмінці — тому створюємо його тут, а не в загальному коді сайту.
+const storage = getStorage(app)
+if (useEmulators) connectStorageEmulator(storage, emulatorHost, 9199)
 
 const MAX_SIDE = 1200
 
