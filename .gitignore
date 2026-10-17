@@ -8,3 +8,7 @@ node_modules
 
 # Намальовані картинки тестових товарів (генерує npm run seed)
 web/public/seed
+
+# Налаштування справжнього проєкту (email-и продавців)
+functions/.env.*
+!functions/.env.example

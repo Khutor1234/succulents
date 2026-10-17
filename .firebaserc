@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "demo-succulents"
+    "default": "demo-succulents",
+    "prod": "succulents-shop-ua"
   }
 }
