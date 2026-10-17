@@ -8,8 +8,15 @@ service cloud.firestore {
     }
 
     // Роль задається custom claim через Admin SDK — клієнт змінити її не може.
+    // Запасний варіант — підтверджений email зі списку продавців: адмінка працює,
+    // навіть поки серверні функції (які видають роль) не опубліковані.
+    // Список має збігатися з SELLER_EMAILS у functions/.env.<project> і VITE_SELLER_EMAILS на сайті.
     function isSeller() {
-      return isSignedIn() && request.auth.token.role == 'seller';
+      return isSignedIn() && (
+        request.auth.token.role == 'seller'
+        || (request.auth.token.email_verified == true
+            && request.auth.token.email in ['khutornaalexandra@gmail.com'])
+      );
     }
 
     match /products/{productId} {

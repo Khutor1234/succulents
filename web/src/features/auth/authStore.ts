@@ -61,6 +61,16 @@ export const useAuth = create<AuthState>((set) => ({
   },
 }))
 
+/**
+ * Продавці зі списку VITE_SELLER_EMAILS (з підтвердженим email) бачать адмінку, навіть поки сервер ще не видав
+ * їм роль. Це лише показ кнопок: доступ до даних однаково перевіряють правила Firestore за тим самим списком.
+ */
+const SELLER_EMAILS = (import.meta.env.VITE_SELLER_EMAILS ?? '')
+  .split(',')
+  .map((e: string) => e.trim().toLowerCase())
+  .filter(Boolean)
+const isListedSeller = (user: User) => user.emailVerified && !!user.email && SELLER_EMAILS.includes(user.email.toLowerCase())
+
 // Роль береться з custom claims токена — клієнт не може її підробити.
 onIdTokenChanged(auth, async (user) => {
   if (!user) {
@@ -69,7 +79,7 @@ onIdTokenChanged(auth, async (user) => {
     return
   }
   const token = await user.getIdTokenResult()
-  const role: Role = token.claims.role === 'seller' ? 'seller' : 'customer'
+  const role: Role = token.claims.role === 'seller' || isListedSeller(user) ? 'seller' : 'customer'
   useAuth.setState({ user, role, loading: false })
   setMonitoringUser({ uid: user.uid, role })
 
