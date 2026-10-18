@@ -24,9 +24,25 @@ type Sort = (typeof SORTS)[number]
 // Без вибору — спершу показані на сайті (всередині за назвою)
 const DEFAULT_SORT: Sort = 'shownFirst'
 
+type Anchor = { id: string; index: number }
+
+const LETTER =
+  'flex shrink-0 items-center justify-center rounded-xl font-display font-extrabold transition-colors hover:bg-brand-600 hover:text-sand-50 active:scale-95'
+
+// Лапки сорту не враховуємо: «Echeveria 'Lola'» стоїть між agavoides і 'Lucita', а не окремо перед усіма видами
+const plain = (name: string) => name.replace(/['‘’"«»]/g, '').trim()
+
+/** «Echeveria 'Lola' variegata» → літера E, рід Echeveria, літера сорту L. */
+function splitName(name: string) {
+  const [genus = '', ...rest] = plain(name).split(/\s+/)
+  // Перша літера після роду (пропускаємо «×» гібридів тощо)
+  const sub = rest.join(' ').match(/\p{L}/u)?.[0]?.toLocaleUpperCase('uk')
+  return { letter: genus.charAt(0).toLocaleUpperCase('uk'), genus, sub }
+}
+
 /** Порядок списку. «new» — як прийшло з бази (найновіші спершу). */
 function sortProducts(list: Product[], sort: Sort, nameOf: (p: Product) => string): Product[] {
-  const byName = (a: Product, b: Product) => nameOf(a).localeCompare(nameOf(b), 'uk')
+  const byName = (a: Product, b: Product) => plain(nameOf(a)).localeCompare(plain(nameOf(b)), 'uk')
   switch (sort) {
     case 'name':
       return [...list].sort(byName)
@@ -90,25 +106,53 @@ export function ProductsPage() {
   }, [products, category, query, sort, lang])
   const list = useProgressive(shown ?? [], PAGE, `${category}|${query}|${sort}`)
 
-  // Абетка — коли список за назвою: перший товар кожної літери отримує якір, до якого прокручує кнопка.
+  // Абетка — коли список за назвою. Два рівні: перша літера (рід) і, коли її вибрали, літери сорту всередині роду
+  // («Echeveria» → A, B, L… — 'Lola', 'Blue Bird'). Перший товар кожної літери отримує якір, до якого прокручує кнопка.
   // «Спершу показані» теж за назвою всередині — абетка веде до літери серед показаних
   const byName = sort === 'name' || sort === 'shownFirst'
-  const letterOf = (name: string) => name.trim().charAt(0).toLocaleUpperCase('uk')
-  const firstOfLetter = new Map<string, { id: string; index: number }>()
+  const firstOfLetter = new Map<string, Anchor>()
+  // рід → (літера сорту → перший товар); роди в порядку списку
+  const firstOfSub = new Map<string, Map<string, Anchor>>()
+  const anchors = new Set<string>()
   if (byName)
     (shown ?? []).forEach((p, index) => {
-      const letter = letterOf(pick(p.name, lang))
-      if (letter && !firstOfLetter.has(letter)) firstOfLetter.set(letter, { id: p.id, index })
+      const { letter, genus, sub } = splitName(pick(p.name, lang))
+      if (!letter) return
+      if (!firstOfLetter.has(letter)) {
+        firstOfLetter.set(letter, { id: p.id, index })
+        anchors.add(p.id)
+      }
+      const subs = firstOfSub.get(genus) ?? new Map<string, Anchor>()
+      firstOfSub.set(genus, subs)
+      if (sub && !subs.has(sub)) {
+        subs.set(sub, { id: p.id, index })
+        anchors.add(p.id)
+      }
     })
+  // Вибрана літера й рід — для другого ряду абетки
+  const [picked, setPicked] = useState<{ letter: string; genus?: string } | null>(null)
+  const pickedLetter = picked && firstOfLetter.has(picked.letter) ? picked.letter : null
+  const genera = pickedLetter ? [...firstOfSub.keys()].filter((g) => g.charAt(0).toLocaleUpperCase('uk') === pickedLetter) : []
+  const pickedGenus = picked?.genus && genera.includes(picked.genus) ? picked.genus : genera[0]
+  const subs = pickedGenus ? firstOfSub.get(pickedGenus) : undefined
   // Літера може бути ще не показана (товари вантажаться порціями) — спершу показуємо до неї, потім прокручуємо.
   const [jumping, setJumping] = useState<string | null>(null)
-  const jumpTo = (letter: string) => {
-    list.showAtLeast((firstOfLetter.get(letter)?.index ?? 0) + PAGE)
-    setJumping(letter)
+  const jumpTo = (anchor: Anchor | undefined) => {
+    if (!anchor) return
+    list.showAtLeast(anchor.index + PAGE)
+    setJumping(anchor.id)
   }
   useEffect(() => {
     if (!jumping) return
-    document.getElementById(`letter-${jumping}`)?.scrollIntoView({ block: 'start' })
+    // Прокручуємо так, щоб товар став одразу під прикріпленою абеткою (вона буває в один або два ряди)
+    const el = document.getElementById(`p-${jumping}`)
+    const nav = document.getElementById('alphabet')
+    // Де буде низ абетки, коли вона прикріплена під шапкою
+    const navBottom = nav ? parseFloat(getComputedStyle(nav).top) + nav.offsetHeight : 0
+    // Відстань від верху сторінки — через offsetTop: картки ще «випливають» (анімація зсуває getBoundingClientRect)
+    let top = 0
+    for (let node = el as HTMLElement | null; node; node = node.offsetParent as HTMLElement | null) top += node.offsetTop
+    if (el) window.scrollTo({ top: top - navBottom - 8 })
     setJumping(null)
   }, [jumping, list.visible.length])
 
@@ -219,22 +263,64 @@ export function ProductsPage() {
       )}
       {query && shown && shown.length > 0 && <p className="mb-3 text-sm text-sand-700">{t('admin.searchFound', { count: shown.length })}</p>}
 
-      {/* Абетка (коли список за назвою): прикріплена під шапкою, лише літери, на які є товари; натиснули — список прокрутився */}
-      {byName && firstOfLetter.size > 1 && (
+      {/* Абетка (коли список за назвою): прикріплена під шапкою, лише літери, на які є товари; натиснули — список прокрутився.
+          Після вибору літери з'являється другий ряд: рід (якщо на літеру їх кілька) і літери сорту всередині нього. */}
+      {byName && (firstOfLetter.size > 1 || (subs?.size ?? 0) > 1) && (
         <nav
           aria-label={t('admin.alphabet')}
-          className="sticky top-[var(--header-h,0px)] z-20 -mx-4 mb-3 flex gap-1 overflow-x-auto border-b border-sand-200 bg-sand-100/95 px-4 py-2 backdrop-blur sm:mx-0 sm:flex-wrap sm:rounded-2xl sm:border sm:px-2"
+          id="alphabet"
+          className="sticky top-[var(--header-h,0px)] z-20 -mx-4 mb-3 border-b border-sand-200 bg-sand-100/95 px-4 py-2 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:px-2"
         >
-          {[...firstOfLetter.keys()].map((letter) => (
-            <button
-              key={letter}
-              type="button"
-              onClick={() => jumpTo(letter)}
-              className="flex h-10 min-w-10 shrink-0 items-center justify-center rounded-xl bg-sand-50 font-display text-lg font-extrabold text-brand-600 transition-colors hover:bg-brand-600 hover:text-sand-50 active:scale-95"
-            >
-              {letter}
-            </button>
-          ))}
+          <div className="flex gap-1 overflow-x-auto sm:flex-wrap">
+            {[...firstOfLetter.keys()].map((letter) => (
+              <button
+                key={letter}
+                type="button"
+                aria-pressed={letter === pickedLetter}
+                onClick={() => {
+                  setPicked({ letter })
+                  jumpTo(firstOfLetter.get(letter))
+                }}
+                className={`${LETTER} h-10 min-w-10 text-lg ${letter === pickedLetter ? 'bg-brand-600 text-sand-50' : 'bg-sand-50 text-brand-600'}`}
+              >
+                {letter}
+              </button>
+            ))}
+          </div>
+          {pickedGenus && (genera.length > 1 || (subs?.size ?? 0) > 1) && (
+            <div className="mt-2 flex items-center gap-1 overflow-x-auto border-t border-sand-200 pt-2 sm:flex-wrap">
+              {genera.length > 1 ? (
+                genera.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    aria-pressed={g === pickedGenus}
+                    onClick={() => {
+                      setPicked({ letter: pickedLetter!, genus: g })
+                      jumpTo(firstOfSub.get(g)?.values().next().value)
+                    }}
+                    className={`${LETTER} h-9 px-3 text-sm italic ${g === pickedGenus ? 'bg-sunset-600 text-sand-50' : 'bg-sand-50 text-ink'}`}
+                  >
+                    {g}
+                  </button>
+                ))
+              ) : (
+                <span className="mr-1 shrink-0 pl-1 text-sm font-bold text-sand-700 italic">{pickedGenus}</span>
+              )}
+              {genera.length > 1 && <span aria-hidden className="mx-1 h-6 w-px shrink-0 bg-sand-300" />}
+              {[...(subs?.entries() ?? [])].sort(([a], [b]) => a.localeCompare(b, 'uk')).map(([sub, anchor]) => (
+                <button
+                  key={sub}
+                  type="button"
+                  aria-label={`${pickedGenus} ${sub}`}
+                  onClick={() => jumpTo(anchor)}
+                  className={`${LETTER} h-9 min-w-9 bg-sand-50 text-base text-sunset-600`}
+                >
+                  {sub}
+                </button>
+              ))}
+            </div>
+          )}
         </nav>
       )}
 
@@ -243,7 +329,7 @@ export function ProductsPage() {
           {list.visible.map((p, i) => (
             <li
               key={p.id}
-              id={byName && firstOfLetter.get(letterOf(pick(p.name, lang)))?.id === p.id ? `letter-${letterOf(pick(p.name, lang))}` : undefined}
+              id={anchors.has(p.id) ? `p-${p.id}` : undefined}
               style={{ animationDelay: `${Math.min(i % PAGE, 10) * 30}ms` }}
               className={`grid animate-rise scroll-mt-[5.5rem] grid-cols-[64px_minmax(0,1fr)] items-center gap-x-3 gap-y-3 rounded-3xl border-2 bg-sand-50 p-3 sm:grid-cols-[72px_minmax(0,1fr)_auto_auto] sm:gap-x-4 ${
                 p.isActive ? 'border-sand-200' : 'border-dashed border-sand-300 bg-sand-100'

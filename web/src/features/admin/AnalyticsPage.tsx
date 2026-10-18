@@ -14,9 +14,10 @@ import {
   Trophy,
   UserPlus,
   Wallet,
-  type LucideIcon,
+  Leaf,
 } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useLang } from '../../i18n'
 import { formatPrice, pick } from '../../lib/format'
@@ -24,6 +25,8 @@ import { PLANT_CATEGORY } from '../../lib/plants'
 import type { Order } from '../../lib/types'
 import { ProductImage } from '../../shared/ui'
 import { useAllProducts, useOrders } from './api'
+import { Bar, Card, Fact, RankList, Tile } from './analyticsUi'
+import { PlantAnalytics } from './PlantAnalytics'
 
 const PERIODS = [7, 30, 90, 0] as const // 0 — увесь час
 type Period = (typeof PERIODS)[number]
@@ -66,7 +69,7 @@ function add<T>(map: Map<T, number>, key: T, value: number) {
   map.set(key, (map.get(key) ?? 0) + value)
 }
 
-export function AnalyticsPage() {
+function SalesAnalytics() {
   const { t } = useTranslation()
   const lang = useLang()
   const { data: orders, isLoading, isError } = useOrders()
@@ -168,8 +171,7 @@ export function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="font-display text-3xl font-extrabold text-brand-600">{t('analytics.title')}</h1>
+      <div className="flex flex-wrap items-end justify-end gap-3">
         {/* Період — один рядок перемикачів над усіма графіками */}
         <div className="flex rounded-2xl bg-sand-200 p-1" role="radiogroup" aria-label={t('analytics.period')}>
           {PERIODS.map((p) => (
@@ -310,71 +312,6 @@ export function AnalyticsPage() {
   )
 }
 
-function Card({ title, icon: Icon, children }: { title: string; icon: LucideIcon; children: ReactNode }) {
-  return (
-    <section className="rounded-3xl border-2 border-sand-200 bg-sand-50 p-4 sm:p-5">
-      <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-extrabold text-brand-600">
-        <Icon size={18} strokeWidth={2.25} aria-hidden />
-        {title}
-      </h2>
-      {children}
-    </section>
-  )
-}
-
-function Tile({ icon: Icon, label, value, hint, accent }: { icon: LucideIcon; label: string; value: string; hint?: string; accent?: boolean }) {
-  return (
-    <div className={`animate-rise rounded-3xl p-4 ${accent ? 'bg-brand-600 text-sand-50' : 'border-2 border-sand-200 bg-sand-50'}`}>
-      <p className={`flex items-center gap-1.5 text-sm font-bold ${accent ? 'text-sand-200' : 'text-sand-700'}`}>
-        <Icon size={16} strokeWidth={2.25} aria-hidden />
-        {label}
-      </p>
-      <p className="mt-1 font-display text-xl font-extrabold break-words tabular-nums sm:text-3xl">{value}</p>
-      {hint && <p className={`mt-0.5 text-xs ${accent ? 'text-sand-200' : 'text-sand-700'}`}>{hint}</p>}
-    </div>
-  )
-}
-
-function Fact({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
-  return (
-    <div className="flex gap-3 rounded-2xl border-2 border-dashed border-sunset-500/60 bg-sand-50 p-4">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sunset-100 text-sunset-700">
-        <Icon size={18} strokeWidth={2.25} aria-hidden />
-      </span>
-      <div className="min-w-0">
-        <p className="font-bold first-letter:uppercase">{title}</p>
-        <p className="mt-0.5 text-sm text-sand-700">{children}</p>
-      </div>
-    </div>
-  )
-}
-
-/** Тонка горизонтальна смужка величини (одна серія — один колір). */
-function Bar({ value, max }: { value: number; max: number }) {
-  return (
-    <div className="mt-1 h-2 overflow-hidden rounded-full bg-sand-200">
-      <div className="h-full rounded-full bg-brand-500 transition-[width] duration-500" style={{ width: `${max ? (value / max) * 100 : 0}%` }} />
-    </div>
-  )
-}
-
-function RankList({ rows, max }: { rows: { key: string; label: ReactNode; value: number; text: string }[]; max?: number }) {
-  const top = max ?? Math.max(1, ...rows.map((r) => r.value))
-  return (
-    <ul className="space-y-2.5">
-      {rows.map((r) => (
-        <li key={r.key}>
-          <div className="flex items-baseline justify-between gap-2 text-sm">
-            <span className="font-bold">{r.label}</span>
-            <span className="text-sand-700 tabular-nums">{r.text}</span>
-          </div>
-          <Bar value={r.value} max={top} />
-        </li>
-      ))}
-    </ul>
-  )
-}
-
 /** Стовпчики виручки: наведення чи дотик показує суму й кількість замовлень за день/тиждень. */
 function RevenueChart({ buckets, weekly }: { buckets: Bucket[]; weekly: boolean }) {
   const { t } = useTranslation()
@@ -433,3 +370,41 @@ function RevenueChart({ buckets, weekly }: { buckets: Bucket[]; weekly: boolean 
   )
 }
 
+
+const TABS = ['sales', 'plants'] as const
+type Tab = (typeof TABS)[number]
+
+/** Аналітика: дві вкладки — продажі (замовлення) і рослини (що є в асортименті). Вкладка — в адресі (?tab=plants). */
+export function AnalyticsPage() {
+  const { t } = useTranslation()
+  const [params, setParams] = useSearchParams()
+  const tab: Tab = params.get('tab') === 'plants' ? 'plants' : 'sales'
+  const TAB_ICONS = { sales: Receipt, plants: Leaf }
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="mr-auto font-display text-3xl font-extrabold text-brand-600">{t('analytics.title')}</h1>
+        <div className="flex rounded-2xl bg-sand-200 p-1" role="tablist" aria-label={t('analytics.title')}>
+          {TABS.map((id) => {
+            const Icon = TAB_ICONS[id]
+            return (
+              <button
+                key={id}
+                role="tab"
+                aria-selected={tab === id}
+                onClick={() => setParams(id === 'sales' ? {} : { tab: id }, { replace: true })}
+                className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-bold transition-colors ${
+                  tab === id ? 'bg-brand-600 text-sand-50 shadow-sm' : 'text-sand-700 hover:text-ink'
+                }`}
+              >
+                <Icon size={16} strokeWidth={2.25} aria-hidden />
+                {t(`analytics.tabs.${id}`)}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      {tab === 'sales' ? <SalesAnalytics /> : <PlantAnalytics />}
+    </div>
+  )
+}

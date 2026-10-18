@@ -1,5 +1,5 @@
 import { Award, ChevronDown, Leaf, SlidersHorizontal, Sparkles, Sprout } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ICON } from '../../shared/icon'
 import { ALL_TAGS, tagsFor, TAG_DOTS, TAG_STYLES, type PlantTag } from '../../lib/plants'
@@ -192,12 +192,22 @@ export function PlantFilters({ products, filters, category }: { products: Produc
   )
 }
 
-/** Маленькі бейджі тегів для картки й сторінки товару. */
-export function TagBadges({ tags, className = '' }: { tags?: PlantTag[]; className?: string }) {
+/** Маленькі бейджі тегів для картки й сторінки товару. `children` — плашки перед тегами в тому ж ряду
+ *  (напр. «Приховано» для продавця). */
+export function TagBadges({
+  tags = [],
+  className = '',
+  children,
+}: {
+  tags?: PlantTag[]
+  className?: string
+  children?: ReactNode
+}) {
   const { t } = useTranslation()
-  if (!tags || tags.length === 0) return null
+  if (tags.length === 0 && !children) return null
   return (
     <div className={`flex flex-wrap gap-1.5 ${className}`}>
+      {children}
       {ALL_TAGS.filter((tag) => tags.includes(tag)).map((tag) => (
         <span key={tag} className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${TAG_STYLES[tag]}`}>
           {t(`tags.${tag}`)}

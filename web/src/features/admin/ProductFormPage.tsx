@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
-import { Check, ChevronDown, Copy, CopyPlus, Link2, Lock, X, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, Copy, CopyPlus, Eye, EyeOff, Link2, Lock, X, Trash2 } from 'lucide-react'
 import { detectGenus, parseForms, withForms } from '../../lib/plantName'
 import { ICON } from '../../shared/icon'
 import { HABITATS, ORIGINS } from '../../lib/types'
@@ -12,7 +12,7 @@ import { slugify } from '../../lib/slug'
 import type { Product } from '../../lib/types'
 import { Button, Input, Section, Select, Textarea } from '../../shared/ui'
 import { useCategories } from '../catalog/categories'
-import { isSlugTaken, useDeleteProduct, useProductById, useSaveProduct } from './api'
+import { isSlugTaken, useDeleteProduct, useProductById, useSaveProduct, useToggleProductActive } from './api'
 import { ImagesEditor } from './ImagesEditor'
 import {
   cultivarOf,
@@ -59,6 +59,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     getValues,
     setValue,
     setError,
+    resetField,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<ProductFormInput, unknown, ProductFormData>({
     resolver: zodResolver(productFormSchema),
@@ -85,6 +86,19 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     if (!product || !window.confirm(t('admin.deleteProductConfirm', { name: product.name.uk }))) return
     await remove.mutateAsync(product.id)
     navigate(`/admin/products?category=${product.category}`)
+  }
+
+  // Око: показати / приховати товар одразу, без «Зберегти» (як на картці в магазині).
+  // Галочку й залишок у формі оновлюємо як збережені, щоб «Зберегти» потім не повернуло старе.
+  const toggle = useToggleProductActive()
+  const isActive = useWatch({ control, name: 'isActive' })
+  async function onToggleActive() {
+    if (!product) return
+    const next = !isActive
+    const stock = Number(getValues('stock')) || 0
+    await toggle.mutateAsync({ id: product.id, isActive: next, stock })
+    resetField('isActive', { defaultValue: next })
+    resetField('stock', { defaultValue: String(next ? Math.max(stock, 1) : 0) })
   }
 
   // «Зберегти як новий товар»: зберігаємо форму як новий товар, а цей лишаємо без змін
@@ -199,6 +213,21 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
             >
               <CopyPlus {...ICON} />
             </button>
+            {/* Око: видимий — сховати від покупців, прихований — показати */}
+            <button
+              type="button"
+              onClick={onToggleActive}
+              disabled={toggle.isPending}
+              title={t(isActive ? 'admin.hide' : 'admin.show')}
+              aria-label={t(isActive ? 'admin.hideNamed' : 'admin.showNamed', { name: product.name.uk })}
+              className={`flex h-11 w-11 items-center justify-center rounded-xl border-2 transition-colors disabled:opacity-50 ${
+                isActive
+                  ? 'border-sand-700 text-sand-700 hover:bg-sand-700 hover:text-sand-50'
+                  : 'border-brand-600 bg-brand-600 text-sand-50 hover:bg-brand-700'
+              }`}
+            >
+              {isActive ? <EyeOff {...ICON} /> : <Eye {...ICON} />}
+            </button>
             <button
               type="button"
               onClick={onDelete}
@@ -212,7 +241,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
           </div>
         )}
       </div>
-      {remove.isError && <p className="text-sm text-red-700">{t('admin.saveError')}</p>}
+      {(remove.isError || toggle.isError) && <p className="text-sm text-red-700">{t('admin.saveError')}</p>}
       {source && (
         <p className="flex items-start gap-2 rounded-2xl border-2 border-sunset-500/40 bg-sunset-100/60 p-4 text-sm leading-relaxed">
           <Copy size={18} strokeWidth={2.25} className="mt-0.5 shrink-0 text-sunset-600" aria-hidden />

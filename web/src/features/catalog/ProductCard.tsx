@@ -33,12 +33,24 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
     >
       <div className="group relative overflow-hidden rounded-2xl">
         <Link to={`/product/${product.slug}`} tabIndex={-1} aria-hidden className="block">
-          {/* Фото трохи наближається при наведенні */}
-          <div className="transition-transform duration-500 group-hover:scale-[1.04]">
+          {/* Фото трохи наближається при наведенні; приховане — бліде, щоб одразу було видно, що покупці його не бачать */}
+          <div
+            className={`transition-[transform,opacity,filter] duration-500 group-hover:scale-[1.04] ${
+              product.isActive ? '' : 'opacity-60 grayscale-[40%] group-hover:opacity-100 group-hover:grayscale-0'
+            }`}
+          >
             <ProductImage src={product.images[0]} alt={name} tint={TINTS[index % TINTS.length]} />
           </div>
         </Link>
-        <TagBadges tags={product.tags} className="pointer-events-none absolute top-2 right-14 left-2" />
+        {/* Прихований товар у картках бачить лише продавець — плашка першою в ряду тегів на фото */}
+        <TagBadges tags={product.tags} className="pointer-events-none absolute top-2 right-14 left-2">
+          {!product.isActive && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-ink/85 px-2.5 py-0.5 text-xs font-bold text-sand-50 shadow-sm backdrop-blur">
+              <EyeOff size={12} strokeWidth={2.5} aria-hidden />
+              {t('product.hidden')}
+            </span>
+          )}
+        </TagBadges>
         {!isSeller && <FavoriteButton product={product} className="absolute top-2 right-2" />}
         {/* Походження — плашкою внизу фото: під назвою не займає місця, тож картки з батьками й без однакові.
             Кожен батько — окреме посилання в пошук. */}
@@ -55,13 +67,6 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           Вид окремо не пишемо — він і так перше слово назви («Echeveria Lola») */}
       <Link to={`/product/${product.slug}`} className="group mx-1.5 mt-2.5 flex flex-1 justify-between gap-3">
         <h3 className="leading-snug font-bold group-hover:text-brand-600">
-          {/* Прихований товар у картках бачить лише продавець (напр. у пошуку) */}
-          {!product.isActive && (
-            <span className="mr-1.5 inline-flex items-center gap-1 rounded-full bg-sand-300 px-2 py-0.5 align-middle text-xs font-bold text-sand-800">
-              <EyeOff size={12} strokeWidth={2.5} aria-hidden />
-              {t('product.hidden')}
-            </span>
-          )}
           {name}
         </h3>
         <span className="font-display text-lg leading-snug font-extrabold whitespace-nowrap text-sunset-600">
@@ -83,9 +88,9 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
 }
 
 export function ProductGrid({ products }: { products: Product[] }) {
-  // Товари, яких немає в наявності, — завжди в кінці. Сортування стабільне, тож вибраний порядок
-  // (новизна, ціна) всередині «є в наявності» і «немає» зберігається.
-  const ordered = [...products].sort((a, b) => Number(a.stock === 0) - Number(b.stock === 0))
+  // Спершу ті, що є в наявності, далі «немає в наявності», у самому кінці — приховані (їх бачить лише продавець).
+  // Сортування стабільне, тож вибраний порядок (новизна, ціна) всередині кожної групи зберігається.
+  const ordered = [...products].sort((a, b) => rank(a) - rank(b))
   // Інший набір товарів (фільтр, сортування) — знову з першої порції
   const { visible, sentinel } = useProgressive(ordered, PAGE, ordered.map((p) => p.id).join(','))
   return (
@@ -99,6 +104,8 @@ export function ProductGrid({ products }: { products: Product[] }) {
     </>
   )
 }
+
+const rank = (p: Product) => (!p.isActive ? 2 : p.stock === 0 ? 1 : 0)
 
 const ICON_LINK =
   'flex min-h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 transition-colors disabled:opacity-50'
