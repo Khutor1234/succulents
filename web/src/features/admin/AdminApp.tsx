@@ -3,6 +3,7 @@ import { AdminLayout } from './AdminLayout'
 import { CategoriesPage } from './CategoriesPage'
 import { AnalyticsPage } from './AnalyticsPage'
 import { CustomersPage } from './CustomersPage'
+import { FormFixesPage } from './FormFixesPage'
 import { ImportPage } from './ImportPage'
 import { OrdersPage } from './OrdersPage'
 import { ProductFormPage } from './ProductFormPage'
@@ -16,6 +17,7 @@ export default function AdminApp() {
         <Route index element={<Navigate to="products" replace />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="import" element={<ImportPage />} />
+        <Route path="forms" element={<FormFixesPage />} />
         <Route path="products/:id" element={<ProductFormPage />} />
         <Route path="orders" element={<OrdersPage />} />
         <Route path="categories" element={<CategoriesPage />} />
