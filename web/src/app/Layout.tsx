@@ -1,7 +1,7 @@
 import { signOut } from 'firebase/auth'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, Outlet, ScrollRestoration, useLocation } from 'react-router'
+import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { AccountBanner } from '../features/auth/AccountBanner'
 import { useAuth } from '../features/auth/authStore'
 import { CartToast } from '../features/cart/CartToast'
@@ -11,7 +11,7 @@ import { useBonusBalance } from '../features/account/api'
 import { auth } from '../firebase/config'
 import { formatPrice } from '../lib/format'
 import { ICON } from '../shared/icon'
-import { BookOpen, ChevronRight, Construction, Heart, LayoutGrid, LogIn, LogOut, Menu, Package, Search, ShieldCheck, ShoppingBag, User, X } from 'lucide-react'
+import { BookOpen, ChevronRight, Construction, Heart, Home, LayoutGrid, LogIn, LogOut, Menu, Package, Search, ShieldCheck, ShoppingBag, User, X } from 'lucide-react'
 
 const YEAR = new Date().getFullYear()
 /** Плашка «у розробці» над шапкою. Прибрати — VITE_UNDER_CONSTRUCTION=false у web/.env.production і опублікувати. */
@@ -139,6 +139,90 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
   )
 }
 
+/**
+ * Нижнє меню на телефоні — як у застосунках: найпотрібніше завжди під пальцем.
+ * Покупцю: головна, каталог, пошук, кошик, кабінет (або «Увійти»). Продавцю замість кошика й кабінету — адмінка.
+ * В адмінці не показуємо: там своє нижнє меню (AdminLayout).
+ */
+function ShopBottomNav() {
+  const { t } = useTranslation()
+  const count = useCart(selectCount)
+  const { user, role } = useAuth()
+  const { pathname } = useLocation()
+  const hidden = pathname.startsWith('/admin')
+
+  // Місце під меню внизу сторінки (див. index.css)
+  useEffect(() => {
+    if (hidden) return
+    document.documentElement.classList.add('shop-bottom-nav')
+    return () => document.documentElement.classList.remove('shop-bottom-nav')
+  }, [hidden])
+  if (hidden) return null
+
+  const isSeller = role === 'seller'
+  return (
+    <nav
+      aria-label={t('nav.bottom')}
+      className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-sand-200 bg-sand-50/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+    >
+      <div className={`grid ${isSeller ? 'grid-cols-4' : 'grid-cols-5'}`}>
+        <BottomItem to="/" end icon={<Home size={22} strokeWidth={2.2} aria-hidden />} label={t('nav.home')} />
+        <BottomItem to="/c/plants" match="/c/" icon={<LayoutGrid size={22} strokeWidth={2.2} aria-hidden />} label={t('nav.catalog')} />
+        <BottomItem to="/search" icon={<Search size={22} strokeWidth={2.2} aria-hidden />} label={t('nav.search')} />
+        {isSeller ? (
+          <BottomItem to="/admin" icon={<ShieldCheck size={22} strokeWidth={2.2} aria-hidden />} label={t('nav.admin')} />
+        ) : (
+          <>
+            <BottomItem
+              to="/cart"
+              icon={
+                <span className="relative">
+                  <ShoppingBag size={22} strokeWidth={2.2} aria-hidden />
+                  {count > 0 && (
+                    <span
+                      key={count}
+                      className="absolute -top-1.5 left-1/2 ml-1.5 inline-flex min-w-5 animate-pop justify-center rounded-full bg-brand-600 px-1 text-[11px] leading-5 font-extrabold text-sand-50"
+                    >
+                      {count}
+                    </span>
+                  )}
+                </span>
+              }
+              label={t('nav.cart')}
+            />
+            <BottomItem
+              to={user ? '/account' : '/login'}
+              match={user ? '/account' : '/login'}
+              icon={user ? <User size={22} strokeWidth={2.2} aria-hidden /> : <LogIn size={22} strokeWidth={2.2} aria-hidden />}
+              label={user ? t('nav.account') : t('nav.login')}
+            />
+          </>
+        )}
+      </div>
+    </nav>
+  )
+}
+
+function BottomItem({ to, icon, label, end, match }: { to: string; icon: ReactNode; label: string; end?: boolean; match?: string }) {
+  const { pathname } = useLocation()
+  // «Каталог» підсвічуємо на будь-якій категорії (/c/soil тощо), не лише на /c/plants
+  const forced = match ? pathname.startsWith(match) : undefined
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        `flex min-h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition-colors ${
+          (forced ?? isActive) ? 'text-brand-600' : 'text-sand-700'
+        }`
+      }
+    >
+      {icon}
+      {label}
+    </NavLink>
+  )
+}
+
 export function Layout() {
   const { t } = useTranslation()
   const count = useCart(selectCount)
@@ -179,9 +263,9 @@ export function Layout() {
           <Link to="/" className="text-2xl text-brand-600">
             <Logo />
           </Link>
-          {/* На телефоні: пошук, кошик і кнопка меню (решта — у меню). На комп’ютері — усі кнопки в шапці. */}
+          {/* На телефоні в шапці лише кнопка меню: пошук, кошик, кабінет і адмінка — у нижньому меню. На комп’ютері — усі кнопки в шапці. */}
           <div className="ml-auto flex items-center gap-1.5 text-sm sm:gap-2">
-            <Link to="/search" aria-label={t('search.open')} title={t('search.open')} className={NAV_BTN + ' inline-flex hover:bg-sand-200'}>
+            <Link to="/search" aria-label={t('search.open')} title={t('search.open')} className={NAV_BTN + ' hidden hover:bg-sand-200 md:inline-flex'}>
               <Search {...ICON} />
             </Link>
             <Link to="/blog" aria-label={t('blog.title')} title={t('blog.title')} className={NAV_BTN + ' hidden hover:bg-sand-200 md:inline-flex'}>
@@ -190,7 +274,7 @@ export function Layout() {
             </Link>
             {role === 'seller' && (
               // Продавцю кошик і кабінет у шапці не потрібні — на їхньому місці адмінка, і на телефоні теж
-              <Link to="/admin" aria-label={t('nav.admin')} className={NAV_BTN + ' inline-flex bg-sand-200 font-bold hover:bg-sand-300'}>
+              <Link to="/admin" aria-label={t('nav.admin')} className={NAV_BTN + ' hidden bg-sand-200 font-bold hover:bg-sand-300 md:inline-flex'}>
                 <ShieldCheck {...ICON} />
                 <span className="hidden sm:inline">{t('nav.admin')}</span>
               </Link>
@@ -203,7 +287,7 @@ export function Layout() {
               </Link>
             )}
             {role !== 'seller' && (
-            <Link to="/cart" aria-label={t('nav.cart')} className={`group ${NAV_BTN} inline-flex bg-sand-200 font-bold hover:bg-sand-300`}>
+            <Link to="/cart" aria-label={t('nav.cart')} className={`group ${NAV_BTN} hidden bg-sand-200 font-bold hover:bg-sand-300 md:inline-flex`}>
               <ShoppingBag {...ICON} className="group-hover:animate-wiggle" />
               <span className="hidden sm:inline">{t('nav.cart')}</span>
               {count > 0 && (
@@ -259,6 +343,7 @@ export function Layout() {
         <Outlet />
       </main>
       <CartToast />
+      <ShopBottomNav />
       {/* Нова сторінка відкривається зверху; «Назад» повертає туди, де людина була */}
       <ScrollRestoration />
       <footer className="bg-ink text-sand-300">

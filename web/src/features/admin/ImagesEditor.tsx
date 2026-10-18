@@ -2,6 +2,7 @@ import { Star, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { imageUrl } from '../../firebase/config'
+import { ImageCropper } from '../../shared/ImageCropper'
 import { uploadProductImage } from './imageUpload'
 
 /** Кругла кнопка-іконка в куті фото. */
@@ -20,17 +21,28 @@ export function ImagesEditor({ images, onChange, onUploadingChange }: Props) {
   /** Індекс фото, відкритого на весь екран; null — переглядач закритий. */
   const [viewing, setViewing] = useState<number | null>(null)
 
-  async function onFiles(e: ChangeEvent<HTMLInputElement>) {
+  // Вибрані фото по черзі відкриваються в редакторі обрізання; кожне обрізане одразу завантажується
+  const [queue, setQueue] = useState<File[]>([])
+  const [total, setTotal] = useState(0)
+
+  function onFiles(e: ChangeEvent<HTMLInputElement>) {
     const files = [...(e.target.files ?? [])]
     e.target.value = ''
     if (files.length === 0) return
     setError(false)
+    setQueue(files)
+    setTotal(files.length)
+  }
+
+  async function onCropped(file: File) {
+    setQueue((q) => q.slice(1))
     setUploading(true)
     onUploadingChange(true)
     try {
-      const urls: string[] = []
-      for (const file of files) urls.push(await uploadProductImage(file))
-      onChange([...images, ...urls])
+      const url = await uploadProductImage(file)
+      // Беремо найсвіжіший список: поки фото вантажилось, могли обрізати наступне
+      latest.current = [...latest.current, url]
+      onChange(latest.current)
     } catch (err) {
       console.error(err)
       setError(true)
@@ -39,12 +51,27 @@ export function ImagesEditor({ images, onChange, onUploadingChange }: Props) {
       onUploadingChange(false)
     }
   }
+  const latest = useRef(images)
+  useEffect(() => {
+    latest.current = images
+  }, [images])
 
   const makeMain = (url: string) => onChange([url, ...images.filter((u) => u !== url)])
   const remove = (url: string) => onChange(images.filter((u) => u !== url))
 
   return (
     <div>
+      {/* Фото товару квадратні (як у картках магазину) — тож і рамка квадратна */}
+      {queue[0] && (
+        <ImageCropper
+          key={`${total - queue.length}-${queue[0].name}`}
+          file={queue[0]}
+          aspect={1}
+          title={total > 1 ? t('cropper.titleOf', { n: total - queue.length + 1, count: total }) : undefined}
+          onDone={onCropped}
+          onCancel={() => setQueue((q) => q.slice(1))}
+        />
+      )}
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
         {images.map((url, i) => (
           <div key={url} className="group relative">

@@ -24,7 +24,7 @@ export function CartToast() {
       key={toast.key}
       role="status"
       aria-live="polite"
-      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-50 animate-toast-in overflow-hidden rounded-3xl bg-ink text-sand-100 shadow-2xl sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-96"
+      className="fixed inset-x-3 bottom-[calc(var(--bottom-nav-h,env(safe-area-inset-bottom))+0.75rem)] md:bottom-6 z-50 animate-toast-in overflow-hidden rounded-3xl bg-ink text-sand-100 shadow-2xl sm:inset-x-auto sm:right-6 sm:w-96"
     >
       <div className="flex items-center gap-3 p-3">
         <div className="w-14 shrink-0">

@@ -122,9 +122,15 @@ body {
   overscroll-behavior-y: none;
 }
 
-/* Адмінка на телефоні: місце під нижнє меню (AdminLayout), щоб воно не закривало низ сторінки й підвал */
-@media (max-width: 639px) {
+/* Телефон: місце під нижнє меню (магазин — Layout, адмінка — AdminLayout), щоб воно не закривало низ сторінки й підвал.
+   --bottom-nav-h — висота меню: на неї піднімаються спливаючі повідомлення й прикріплені знизу кнопки. */
+@media (max-width: 767px) {
+  html.shop-bottom-nav,
+  html.admin-bottom-nav {
+    --bottom-nav-h: calc(4rem + env(safe-area-inset-bottom));
+  }
+  html.shop-bottom-nav body,
   html.admin-bottom-nav body {
-    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+    padding-bottom: var(--bottom-nav-h);
   }
 }

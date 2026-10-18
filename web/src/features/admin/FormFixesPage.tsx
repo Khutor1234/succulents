@@ -106,7 +106,7 @@ export function FormFixesPage() {
                   </li>
                 ))}
               </ul>
-              <div className="sticky bottom-0 z-30 -mx-4 border-t-2 border-sand-200 bg-sand-100/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
+              <div className="sticky bottom-[var(--bottom-nav-h,0px)] z-30 -mx-4 border-t-2 border-sand-200 bg-sand-100/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
                 <Button onClick={() => apply.mutate(chosen)} disabled={apply.isPending || chosen.length === 0}>
                   {apply.isPending ? t('admin.import.applying') : t('admin.formFixes.apply', { count: chosen.length })}
                 </Button>

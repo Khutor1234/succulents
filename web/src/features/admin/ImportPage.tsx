@@ -63,7 +63,7 @@ export function ImportPage() {
         }}
         placeholder={t('admin.import.paste')}
         rows={6}
-        className="w-full rounded-xl border-2 border-sand-200 bg-sand-50 px-3.5 py-2.5 font-mono text-sm focus:border-brand-500 focus:outline-none"
+        className="w-full rounded-xl border-2 border-sand-200 bg-sand-50 px-3.5 py-2.5 font-mono text-base focus:border-brand-500 md:text-sm focus:outline-none"
       />
 
       {isLoading && <p className="mt-3 text-sand-700">…</p>}

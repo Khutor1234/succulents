@@ -1,8 +1,9 @@
 import { AlertTriangle, ArrowLeft, ArrowRight, Clock, ExternalLink, ImagePlus, Lightbulb, Search, Trash2 } from 'lucide-react'
-import { Fragment, useRef, type ReactNode } from 'react'
+import { Fragment, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { ICON } from '../../shared/icon'
+import { ImageCropper } from '../../shared/ImageCropper'
 import { PageTitle } from '../../shared/ui'
 import { ARTICLES, BLOG_CATEGORIES, categoryLabel, findArticle, SOIL_RECIPES, type Article, type BlogCategory, type Block } from './articles'
 import { ArticleGrid, Cover } from './ArticleCards'
@@ -210,7 +211,7 @@ export function ArticlePage() {
 
   return (
     <div>
-      <Link to="/blog" className="group inline-flex items-center gap-1.5 font-bold text-brand-600 hover:underline">
+      <Link to="/blog" className="group inline-flex min-h-11 items-center gap-1.5 font-bold text-brand-600 hover:underline">
         <ArrowLeft {...ICON} className="transition-transform group-hover:-translate-x-1" />
         {t('blog.title')}
       </Link>
@@ -256,8 +257,21 @@ function CoverEditor({ slug, hasCover }: { slug: string; hasCover: boolean }) {
   const { t } = useTranslation()
   const save = useSetArticleCover(slug)
   const input = useRef<HTMLInputElement>(null)
+  // Вибране фото спершу відкривається в редакторі обрізання (широка рамка, як у заставки)
+  const [picked, setPicked] = useState<File | null>(null)
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
+      {picked && (
+        <ImageCropper
+          file={picked}
+          aspect={16 / 9}
+          onDone={(file) => {
+            setPicked(null)
+            save.mutate(file)
+          }}
+          onCancel={() => setPicked(null)}
+        />
+      )}
       <input
         ref={input}
         type="file"
@@ -265,7 +279,7 @@ function CoverEditor({ slug, hasCover }: { slug: string; hasCover: boolean }) {
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0]
-          if (file) save.mutate(file)
+          if (file) setPicked(file)
           e.target.value = ''
         }}
       />

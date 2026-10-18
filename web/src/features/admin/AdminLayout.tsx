@@ -46,8 +46,8 @@ export function AdminLayout() {
 
   return (
     <div>
-      {/* Комп'ютер і планшет: вкладки каталогу зліва, «Замовлення» праворуч */}
-      <nav className="mb-6 hidden items-center gap-3 sm:flex">
+      {/* Комп'ютер: вкладки каталогу зліва, «Замовлення» праворуч */}
+      <nav className="mb-6 hidden items-center gap-3 md:flex">
         <div className="flex gap-2">
           {TABS.map(({ to, label, Icon }) => (
             <NavLink key={to} to={to} className={tab}>
@@ -76,7 +76,7 @@ export function AdminLayout() {
       {!inForm && (
         <nav
           aria-label={t('admin.menu')}
-          className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-sand-200 bg-sand-50/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:hidden"
+          className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-sand-200 bg-sand-50/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
         >
           {moreOpen && (
             <div className="absolute inset-x-3 bottom-full mb-2 animate-rise rounded-3xl border-2 border-sand-200 bg-sand-50 p-2 shadow-[0_-12px_30px_-12px_rgba(43,33,24,0.3)]">

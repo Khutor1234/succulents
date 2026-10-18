@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, EyeOff, Gift, Pencil, Shovel, Truck } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, EyeOff, Gift, Pencil, Truck } from 'lucide-react'
 import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, NavLink, useParams } from 'react-router'
@@ -170,15 +170,13 @@ export function HomePage() {
               {t('home.toCatalog')}
               <ArrowRight {...ICON} className="transition-transform group-hover:translate-x-1" />
             </Link>
-            {isVisible('soil') && (
-              <Link
-                to="/c/soil"
-                className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97]"
-              >
-                <Shovel {...ICON} />
-                {t('home.soil')}
-              </Link>
-            )}
+            <Link
+              to="/blog"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97]"
+            >
+              <BookOpen {...ICON} />
+              {t('blog.title')}
+            </Link>
           </div>
         </div>
         <div className="grid grid-rows-[1fr_auto] gap-5">
@@ -309,7 +307,7 @@ export function ProductPage() {
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
-        <Link to={`/c/${product.category}`} className="group inline-flex items-center gap-1.5 font-bold text-brand-600 hover:underline">
+        <Link to={`/c/${product.category}`} className="group inline-flex min-h-11 items-center gap-1.5 font-bold text-brand-600 hover:underline">
           <ArrowLeft {...ICON} className="transition-transform group-hover:-translate-x-1" />
           {t('product.backShort')}
         </Link>

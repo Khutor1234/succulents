@@ -19,7 +19,7 @@ export function formatDate(order: { createdAt?: { toDate(): Date } }) {
 export function BackToAccount() {
   const { t } = useTranslation()
   return (
-    <Link to="/account" className="group mb-4 inline-flex items-center gap-1.5 font-bold text-brand-600 hover:underline">
+    <Link to="/account" className="group mb-4 inline-flex min-h-11 items-center gap-1.5 font-bold text-brand-600 hover:underline">
       <ArrowLeft {...ICON} className="transition-transform group-hover:-translate-x-1" />
       {t('account.title')}
     </Link>

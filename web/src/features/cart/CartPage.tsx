@@ -47,7 +47,7 @@ export function CartPage() {
           return (
             // Сітка: фото зліва на всю висоту, праворуч назва й ціна, під ними лічильник і сума —
             // так рядок не «розлазиться» на вузьких екранах (iPhone ≈ 390px).
-            <li key={item.productId} className="grid grid-cols-[72px_minmax(0,1fr)] gap-x-3 gap-y-2 p-3 sm:grid-cols-[88px_minmax(0,1fr)] sm:p-4">
+            <li key={item.productId} className="grid grid-cols-[72px_minmax(0,1fr)] gap-x-3 gap-y-3 p-4 sm:grid-cols-[88px_minmax(0,1fr)] sm:p-4">
               <Link to={`/product/${item.slug}`} className="row-span-2 self-start">
                 <ProductImage src={item.image} alt={name} />
               </Link>
@@ -63,7 +63,7 @@ export function CartPage() {
                   onClick={() => remove(item.productId)}
                   aria-label={`${t('cart.remove')}: ${name}`}
                   title={t('cart.remove')}
-                  className="-mt-1 -mr-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-red-700 hover:bg-red-50"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-red-700/30 text-red-700 transition-colors hover:border-red-700 hover:bg-red-50"
                 >
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />

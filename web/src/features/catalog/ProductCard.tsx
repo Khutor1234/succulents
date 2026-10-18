@@ -105,7 +105,7 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
           })}
       </div>
       {photoCount > 1 && (
-        <div className="mt-2 flex justify-center gap-1.5">
+        <div className="mt-1 flex justify-center">
           {product.images.map((src, i) => (
             <button
               key={`${i}-${src}`}
@@ -113,7 +113,7 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
               onClick={() => showPhoto(i)}
               aria-label={t('gallery.show', { n: i + 1 })}
               aria-current={i === photo}
-              className="flex h-4 items-center px-0.5"
+              className="flex h-6 min-w-6 items-center justify-center"
             >
               <span className={`block h-1.5 rounded-full transition-all ${i === photo ? 'w-4 bg-brand-600' : 'w-1.5 bg-sand-300'}`} />
             </button>

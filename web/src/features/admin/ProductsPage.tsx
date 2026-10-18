@@ -174,7 +174,7 @@ export function ProductsPage() {
         <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-brand-600">{t('admin.products')}</h1>
         <Link
           to="/admin/import"
-          className="ml-auto hidden min-h-11 items-center gap-2 rounded-xl bg-sand-200 px-4 font-bold text-ink sm:inline-flex transition-transform hover:bg-sand-300 active:scale-[0.97]"
+          className="ml-auto hidden min-h-11 items-center gap-2 rounded-xl bg-sand-200 px-4 font-bold text-ink md:inline-flex transition-transform hover:bg-sand-300 active:scale-[0.97]"
         >
           <FileSpreadsheet {...ICON} />
           {/* На телефоні імпорт — у нижньому меню «Ще» */}
@@ -182,7 +182,7 @@ export function ProductsPage() {
         </Link>
         <Link
           to={category ? `/admin/products/new?category=${category}` : '/admin/products/new'}
-          className="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-600 px-3 font-bold text-sand-50 sm:ml-0 sm:gap-2 sm:px-4 transition-transform hover:bg-brand-700 active:scale-[0.97]"
+          className="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-600 px-3 font-bold text-sand-50 md:ml-0 sm:gap-2 sm:px-4 transition-transform hover:bg-brand-700 active:scale-[0.97]"
         >
           <Plus {...ICON} />
           {t('admin.addProduct')}
@@ -243,7 +243,7 @@ export function ProductsPage() {
             <select
               value={sort}
               onChange={(e) => update({ sort: e.target.value === DEFAULT_SORT ? '' : e.target.value })}
-              className="min-h-12 w-full rounded-xl border-2 border-sand-200 bg-sand-50 px-3 font-bold outline-none focus:border-brand-500"
+              className="min-h-12 w-full rounded-xl border-2 border-sand-200 bg-sand-50 px-3 text-base font-bold outline-none focus:border-brand-500 md:text-sm"
             >
               {SORTS.map((s) => (
                 <option key={s} value={s}>
@@ -331,12 +331,12 @@ export function ProductsPage() {
               key={p.id}
               id={anchors.has(p.id) ? `p-${p.id}` : undefined}
               style={{ animationDelay: `${Math.min(i % PAGE, 10) * 30}ms` }}
-              className={`grid animate-rise scroll-mt-[5.5rem] grid-cols-[64px_minmax(0,1fr)] items-center gap-x-3 gap-y-3 rounded-3xl border-2 bg-sand-50 p-3 sm:grid-cols-[72px_minmax(0,1fr)_auto_auto] sm:gap-x-4 ${
+              className={`grid animate-rise scroll-mt-[5.5rem] grid-cols-[64px_minmax(0,1fr)] items-center gap-x-3 gap-y-3 rounded-3xl border-2 bg-sand-50 p-4 sm:grid-cols-[72px_minmax(0,1fr)_auto_auto] sm:gap-x-4 ${
                 p.isActive ? 'border-sand-200' : 'border-dashed border-sand-300 bg-sand-100'
               }`}
             >
               {/* Фото й назва — на сторінку товару в магазині (як його бачать покупці); редагування — окремою кнопкою */}
-              <Link to={`/product/${p.slug}`} className={p.isActive ? '' : 'opacity-60'}>
+              <Link to={`/product/${p.slug}`} aria-label={pick(p.name, lang)} className={p.isActive ? '' : 'opacity-60'}>
                 {p.images[0] ? (
                   <img src={imageUrl(p.images[0])} alt="" className="aspect-square w-full rounded-2xl object-cover" />
                 ) : (
