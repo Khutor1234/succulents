@@ -19,6 +19,8 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'c/:category', element: <CategoryPage /> },
       { path: 'product/:slug', element: <ProductPage /> },
+      { path: 'blog', lazy: lazyPage(() => import('../features/blog/BlogPages').then((m) => ({ default: m.BlogPage }))) },
+      { path: 'blog/:slug', lazy: lazyPage(() => import('../features/blog/BlogPages').then((m) => ({ default: m.ArticlePage }))) },
       { path: 'search', lazy: lazyPage(() => import('../features/catalog/SearchPage').then((m) => ({ default: m.SearchPage }))) },
       { path: 'cart', element: <CartPage /> },
       // Улюблене живе в кабінеті; стара адреса веде туди

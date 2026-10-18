@@ -38,6 +38,22 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Коментарі під статтями блогу: читають усі, пишуть ті, хто увійшов (лише від свого імені),
+    // змінювати не можна; видалити — автор або продавець.
+    match /blog/{slug}/comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'text', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 40
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 2 && request.resource.data.text.size() <= 1000
+        && request.resource.data.createdAt == request.time;
+      allow update: if false;
+      allow delete: if isSignedIn() && (resource.data.uid == request.auth.uid || isSeller());
+    }
+
     match /orders/{orderId} {
       allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isSeller();
       // Створення тільки через Cloud Function createOrder (і для гостей, і для клієнтів).

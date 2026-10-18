@@ -30,6 +30,12 @@ const preferRedirect = () =>
 /** Людина сама закрила вікно Google — це не помилка, нічого не показуємо. */
 const CANCELLED = ['auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/user-cancelled']
 
+/** Куди повернутись після входу: /login?next=/blog/... (лише адреси цього сайту). */
+function nextPath() {
+  const next = new URLSearchParams(location.search).get('next')
+  return next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
+}
+
 export function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -41,7 +47,7 @@ export function LoginPage() {
   const user = useAuth((s) => s.user)
 
   // Повернулись зі сторінки Google (вхід переходом): якщо щось пішло не так — показуємо помилку,
-  // а коли вхід вдався — ведемо на головну, як і після звичайного входу.
+  // а коли вхід вдався — ведемо назад (або на головну), як і після звичайного входу.
   useEffect(() => {
     getRedirectResult(auth)
       .then((result) => result && track('login', { method: 'google-redirect' }))
@@ -52,7 +58,7 @@ export function LoginPage() {
       })
   }, [])
   useEffect(() => {
-    if (user) navigate('/', { replace: true })
+    if (user) navigate(nextPath(), { replace: true })
   }, [user, navigate])
 
   async function run(action: () => Promise<unknown>, method: string) {
@@ -60,7 +66,7 @@ export function LoginPage() {
     try {
       await action()
       track('login', { method })
-      navigate('/')
+      navigate(nextPath())
     } catch (e) {
       if (e instanceof FirebaseError && CANCELLED.includes(e.code)) return
       // Неправильний пароль — звичайна річ, лише «крихта»; решта (напр. збій Google) — у Sentry.

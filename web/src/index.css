@@ -16,6 +16,8 @@
   --color-sand-700: #6e5a44;
 
   /* Захід сонця — акцент. 600 — для фону під світлим текстом і для цін (контраст 4.5:1). */
+  --color-sunset-100: #fbe0c8;
+  --color-sunset-200: #f5c7a0;
   --color-sunset-500: #d9662f;
   --color-sunset-600: #b9501f;
   --color-sunset-700: #973f17;
@@ -70,6 +72,25 @@
   @keyframes toast-bar {
     from { transform: scaleX(1); }
     to { transform: scaleX(0); }
+  }
+
+  /* Ілюстрації в блозі: краплі води падають і стікають з горщика, сонце «дихає» */
+  --animate-fall: fall 900ms ease-in infinite;
+  --animate-drip: drip 1100ms ease-in infinite;
+  --animate-glow: glow 3s ease-in-out infinite;
+  @keyframes fall {
+    from { opacity: 0; transform: translateY(-14px); }
+    20% { opacity: 1; }
+    to { opacity: 0; transform: translateY(26px); }
+  }
+  @keyframes drip {
+    from { opacity: 0; transform: translateY(0) scale(0.6); }
+    25% { opacity: 1; transform: translateY(2px) scale(1); }
+    to { opacity: 0; transform: translateY(26px) scale(1); }
+  }
+  @keyframes glow {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
   }
 }
 

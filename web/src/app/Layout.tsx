@@ -1,7 +1,7 @@
 import { signOut } from 'firebase/auth'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, Outlet, useLocation } from 'react-router'
+import { Link, Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { AccountBanner } from '../features/auth/AccountBanner'
 import { useAuth } from '../features/auth/authStore'
 import { CartToast } from '../features/cart/CartToast'
@@ -11,7 +11,7 @@ import { useBonusBalance } from '../features/account/api'
 import { auth } from '../firebase/config'
 import { formatPrice } from '../lib/format'
 import { ICON } from '../shared/icon'
-import { Construction, LogIn, LogOut, Search, ShieldCheck, ShoppingBag, User } from 'lucide-react'
+import { BookOpen, Construction, LogIn, LogOut, Search, ShieldCheck, ShoppingBag, User } from 'lucide-react'
 
 const YEAR = new Date().getFullYear()
 /** Плашка «у розробці» над шапкою. Прибрати — VITE_UNDER_CONSTRUCTION=false у web/.env.production і опублікувати. */
@@ -111,6 +111,10 @@ export function Layout() {
             <Link to="/search" aria-label={t('search.open')} title={t('search.open')} className={NAV_BTN + ' hover:bg-sand-200'}>
               <Search {...ICON} />
             </Link>
+            <Link to="/blog" aria-label={t('blog.title')} title={t('blog.title')} className={NAV_BTN + ' hover:bg-sand-200'}>
+              <BookOpen {...ICON} />
+              <span className="hidden md:inline">{t('blog.title')}</span>
+            </Link>
             {role === 'seller' && (
               <Link to="/admin" aria-label={t('nav.admin')} className={NAV_BTN + ' hover:bg-sand-200'}>
                 <ShieldCheck {...ICON} />
@@ -163,10 +167,15 @@ export function Layout() {
         <Outlet />
       </main>
       <CartToast />
+      {/* Нова сторінка відкривається зверху; «Назад» повертає туди, де людина була */}
+      <ScrollRestoration />
       <footer className="bg-ink text-sand-300">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-9 text-sm">
           <Logo className="text-xl text-sand-100" bg="fill-ink" />
           <span>{t('footer.delivery')}</span>
+          <Link to="/blog" className="font-bold text-sand-100 hover:underline">
+            {t('blog.title')}
+          </Link>
           <span className="ml-auto">© {YEAR}</span>
         </div>
       </footer>

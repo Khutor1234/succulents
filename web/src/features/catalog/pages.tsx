@@ -1,4 +1,5 @@
 import { ArrowLeft, ArrowRight, Gift, Pencil, Shovel, Truck } from 'lucide-react'
+import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, NavLink, useParams } from 'react-router'
 import { ICON } from '../../shared/icon'
@@ -18,6 +19,9 @@ import { PlantFilters, TagBadges } from './PlantFilters'
 import { SORTS, usePlantFilters, type SortOrder } from './usePlantFilters'
 import { ProductGrid } from './ProductCard'
 import { ProductGallery } from './ProductGallery'
+
+// Статті на головній довантажуються окремо — щоб тексти блогу не гальмували перше відкриття сайту
+const HomeArticles = lazy(() => import('../blog/HomeArticles'))
 
 function Status({ isLoading, isError }: { isLoading: boolean; isError: boolean }) {
   const { t } = useTranslation()
@@ -198,6 +202,20 @@ export function HomePage() {
         </div>
         <Status isLoading={latest.isLoading} isError={latest.isError} />
         {shown && <ProductGrid products={shown} />}
+      </section>
+
+      {/* Блог: три свіжі статті про догляд */}
+      <section>
+        <div className="mb-5 flex flex-wrap items-baseline gap-4">
+          <h2 className="font-display text-4xl font-extrabold text-brand-600">{t('blog.homeTitle')}</h2>
+          <Link to="/blog" className="group ml-auto inline-flex items-center gap-1.5 font-bold text-brand-600 hover:underline">
+            {t('blog.all')}
+            <ArrowRight {...ICON} className="transition-transform group-hover:translate-x-1" />
+          </Link>
+        </div>
+        <Suspense fallback={null}>
+          <HomeArticles />
+        </Suspense>
       </section>
     </div>
   )
