@@ -437,7 +437,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
       )}
 
       <div className="sticky bottom-0 z-30 -mx-4 flex gap-3 border-t-2 border-sand-200 bg-sand-100/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
-        <Button type="submit" disabled={isSubmitting || uploading} className="flex-1 sm:flex-none">
+        <Button type="submit" disabled={isSubmitting || uploading} className="min-w-0 flex-1 basis-0 whitespace-nowrap sm:flex-none sm:basis-auto">
           <Check {...ICON} />
           {isSubmitting ? t('admin.saving') : t('admin.save')}
         </Button>
@@ -448,7 +448,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
             onClick={saveAsNew}
             disabled={isSubmitting || uploading}
             title={t('admin.saveAsNewHint')}
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-brand-600 px-4 font-bold text-brand-600 hover:bg-brand-600 hover:text-sand-50 disabled:opacity-50 sm:flex-none"
+            className="inline-flex min-h-11 min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 rounded-xl border-2 border-brand-600 px-2 font-bold whitespace-nowrap sm:basis-auto text-brand-600 hover:bg-brand-600 hover:text-sand-50 disabled:opacity-50 sm:flex-none"
           >
             <CopyPlus {...ICON} />
             <span className="sm:hidden">{t('admin.saveAsNewShort')}</span>
@@ -457,10 +457,13 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
         )}
         <Link
           to={product ? `/admin/products?category=${product.category}` : '/admin/products'}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-sand-200 px-5 font-bold hover:bg-sand-300"
+          aria-label={t('admin.cancel')}
+          title={t('admin.cancel')}
+          className="inline-flex min-h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-sand-200 font-bold hover:bg-sand-300 sm:w-auto sm:px-5"
         >
           <X {...ICON} />
-          {t('admin.cancel')}
+          {/* На телефоні — лише хрестик, щоб усі кнопки влізли в рядок */}
+          <span className="hidden sm:inline">{t('admin.cancel')}</span>
         </Link>
       </div>
     </form>

@@ -349,6 +349,8 @@ export const uk = {
     editNamed: 'Редагувати «{{name}}»',
     deleteNamed: 'Видалити «{{name}}»',
     copy: 'Створити копію',
+    copyShort: 'Копія',
+    deleteShort: 'Видалити',
     saveAsNew: 'Зберегти як новий товар',
     saveAsNewShort: 'Як новий',
     saveAsNewHint: 'Новий товар зі змінами, цей лишиться як був.',

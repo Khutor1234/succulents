@@ -273,7 +273,8 @@ export function ProductsPage() {
                 </p>
               </div>
 
-              <div className="col-span-2 grid grid-cols-[1fr_1fr_auto_auto] gap-2 sm:col-span-1 sm:flex">
+              {/* На телефоні — два рядки по дві кнопки; на комп’ютері — в один рядок, копія й видалення значками */}
+              <div className="col-span-2 grid grid-cols-2 gap-2 sm:col-span-1 sm:flex">
                 <Link
                   to={`/admin/products/${p.id}`}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97]"
@@ -296,9 +297,10 @@ export function ProductsPage() {
                   to={`/admin/products/new?copy=${p.id}`}
                   aria-label={t('admin.copyNamed', { name: pick(p.name, lang) })}
                   title={t('admin.copy')}
-                  className="inline-flex min-h-12 w-12 items-center justify-center rounded-xl border-2 border-brand-600/40 text-brand-600 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-sand-50 active:scale-[0.97]"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border-2 border-brand-600/40 px-3 text-sm font-bold text-brand-600 sm:min-h-12 sm:w-12 sm:px-0 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-sand-50 active:scale-[0.97]"
                 >
                   <Copy {...ICON} />
+                  <span className="sm:hidden">{t('admin.copyShort')}</span>
                 </Link>
                 {/* Видалення назавжди — з підтвердженням */}
                 <button
@@ -307,9 +309,10 @@ export function ProductsPage() {
                   onClick={() => window.confirm(t('admin.deleteProductConfirm', { name: pick(p.name, lang) })) && remove.mutate(p.id)}
                   aria-label={t('admin.deleteNamed', { name: pick(p.name, lang) })}
                   title={t('admin.deleteProduct')}
-                  className="inline-flex min-h-12 w-12 items-center justify-center rounded-xl border-2 border-red-700/40 text-red-700 transition-colors hover:border-red-700 hover:bg-red-700 hover:text-white active:scale-[0.97] disabled:opacity-50"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border-2 border-red-700/40 px-3 text-sm font-bold text-red-700 sm:min-h-12 sm:w-12 sm:px-0 transition-colors hover:border-red-700 hover:bg-red-700 hover:text-white active:scale-[0.97] disabled:opacity-50"
                 >
                   <Trash2 {...ICON} />
+                  <span className="sm:hidden">{t('admin.deleteShort')}</span>
                 </button>
               </div>
             </li>
