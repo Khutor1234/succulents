@@ -38,6 +38,13 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Стаття блогу (самі тексти — у коді сайту): тут лише заставка, яку додає продавець. Бачать усі.
+    match /blog/{slug} {
+      allow read: if true;
+      allow write: if isSeller()
+        && request.resource.data.keys().hasOnly(['cover', 'updatedAt']);
+    }
+
     // Коментарі під статтями блогу: читають усі, пишуть ті, хто увійшов (лише від свого імені),
     // змінювати не можна; видалити — автор або продавець.
     match /blog/{slug}/comments/{commentId} {

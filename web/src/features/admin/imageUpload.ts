@@ -21,9 +21,18 @@ async function resizeToWebp(file: File): Promise<Blob> {
   )
 }
 
-export async function uploadProductImage(file: File): Promise<string> {
+export function uploadProductImage(file: File): Promise<string> {
+  return uploadImage(file, 'products')
+}
+
+/** Заставка статті блогу — у власній теці сховища. */
+export function uploadBlogCover(file: File): Promise<string> {
+  return uploadImage(file, 'blog')
+}
+
+async function uploadImage(file: File, folder: 'products' | 'blog'): Promise<string> {
   const blob = await resizeToWebp(file)
-  const path = `products/${crypto.randomUUID()}.webp`
+  const path = `${folder}/${crypto.randomUUID()}.webp`
   const fileRef = ref(storage, path)
   await uploadBytes(fileRef, blob, {
     contentType: 'image/webp',

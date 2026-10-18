@@ -121,3 +121,10 @@ body {
   @apply bg-sand-100 font-sans text-ink antialiased;
   overscroll-behavior-y: none;
 }
+
+/* Адмінка на телефоні: місце під нижнє меню (AdminLayout), щоб воно не закривало низ сторінки й підвал */
+@media (max-width: 639px) {
+  html.admin-bottom-nav body {
+    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+  }
+}

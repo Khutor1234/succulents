@@ -18,6 +18,8 @@ export function ProductGallery({ images, alt }: { images: string[]; alt: string 
   const [active, setActive] = useState(0)
   const [viewing, setViewing] = useState<number | null>(null)
   const [origin, setOrigin] = useState<string | null>(null)
+  // Телефон: свайп по основному фото — наступне/попереднє, без відкриття перегляду
+  const swipeX = useRef<number | null>(null)
 
   if (images.length === 0) {
     return (
@@ -42,6 +44,13 @@ export function ProductGallery({ images, alt }: { images: string[]; alt: string 
         onClick={() => setViewing(current)}
         onMouseMove={onMove}
         onMouseLeave={() => setOrigin(null)}
+        onTouchStart={(e) => (swipeX.current = e.touches[0].clientX)}
+        onTouchEnd={(e) => {
+          if (swipeX.current === null) return
+          const dx = e.changedTouches[0].clientX - swipeX.current
+          swipeX.current = null
+          if (images.length > 1 && Math.abs(dx) > 50) setActive((current + (dx < 0 ? 1 : -1) + images.length) % images.length)
+        }}
         aria-label={t('gallery.open', { n: current + 1, count: images.length })}
         className="group relative block w-full cursor-zoom-in overflow-hidden rounded-2xl"
       >

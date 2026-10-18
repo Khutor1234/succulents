@@ -13,6 +13,7 @@ import type { Product } from '../../lib/types'
 import { Button, Input, Section, Select, Textarea } from '../../shared/ui'
 import { useCategories } from '../catalog/categories'
 import { isSlugTaken, useDeleteProduct, useProductById, useSaveProduct, useToggleProductActive } from './api'
+import { BackLink } from './BackLink'
 import { ImagesEditor } from './ImagesEditor'
 import {
   cultivarOf,
@@ -198,6 +199,8 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
       }}
       className="space-y-6"
     >
+      {/* На телефоні верхнього меню адмінки немає — повернутися до списку можна стрілкою (або хрестиком унизу) */}
+      <BackLink fallback={product ? `/admin/products?category=${product.category}` : '/admin/products'} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-3xl font-extrabold text-brand-600">{product ? t('admin.editProduct') : t('admin.createProduct')}</h1>
         {/* Дії з уже існуючим товаром — іконками праворуч від заголовка */}

@@ -1,12 +1,14 @@
-import { AlertTriangle, ArrowLeft, ArrowRight, Clock, ExternalLink, Lightbulb, Search } from 'lucide-react'
-import { Fragment, type ReactNode } from 'react'
+import { AlertTriangle, ArrowLeft, ArrowRight, Clock, ExternalLink, ImagePlus, Lightbulb, Search, Trash2 } from 'lucide-react'
+import { Fragment, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { ICON } from '../../shared/icon'
 import { PageTitle } from '../../shared/ui'
 import { ARTICLES, BLOG_CATEGORIES, categoryLabel, findArticle, SOIL_RECIPES, type Article, type BlogCategory, type Block } from './articles'
 import { ArticleGrid, Cover } from './ArticleCards'
+import { useAuth } from '../auth/authStore'
 import { Comments } from './Comments'
+import { useArticleCovers, useSetArticleCover } from './covers'
 import { FIGURES } from './Illustrations'
 
 const formatDate = (date: string) => new Date(date).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -188,6 +190,8 @@ export function ArticlePage() {
   const { t } = useTranslation()
   const { slug = '' } = useParams()
   const article = findArticle(slug)
+  const isSeller = useAuth((s) => s.role === 'seller')
+  const { data: covers } = useArticleCovers()
 
   if (!article) {
     return (
@@ -211,7 +215,8 @@ export function ArticlePage() {
         {t('blog.title')}
       </Link>
       <article className="mx-auto mt-5 max-w-2xl">
-        <Cover icon={article.icon} big />
+        <Cover icon={article.icon} big cover={covers?.get(article.slug)} />
+        {isSeller && <CoverEditor slug={article.slug} hasCover={!!covers?.get(article.slug)} />}
         <Link
           to={`/blog?cat=${article.category}`}
           className="mt-6 inline-block rounded-full bg-sunset-100 px-3 py-1 text-xs font-bold tracking-wider text-sunset-700 uppercase hover:bg-sunset-200"
@@ -242,6 +247,50 @@ export function ArticlePage() {
           <ArticleGrid articles={others} />
         </section>
       )}
+    </div>
+  )
+}
+
+/** Продавцю під обкладинкою: додати чи змінити фото-заставку статті й прибрати її. */
+function CoverEditor({ slug, hasCover }: { slug: string; hasCover: boolean }) {
+  const { t } = useTranslation()
+  const save = useSetArticleCover(slug)
+  const input = useRef<HTMLInputElement>(null)
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <input
+        ref={input}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) save.mutate(file)
+          e.target.value = ''
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => input.current?.click()}
+        disabled={save.isPending}
+        className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97] disabled:opacity-60"
+      >
+        <ImagePlus {...ICON} />
+        {save.isPending ? t('blog.coverUploading') : t(hasCover ? 'blog.coverChange' : 'blog.coverAdd')}
+      </button>
+      {hasCover && (
+        <button
+          type="button"
+          onClick={() => window.confirm(t('blog.coverRemoveConfirm')) && save.mutate(null)}
+          disabled={save.isPending}
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-red-700/40 px-4 font-bold text-red-700 hover:border-red-700 hover:bg-red-700 hover:text-white disabled:opacity-60"
+        >
+          <Trash2 {...ICON} />
+          {t('blog.coverRemove')}
+        </button>
+      )}
+      <span className="text-sm text-sand-700">{t('blog.coverHint')}</span>
+      {save.isError && <p className="w-full text-sm text-red-700">{t('admin.uploadError')}</p>}
     </div>
   )
 }

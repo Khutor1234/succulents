@@ -18,7 +18,9 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
+import { imageUrl } from '../../firebase/config'
 import { categoryLabel, type Article, type ArticleIcon } from './articles'
+import { useArticleCovers } from './covers'
 
 // Картки статей окремо від сторінки статті: головна показує їх, не завантажуючи важкі ілюстрації.
 
@@ -41,11 +43,25 @@ const COVERS: Record<ArticleIcon, { icon: LucideIcon; tint: string }> = {
 }
 
 
-export function Cover({ icon, big }: { icon: ArticleIcon; big?: boolean }) {
+/**
+ * Обкладинка статті. Є фото-заставка (`cover`) — показуємо її, а при наведенні мишкою вона плавно зникає
+ * і видно значок теми, як раніше. Немає фото — одразу значок.
+ */
+export function Cover({ icon, big, cover }: { icon: ArticleIcon; big?: boolean; cover?: string }) {
   const { icon: Icon, tint } = COVERS[icon]
   return (
-    <div className={`flex items-center justify-center rounded-2xl ${tint} ${big ? 'h-40 sm:h-52' : 'aspect-[16/9]'}`}>
+    <div
+      className={`group/cover relative flex items-center justify-center overflow-hidden rounded-2xl ${tint} ${big ? 'h-40 sm:h-64' : 'aspect-[16/9]'}`}
+    >
       <Icon size={big ? 64 : 44} strokeWidth={1.6} aria-hidden />
+      {cover && (
+        <img
+          src={imageUrl(cover)}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500 group-hover/cover:opacity-0"
+        />
+      )}
     </div>
   )
 }
@@ -54,12 +70,13 @@ export function Cover({ icon, big }: { icon: ArticleIcon; big?: boolean }) {
 /** Картка статті — у списку блогу й на головній. */
 export function ArticleCard({ article }: { article: Article }) {
   const { t } = useTranslation()
+  const { data: covers } = useArticleCovers()
   return (
     <Link
       to={`/blog/${article.slug}`}
       className="group flex flex-col rounded-3xl border-2 border-sand-200 bg-sand-50 p-3 transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-1 hover:border-sand-300 hover:shadow-[0_12px_30px_-12px_rgba(43,33,24,0.25)]"
     >
-      <Cover icon={article.icon} />
+      <Cover icon={article.icon} cover={covers?.get(article.slug)} />
       <div className="mx-1.5 mt-3 flex flex-1 flex-col">
         <p className="mb-1 text-xs font-bold tracking-wider text-sunset-600 uppercase">{categoryLabel(article.category)}</p>
         <h3 className="font-display text-lg leading-snug font-extrabold group-hover:text-brand-600">{article.title}</h3>

@@ -174,15 +174,15 @@ export function ProductsPage() {
         <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-brand-600">{t('admin.products')}</h1>
         <Link
           to="/admin/import"
-          className="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-sand-200 px-3 sm:gap-2 sm:px-4 font-bold text-ink transition-transform hover:bg-sand-300 active:scale-[0.97]"
+          className="ml-auto hidden min-h-11 items-center gap-2 rounded-xl bg-sand-200 px-4 font-bold text-ink sm:inline-flex transition-transform hover:bg-sand-300 active:scale-[0.97]"
         >
           <FileSpreadsheet {...ICON} />
-          <span className="sm:hidden">{t('admin.importShort')}</span>
-          <span className="hidden sm:inline">{t('admin.importFromSheet')}</span>
+          {/* На телефоні імпорт — у нижньому меню «Ще» */}
+          {t('admin.importFromSheet')}
         </Link>
         <Link
           to={category ? `/admin/products/new?category=${category}` : '/admin/products/new'}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-600 px-3 sm:gap-2 sm:px-4 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97]"
+          className="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-600 px-3 font-bold text-sand-50 sm:ml-0 sm:gap-2 sm:px-4 transition-transform hover:bg-brand-700 active:scale-[0.97]"
         >
           <Plus {...ICON} />
           {t('admin.addProduct')}
@@ -353,26 +353,36 @@ export function ProductsPage() {
                 >
                   {pick(p.name, lang)}
                 </Link>
-                <p className="mt-0.5 text-sm text-sand-700">
-                  {nameOf(p.category)}
-                  {!p.isActive && <span className="ml-2 font-bold">· {t('admin.hidden')}</span>}
-                </p>
+                {/* Категорію пишемо лише у списку «Усі» — у вибраній категорії вона й так зрозуміла */}
+                {(!category || !p.isActive) && (
+                  <p className="mt-0.5 text-sm text-sand-700">
+                    {!category && nameOf(p.category)}
+                    {!p.isActive && <span className={!category ? 'ml-2 font-bold' : 'font-bold'}>{!category && '· '}{t('admin.hidden')}</span>}
+                  </p>
+                )}
                 <TagBadges tags={p.tags} className="mt-1.5" />
+                {/* Телефон: ціна й залишок одним рядком під назвою — без окремого рядка картки */}
+                <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 text-sm sm:hidden">
+                  <span className="font-display text-base font-extrabold text-sunset-600">{formatPrice(p.price, lang)}</span>
+                  <span className={p.stock === 0 ? 'font-bold text-red-700' : 'text-sand-700'}>
+                    {p.stock === 0 ? t('product.outOfStock') : t('admin.inStockShort', { count: p.stock })}
+                  </span>
+                </p>
               </div>
 
-              {/* Ціна й залишок — на телефоні окремим рядком під назвою */}
-              <div className="col-span-2 flex items-baseline justify-between gap-4 sm:col-span-1 sm:block sm:w-36 sm:text-right">
+              {/* Ціна й залишок — окремою колонкою (на комп’ютері) */}
+              <div className="hidden sm:block sm:w-36 sm:text-right">
                 <p className="font-display text-lg font-extrabold whitespace-nowrap text-sunset-600">{formatPrice(p.price, lang)}</p>
                 <p className={`text-sm whitespace-nowrap ${p.stock === 0 ? 'font-bold text-red-700' : 'text-sand-700'}`}>
                   {p.stock === 0 ? t('product.outOfStock') : t('admin.inStockShort', { count: p.stock })}
                 </p>
               </div>
 
-              {/* На телефоні — два рядки по дві кнопки; на комп’ютері — в один рядок, копія й видалення значками */}
-              <div className="col-span-2 grid grid-cols-2 gap-2 sm:col-span-1 sm:flex">
+              {/* Один рядок: «Редагувати» на всю решту ширини, решта — значками (на комп’ютері «Приховати/Показати» з підписом) */}
+              <div className="col-span-2 flex gap-2 sm:col-span-1">
                 <Link
                   to={`/admin/products/${p.id}`}
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97]"
+                  className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97] sm:flex-none"
                 >
                   <Pencil {...ICON} />
                   {t('admin.edit')}
@@ -380,22 +390,22 @@ export function ProductsPage() {
                 <button
                   disabled={toggle.isPending}
                   onClick={() => toggle.mutate({ id: p.id, isActive: !p.isActive, stock: p.stock })}
-                  className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 font-bold transition-transform active:scale-[0.97] disabled:opacity-50 sm:w-40 ${
+                  aria-label={t(p.isActive ? 'admin.hideNamed' : 'admin.showNamed', { name: pick(p.name, lang) })}
+                  className={`inline-flex min-h-12 w-12 shrink-0 items-center justify-center gap-2 rounded-xl font-bold transition-transform active:scale-[0.97] disabled:opacity-50 sm:w-40 sm:px-4 ${
                     p.isActive ? 'bg-sand-200 text-ink hover:bg-sand-300' : 'bg-sunset-600 text-sand-50 hover:bg-sunset-700'
                   }`}
                 >
                   {p.isActive ? <EyeOff {...ICON} /> : <Eye {...ICON} />}
-                  {p.isActive ? t('admin.hide') : t('admin.show')}
+                  <span className="hidden sm:inline">{p.isActive ? t('admin.hide') : t('admin.show')}</span>
                 </button>
                 {/* Копія — новий товар з тими самими даними (напр., для варієгатної форми) */}
                 <Link
                   to={`/admin/products/new?copy=${p.id}`}
                   aria-label={t('admin.copyNamed', { name: pick(p.name, lang) })}
                   title={t('admin.copy')}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border-2 border-brand-600/40 px-3 text-sm font-bold text-brand-600 sm:min-h-12 sm:w-12 sm:px-0 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-sand-50 active:scale-[0.97]"
+                  className="inline-flex min-h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-brand-600/40 text-brand-600 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-sand-50 active:scale-[0.97]"
                 >
                   <Copy {...ICON} />
-                  <span className="sm:hidden">{t('admin.copyShort')}</span>
                 </Link>
                 {/* Видалення назавжди — з підтвердженням */}
                 <button
@@ -404,10 +414,9 @@ export function ProductsPage() {
                   onClick={() => window.confirm(t('admin.deleteProductConfirm', { name: pick(p.name, lang) })) && remove.mutate(p.id)}
                   aria-label={t('admin.deleteNamed', { name: pick(p.name, lang) })}
                   title={t('admin.deleteProduct')}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border-2 border-red-700/40 px-3 text-sm font-bold text-red-700 sm:min-h-12 sm:w-12 sm:px-0 transition-colors hover:border-red-700 hover:bg-red-700 hover:text-white active:scale-[0.97] disabled:opacity-50"
+                  className="inline-flex min-h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-red-700/40 text-red-700 transition-colors hover:border-red-700 hover:bg-red-700 hover:text-white active:scale-[0.97] disabled:opacity-50"
                 >
                   <Trash2 {...ICON} />
-                  <span className="sm:hidden">{t('admin.deleteShort')}</span>
                 </button>
               </div>
             </li>

@@ -56,13 +56,14 @@ function DesertIllustration() {
 export function CategoryPills() {
   const { visible, nameOf } = useCategories()
   return (
-    <nav className="flex flex-wrap gap-2.5">
+    // Телефон: один рядок, що гортається пальцем убік (не три рядки кнопок над товарами); ширше — переноситься
+    <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:gap-2.5 sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
       {visible.map((c, i) => (
         <NavLink
           key={c}
           to={`/c/${c}`}
           className={({ isActive }) =>
-            `rounded-full px-5 py-3 font-bold ${isActive ? 'bg-brand-600 text-sand-50' : i % 2 ? 'bg-sand-200 hover:bg-sand-300' : 'bg-sand-300 hover:bg-sand-400'}`
+            `shrink-0 rounded-full px-4 py-2.5 font-bold whitespace-nowrap sm:px-5 sm:py-3 ${isActive ? 'bg-brand-600 text-sand-50' : i % 2 ? 'bg-sand-200 hover:bg-sand-300' : 'bg-sand-300 hover:bg-sand-400'}`
           }
         >
           {nameOf(c)}
