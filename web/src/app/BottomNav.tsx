@@ -36,14 +36,40 @@ export function BottomNav() {
   const { pathname } = useLocation()
   const hidden = /^\/admin\/products\/.+/.test(pathname)
 
+  const typing = useTyping()
+
   // Місце під меню внизу сторінки (див. index.css)
   useEffect(() => {
     if (hidden) return
     document.documentElement.classList.add('shop-bottom-nav')
     return () => document.documentElement.classList.remove('shop-bottom-nav')
   }, [hidden])
-  if (hidden) return null
+  // Поки відкрита клавіатура (людина друкує в полі) — меню ховаємо: на телефоні воно «злітає» над клавіатурою
+  // і закриває половину й без того маленького екрана
+  if (hidden || typing) return null
   return isSeller ? <SellerNav /> : <BuyerNav />
+}
+
+// Поля, для яких телефон відкриває клавіатуру (не галочки, не кнопки, не повзунки й не вибір файлу)
+const TEXT_FIELD =
+  'input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=button]):not([type=submit]), textarea, [contenteditable="true"]'
+
+/** Чи друкує людина зараз у текстовому полі (тобто відкрита клавіатура на телефоні). */
+function useTyping() {
+  const [typing, setTyping] = useState(false)
+  useEffect(() => {
+    const isField = (el: Element | null) => el instanceof HTMLElement && el.matches(TEXT_FIELD)
+    const onIn = (e: FocusEvent) => setTyping(isField(e.target as Element))
+    // Фокус міг перейти в інше поле — перевіряємо вже після переходу
+    const onOut = () => setTimeout(() => setTyping(isField(document.activeElement)), 0)
+    document.addEventListener('focusin', onIn)
+    document.addEventListener('focusout', onOut)
+    return () => {
+      document.removeEventListener('focusin', onIn)
+      document.removeEventListener('focusout', onOut)
+    }
+  }, [])
+  return typing
 }
 
 const ICON = { size: 22, strokeWidth: 2.2, 'aria-hidden': true } as const

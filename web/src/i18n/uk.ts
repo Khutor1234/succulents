@@ -435,6 +435,8 @@ export const uk = {
       name: 'За назвою (А–Я)',
       shownFirst: 'Спершу показані',
       hiddenFirst: 'Спершу приховані',
+      photoFirst: 'Спершу з фото',
+      noPhotoFirst: 'Спершу без фото',
       stock: 'За наявністю',
       priceAsc: 'Спершу дешевші',
       priceDesc: 'Спершу дорожчі',

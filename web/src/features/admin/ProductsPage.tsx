@@ -1,26 +1,23 @@
-import { Copy, Eye, FileSpreadsheet, EyeOff, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { FileSpreadsheet, Plus, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
-import { imageUrl } from '../../firebase/config'
 import { useLang } from '../../i18n'
-import { formatPrice, pick } from '../../lib/format'
+import { pick } from '../../lib/format'
 import { PLANT_CATEGORY } from '../../lib/plants'
 import { searchProducts } from '../../lib/search'
 import type { Product } from '../../lib/types'
 import { ICON } from '../../shared/icon'
-import { SucculentIcon } from '../../shared/ui'
 import { useProgressive } from '../../shared/useProgressive'
-import { TagBadges } from '../catalog/PlantFilters'
+import { ProductCard } from '../catalog/ProductCard'
 import { useCategories } from '../catalog/categories'
-import { useHere } from '../../shared/navigation'
-import { useAllProducts, useDeleteProduct, useToggleProductActive } from './api'
+import { useAllProducts } from './api'
 
 const ALL = 'all'
 // Скільки товарів показуємо за раз (решта — коли догортали донизу)
 const PAGE = 30
 
-const SORTS = ['shownFirst', 'name', 'hiddenFirst', 'stock', 'priceAsc', 'priceDesc', 'new'] as const
+const SORTS = ['shownFirst', 'name', 'hiddenFirst', 'photoFirst', 'noPhotoFirst', 'stock', 'priceAsc', 'priceDesc', 'new'] as const
 type Sort = (typeof SORTS)[number]
 // Без вибору — спершу показані на сайті (всередині за назвою)
 const DEFAULT_SORT: Sort = 'shownFirst'
@@ -52,6 +49,11 @@ function sortProducts(list: Product[], sort: Sort, nameOf: (p: Product) => strin
       return [...list].sort((a, b) => Number(b.isActive) - Number(a.isActive) || byName(a, b))
     case 'hiddenFirst':
       return [...list].sort((a, b) => Number(a.isActive) - Number(b.isActive) || byName(a, b))
+    // Спершу з фото (або спершу без фото — щоб швидко знайти, кому ще треба сфотографувати), всередині — за назвою
+    case 'photoFirst':
+      return [...list].sort((a, b) => Number(b.images.length > 0) - Number(a.images.length > 0) || byName(a, b))
+    case 'noPhotoFirst':
+      return [...list].sort((a, b) => Number(a.images.length > 0) - Number(b.images.length > 0) || byName(a, b))
     // Спершу ті, яких на складі найбільше; закінчені — в кінці
     case 'stock':
       return [...list].sort((a, b) => b.stock - a.stock || byName(a, b))
@@ -68,11 +70,7 @@ export function ProductsPage() {
   const { t } = useTranslation()
   const lang = useLang()
   const { data: products, isLoading, isError } = useAllProducts()
-  const toggle = useToggleProductActive()
-  const remove = useDeleteProduct()
   const { nameOf, all: categories } = useCategories()
-  // Звідки відкрили редагування — після збереження форма повернеться сюди ж (з тим самим пошуком і сортуванням)
-  const here = useHere()
   // Вибрана категорія зберігається в адресі (?category=soil) — після редагування товару повертаємось туди ж.
   const [params, setParams] = useSearchParams()
   // Без параметра одразу відкриваються «Рослини» — їх редагують найчастіше; «Усі» — це ?category=all.
@@ -327,106 +325,16 @@ export function ProductsPage() {
         </nav>
       )}
 
+      {/* Ті самі картки, що й у магазині (з кнопками продавця й плашками «Приховано» / залишок), по кілька в ряд */}
       {shown && shown.length > 0 && (
-        <ul className="space-y-3">
+        <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-3">
           {list.visible.map((p, i) => (
-            <li
-              key={p.id}
-              id={anchors.has(p.id) ? `p-${p.id}` : undefined}
-              style={{ animationDelay: `${Math.min(i % PAGE, 10) * 30}ms` }}
-              className={`grid animate-rise scroll-mt-[5.5rem] grid-cols-[64px_minmax(0,1fr)] items-center gap-x-3 gap-y-3 rounded-3xl border-2 bg-sand-50 p-4 sm:grid-cols-[72px_minmax(0,1fr)_auto_auto] sm:gap-x-4 ${
-                p.isActive ? 'border-sand-200' : 'border-dashed border-sand-300 bg-sand-100'
-              }`}
-            >
-              {/* Фото й назва — на сторінку товару в магазині (як його бачать покупці); редагування — окремою кнопкою */}
-              <Link to={`/product/${p.slug}`} aria-label={pick(p.name, lang)} className={p.isActive ? '' : 'opacity-60'}>
-                {p.images[0] ? (
-                  <img src={imageUrl(p.images[0])} alt="" className="aspect-square w-full rounded-2xl object-cover" />
-                ) : (
-                  <div className="flex aspect-square w-full items-center justify-center rounded-2xl bg-sand-200 text-brand-600">
-                    <SucculentIcon className="w-9" />
-                  </div>
-                )}
-              </Link>
-
-              <div className="min-w-0">
-                <Link
-                  to={`/product/${p.slug}`}
-                  className={`line-clamp-2 leading-snug font-bold hover:text-brand-600 ${p.isActive ? '' : 'text-sand-700'}`}
-                >
-                  {pick(p.name, lang)}
-                </Link>
-                {/* Категорію пишемо лише у списку «Усі» — у вибраній категорії вона й так зрозуміла */}
-                {(!category || !p.isActive) && (
-                  <p className="mt-0.5 text-sm text-sand-700">
-                    {!category && nameOf(p.category)}
-                    {!p.isActive && <span className={!category ? 'ml-2 font-bold' : 'font-bold'}>{!category && '· '}{t('admin.hidden')}</span>}
-                  </p>
-                )}
-                <TagBadges tags={p.tags} className="mt-1.5" />
-                {/* Телефон: ціна й залишок одним рядком під назвою — без окремого рядка картки */}
-                <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 text-sm sm:hidden">
-                  <span className="font-display text-base font-extrabold text-sunset-600">{formatPrice(p.price, lang)}</span>
-                  <span className={p.stock === 0 ? 'font-bold text-red-700' : 'text-sand-700'}>
-                    {p.stock === 0 ? t('product.outOfStock') : t('admin.inStockShort', { count: p.stock })}
-                  </span>
-                </p>
-              </div>
-
-              {/* Ціна й залишок — окремою колонкою (на комп’ютері) */}
-              <div className="hidden sm:block sm:w-36 sm:text-right">
-                <p className="font-display text-lg font-extrabold whitespace-nowrap text-sunset-600">{formatPrice(p.price, lang)}</p>
-                <p className={`text-sm whitespace-nowrap ${p.stock === 0 ? 'font-bold text-red-700' : 'text-sand-700'}`}>
-                  {p.stock === 0 ? t('product.outOfStock') : t('admin.inStockShort', { count: p.stock })}
-                </p>
-              </div>
-
-              {/* Один рядок: «Редагувати» на всю решту ширини, решта — значками (на комп’ютері «Приховати/Показати» з підписом) */}
-              <div className="col-span-2 flex gap-2 sm:col-span-1">
-                <Link
-                  to={`/admin/products/${p.id}`}
-                  state={{ from: here }}
-                  className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97] sm:flex-none"
-                >
-                  <Pencil {...ICON} />
-                  {t('admin.edit')}
-                </Link>
-                <button
-                  disabled={toggle.isPending}
-                  onClick={() => toggle.mutate({ id: p.id, isActive: !p.isActive, stock: p.stock })}
-                  aria-label={t(p.isActive ? 'admin.hideNamed' : 'admin.showNamed', { name: pick(p.name, lang) })}
-                  className={`inline-flex min-h-12 w-12 shrink-0 items-center justify-center gap-2 rounded-xl font-bold transition-transform active:scale-[0.97] disabled:opacity-50 sm:w-40 sm:px-4 ${
-                    p.isActive ? 'bg-sand-200 text-ink hover:bg-sand-300' : 'bg-sunset-600 text-sand-50 hover:bg-sunset-700'
-                  }`}
-                >
-                  {p.isActive ? <EyeOff {...ICON} /> : <Eye {...ICON} />}
-                  <span className="hidden sm:inline">{p.isActive ? t('admin.hide') : t('admin.show')}</span>
-                </button>
-                {/* Копія — новий товар з тими самими даними (напр., для варієгатної форми) */}
-                <Link
-                  to={`/admin/products/new?copy=${p.id}`}
-                  state={{ from: here }}
-                  aria-label={t('admin.copyNamed', { name: pick(p.name, lang) })}
-                  title={t('admin.copy')}
-                  className="inline-flex min-h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-brand-600/40 text-brand-600 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-sand-50 active:scale-[0.97]"
-                >
-                  <Copy {...ICON} />
-                </Link>
-                {/* Видалення назавжди — з підтвердженням */}
-                <button
-                  type="button"
-                  disabled={remove.isPending}
-                  onClick={() => window.confirm(t('admin.deleteProductConfirm', { name: pick(p.name, lang) })) && remove.mutate(p.id)}
-                  aria-label={t('admin.deleteNamed', { name: pick(p.name, lang) })}
-                  title={t('admin.deleteProduct')}
-                  className="inline-flex min-h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-red-700/40 text-red-700 transition-colors hover:border-red-700 hover:bg-red-700 hover:text-white active:scale-[0.97] disabled:opacity-50"
-                >
-                  <Trash2 {...ICON} />
-                </button>
-              </div>
-            </li>
+            // id — якір для абетки: до першого товару літери прокручує кнопка
+            <div key={p.id} id={anchors.has(p.id) ? `p-${p.id}` : undefined} className="flex flex-col [&>article]:flex-1">
+              <ProductCard product={p} index={i} />
+            </div>
           ))}
-        </ul>
+        </div>
       )}
       {list.sentinel}
     </div>
