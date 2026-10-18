@@ -4,7 +4,7 @@ import { Link } from 'react-router'
 import type { PlantOrigin } from '../../lib/types'
 
 /** Ім'я рослини чи країни — «чип», що веде в пошук (одразу видно, чи є в магазині сам батько або його інші «діти»). */
-function Chip({ to, title, big, grow, icon, children }: { to: string; title: string; big?: boolean; grow?: boolean; icon?: React.ReactNode; children: string }) {
+function Chip({ to, title, big, grow, full, icon, children }: { to: string; title: string; big?: boolean; grow?: boolean; full?: boolean; icon?: React.ReactNode; children: string }) {
   return (
     <Link
       to={`/search?q=${encodeURIComponent(to)}`}
@@ -14,8 +14,8 @@ function Chip({ to, title, big, grow, icon, children }: { to: string; title: str
       } ${grow ? 'flex-1 basis-0 justify-center text-center' : ''}`}
     >
       {icon}
-      {/* На картці довга назва переноситься щонайбільше на два рядки */}
-      <span className={big ? 'break-words' : 'line-clamp-2 break-words'}>{children}</span>
+      {/* На картці довга назва переноситься щонайбільше на два рядки; `full` — повністю, скільки б рядків не зайняла */}
+      <span className={big || full ? 'break-words' : 'line-clamp-2 break-words'}>{children}</span>
     </Link>
   )
 }
@@ -42,6 +42,7 @@ export function ParentsLinks({
   habitat,
   breeder,
   label = false,
+  fullNames = false,
   className = '',
 }: {
   parents?: string[]
@@ -49,6 +50,8 @@ export function ParentsLinks({
   habitat?: string
   breeder?: string
   label?: boolean
+  /** На картці не обрізати довгі назви батьків (напр., у дрібних картках «Пов’язані рослини»). */
+  fullNames?: boolean
   className?: string
 }) {
   const { t } = useTranslation()
@@ -106,22 +109,22 @@ export function ParentsLinks({
         {/* На всю ширину плашки; чипи однакової висоти, навіть якщо одна назва у два рядки */}
         <div className="flex min-w-0 flex-1 items-stretch gap-1.5">
           {natural && habitat && (
-            <Chip to={habitat} title={find(habitat)} icon={<MapPin size={11} strokeWidth={2.5} aria-hidden />}>
+            <Chip full={fullNames} to={habitat} title={find(habitat)} icon={<MapPin size={11} strokeWidth={2.5} aria-hidden />}>
               {habitat}
             </Chip>
           )}
           {cultivar && names[0] && (
             <>
               <span className="shrink-0 self-center text-xs text-sand-700">{t('search.from')}</span>
-              <Chip to={names[0]} title={find(names[0])}>{names[0]}</Chip>
+              <Chip full={fullNames} to={names[0]} title={find(names[0])}>{names[0]}</Chip>
             </>
           )}
           {!natural && !cultivar && (
             <>
               {/* Дві назви ділять рядок порівну */}
-              <Chip to={names[0]} title={find(names[0])} grow>{names[0]}</Chip>
+              <Chip full={fullNames} to={names[0]} title={find(names[0])} grow>{names[0]}</Chip>
               {cross}
-              {names[1] ? <Chip to={names[1]} title={find(names[1])} grow>{names[1]}</Chip> : unknown}
+              {names[1] ? <Chip full={fullNames} to={names[1]} title={find(names[1])} grow>{names[1]}</Chip> : unknown}
             </>
           )}
         </div>

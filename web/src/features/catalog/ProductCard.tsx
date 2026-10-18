@@ -22,7 +22,8 @@ const SELLER_BADGE =
 // Скільки карток показуємо за раз (решта — коли догортали донизу)
 const PAGE = 24
 
-export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
+/** `fullNames` — не обрізати довгі назви батьків на фото (для дрібних карток «Пов’язані рослини»). */
+export function ProductCard({ product, index = 0, fullNames = false }: { product: Product; index?: number; fullNames?: boolean }) {
   const { t } = useTranslation()
   const lang = useLang()
   const name = pick(product.name, lang)
@@ -71,6 +72,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
             parents={product.parents}
             origin={product.origin}
             habitat={product.habitat}
+            fullNames={fullNames}
             className="absolute inset-x-2 bottom-2 rounded-2xl bg-sand-50/90 p-1.5 shadow-sm backdrop-blur"
           />
         )}

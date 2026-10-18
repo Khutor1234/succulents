@@ -31,16 +31,28 @@ const MAX = 8
  * - рослина зі спільним батьком.
  */
 function relationOf(product: Product, other: Product): Relation | null {
-  const self = plantKey(product.name.uk)
-  const otherKey = plantKey(other.name.uk)
-  const parents = (product.parents ?? []).filter(Boolean).map(plantKey)
-  const otherParents = (other.parents ?? []).filter(Boolean).map(plantKey)
-  if (otherKey === self) return 'form'
+  if (plantKey(other.name.uk) === plantKey(product.name.uk)) return 'form'
+  // Батьки — точна назва разом із формою: батько «Echeveria lilacina» — це саме lilacina,
+  // а не «lilacina variegata» чи «lilacina monstrose» (то її форми, а не батьки)
+  const self = exactKey(product.name.uk)
+  const otherKey = exactKey(other.name.uk)
+  const parents = (product.parents ?? []).filter(Boolean).map(exactKey)
+  const otherParents = (other.parents ?? []).filter(Boolean).map(exactKey)
   if (parents.includes(otherKey)) return 'parent'
   if (otherParents.includes(self)) return 'child'
-  if (parents.some((p) => otherParents.includes(p))) return 'sibling'
+  // «Спільний батько» — лише між гібридами: мутація (напр. «lilacina monstrose») — це форма свого джерела,
+  // а не «брат» гібридам від lilacina, і навпаки
+  if (product.origin !== 'cultivar' && other.origin !== 'cultivar' && parents.some((p) => otherParents.includes(p))) return 'sibling'
   return null
 }
+
+/** Назва без лапок і регістру, але з формами — щоб відрізняти «lilacina» від «lilacina variegata». */
+const exactKey = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/['‘’"«»`]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 
 const BADGE: Record<Relation, string> = {
   form: 'bg-sunset-100 text-sunset-700',
@@ -90,7 +102,7 @@ export function RelatedPlants({ product }: { product: Product }) {
           {/* Дрібніші картки: на комп’ютері по 4 в ряд */}
           <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {items.map((p, i) => (
-              <ProductCard key={p.id} product={p} index={i} />
+              <ProductCard key={p.id} product={p} index={i} fullNames />
             ))}
           </div>
         </div>

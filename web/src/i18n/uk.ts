@@ -555,7 +555,7 @@ export const uk = {
     mother: 'Материнська',
     father: 'Батьківська',
     naturalHint: 'Росте в природі. Ареал:',
-    cultivarHint: 'Виділено з рослини',
+    cultivarHint: 'Від',
     breeder: 'Селекціонер',
     findBreeder: 'Інші рослини від «{{name}}»',
     findParent: 'Знайти «{{name}}» у магазині',
