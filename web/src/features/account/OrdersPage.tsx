@@ -7,6 +7,7 @@ import { OrderItems } from '../orders/OrderItems'
 import { OrderTotals } from '../orders/OrderTotals'
 import { BackToAccount, formatDate } from './AccountPage'
 import { useMyOrders } from './api'
+import { CareGuide } from './CareGuide'
 
 const STATUS_COLORS: Record<Order['status'], string> = {
   new: 'bg-sand-300',
@@ -55,6 +56,10 @@ export function OrdersPage() {
           </li>
         ))}
       </ul>
+      {/* Пам’ятка з догляду — завжди під рукою поруч із замовленнями */}
+      <div className="mt-8">
+        <CareGuide />
+      </div>
     </div>
   )
 }

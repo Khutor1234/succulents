@@ -1120,8 +1120,139 @@ export function FertilizerCalc() {
   )
 }
 
+// ——— Літопси: календар року ———
+
+type LithopsStage = 'grow' | 'change' | 'dry' | 'rest'
+const LITHOPS_STAGES: Record<LithopsStage, { title: string; water: string; text: string }> = {
+  grow: {
+    title: 'Ріст і цвітіння',
+    water: 'Полив раз на 2–3 тижні, коли ґрунт повністю сухий',
+    text: 'Головний сезон: рослина наливається, а з щілини між листками з’являється квітка — біла чи жовта, схожа на ромашку.',
+  },
+  change: {
+    title: 'Зміна листя',
+    water: 'Не поливати',
+    text: 'Усередині старої пари росте нова. Стара пара віддає їй усю воду й зморщується — так і має бути. Полив зараз зашкодить: новим листкам нема куди подітися, і вони можуть загнити чи луснути.',
+  },
+  dry: {
+    title: 'Нова пара',
+    water: 'Злегка, раз на 3–4 тижні — лише коли стара пара висохла',
+    text: 'Стара пара перетворилася на тонку суху «шкірку», нові листки повністю розкрилися. Можна обережно відновлювати полив.',
+  },
+  rest: {
+    title: 'Літній спокій',
+    water: 'Майже без поливу: трохи, лише якщо сильно зморщились',
+    text: 'У спеку літопси «сплять». Легке зморщування — нормально. Регулярний полив у цей час — найчастіша причина гнилі.',
+  },
+}
+const MONTHS = ['Січ', 'Лют', 'Бер', 'Кві', 'Тра', 'Чер', 'Лип', 'Сер', 'Вер', 'Жов', 'Лис', 'Гру']
+const stageOf = (m: number): LithopsStage => (m >= 8 && m <= 10 ? 'grow' : m === 11 || m <= 2 ? 'change' : m <= 4 ? 'dry' : 'rest')
+const STAGE_COLOR: Record<LithopsStage, string> = { grow: 'bg-brand-600', change: 'bg-sunset-500', dry: 'bg-sand-400', rest: 'bg-[#9cc3dc]' }
+
+/** Пара листків літопса: дві напівкулі з щілиною, зверху — «віконця» з візерунком. */
+function LithopsPair({ w = 1, shrink = 0, fill = '#b9a27f', top = '#d8c6a3' }: { w?: number; shrink?: number; fill?: string; top?: string }) {
+  const r = 30 * w * (1 - shrink * 0.15)
+  const h = 46 * w * (1 - shrink * 0.2)
+  return (
+    <g>
+      {[-1, 1].map((side) => (
+        <g key={side} transform={`translate(${side * (r + 1.5)} 0)`}>
+          <path d={`M${-r} 0 L${-r} ${-h * 0.55} Q${-r} ${-h} 0 ${-h} Q${r} ${-h} ${r} ${-h * 0.55} L${r} 0 Z`} style={{ fill, transition: SMOOTH }} stroke="#8a7350" strokeWidth="1.5" />
+          <ellipse cy={-h * 0.82} rx={r * 0.78} ry={h * 0.16} style={{ fill: top, transition: SMOOTH }} />
+          {[-0.4, 0, 0.35].map((dx, i) => (
+            <circle key={i} cx={dx * r} cy={-h * (0.8 + (i % 2) * 0.05)} r={2.2 * w} fill="#9b845e" opacity="0.7" />
+          ))}
+          {shrink > 0.3 && <path d={`M${-r * 0.7} ${-h * 0.4} q${r * 0.3} -4 ${r * 0.6} 0 M${-r * 0.5} ${-h * 0.25} q${r * 0.3} -3 ${r * 0.6} 0`} fill="none" stroke="#8a7350" strokeWidth="1" opacity="0.6" />}
+        </g>
+      ))}
+    </g>
+  )
+}
+
+export function LithopsDemo() {
+  const [month, setMonth] = useState(9)
+  const stage = stageOf(month)
+  const info = LITHOPS_STAGES[stage]
+  return (
+    <Demo
+      title="Календар літопса: оберіть місяць"
+      controls={
+        <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-12">
+          {MONTHS.map((m, i) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMonth(i)}
+              aria-pressed={month === i}
+              className={`relative min-h-10 rounded-xl border-2 text-xs font-bold transition-colors ${month === i ? 'border-brand-600 bg-brand-600 text-sand-50' : 'border-sand-200 bg-sand-50 hover:border-brand-500'}`}
+            >
+              {m}
+              <span className={`absolute inset-x-2 bottom-1 h-1 rounded-full ${STAGE_COLOR[stageOf(i)]}`} aria-hidden />
+            </button>
+          ))}
+        </div>
+      }
+      explain={
+        <>
+          <b className="text-brand-600">{info.title}.</b> {info.text}
+          <span className="mt-2 flex items-center gap-2 font-bold">
+            <Droplets size={16} strokeWidth={2.25} className="shrink-0 text-[#5b8fb9]" aria-hidden />
+            {info.water}
+          </span>
+        </>
+      }
+    >
+      <svg viewBox="0 0 300 180" className="mx-auto block w-full max-w-md" role="img" aria-label={info.title}>
+        <rect width="300" height="180" rx="18" fill={stage === 'rest' ? '#ffe9c2' : '#f6e9d2'} />
+        <rect y="138" width="300" height="42" fill="#c9a77a" />
+        {/* дрібна галька зверху ґрунту */}
+        {[30, 60, 210, 250, 275, 90, 190].map((x, i) => (
+          <ellipse key={x} cx={x} cy={142 + (i % 3) * 6} rx="6" ry="4" fill={i % 2 ? '#e9dcc4' : '#b9ab92'} />
+        ))}
+        <g transform="translate(150 144) scale(1.6)">
+          {stage === 'grow' && (
+            <>
+              <LithopsPair />
+              {/* Квітка з щілини */}
+              <g transform="translate(0 -50)">
+                {Array.from({ length: 14 }, (_, i) => (
+                  <ellipse key={i} rx="3.2" ry="15" cy="-14" fill="#f4d35e" transform={`rotate(${(i * 360) / 14})`} />
+                ))}
+                <circle r="6" fill="#e0a526" />
+              </g>
+            </>
+          )}
+          {stage === 'change' && (
+            <>
+              {/* Стара пара розходиться й зморщується, усередині — нова */}
+              {/* Стара пара (зморщена, темніша) розступилась — між її половинками видно світлу нову пару */}
+              <g transform="translate(-34 0) rotate(-12)">
+                <path d="M-26 0 L-26 -22 Q-26 -40 0 -40 Q22 -40 24 -24 L22 0 Z" fill="#a08566" stroke="#7a6243" strokeWidth="1.5" />
+                <path d="M-18 -28 q8 -4 16 0 M-20 -18 q10 -4 20 0 M-18 -8 q8 -3 16 0" fill="none" stroke="#7a6243" strokeWidth="1.2" />
+              </g>
+              <g transform="translate(34 0) rotate(12)">
+                <path d="M26 0 L26 -22 Q26 -40 0 -40 Q-22 -40 -24 -24 L-22 0 Z" fill="#a08566" stroke="#7a6243" strokeWidth="1.5" />
+                <path d="M18 -28 q-8 -4 -16 0 M20 -18 q-10 -4 -20 0 M18 -8 q-8 -3 -16 0" fill="none" stroke="#7a6243" strokeWidth="1.2" />
+              </g>
+              <LithopsPair w={0.62} fill="#d2c19a" top="#f1e6cb" />
+            </>
+          )}
+          {stage === 'dry' && (
+            <>
+              <path d="M-78 0 Q-80 -40 -60 -48 Q-66 -20 -62 0 Z M78 0 Q80 -40 60 -48 Q66 -20 62 0 Z" fill="#a08566" opacity="0.8" />
+              <LithopsPair w={0.95} />
+            </>
+          )}
+          {stage === 'rest' && <LithopsPair w={0.9} shrink={0.6} />}
+        </g>
+      </svg>
+    </Demo>
+  )
+}
+
 /** Яку ілюстрацію вставити в статтю (блок `figure` з цим id). */
 export const FIGURES = {
+  lithops: LithopsDemo,
   pestMealybug: () => <PestFigure kind="mealybug" />,
   pestRoot: () => <PestFigure kind="root" />,
   pestMite: () => <PestFigure kind="mite" />,

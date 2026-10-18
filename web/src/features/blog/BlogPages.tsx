@@ -1,10 +1,10 @@
 import { AlertTriangle, ArrowLeft, ArrowRight, Clock, Lightbulb, Search } from 'lucide-react'
 import { Fragment, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useParams } from 'react-router'
+import { Link, useParams, useSearchParams } from 'react-router'
 import { ICON } from '../../shared/icon'
 import { PageTitle } from '../../shared/ui'
-import { ARTICLES, findArticle, SOIL_RECIPES, type Article, type Block } from './articles'
+import { ARTICLES, BLOG_CATEGORIES, categoryLabel, findArticle, SOIL_RECIPES, type Article, type BlogCategory, type Block } from './articles'
 import { ArticleGrid, Cover } from './ArticleCards'
 import { Comments } from './Comments'
 import { FIGURES } from './Illustrations'
@@ -49,11 +49,39 @@ function Meta({ article }: { article: Article }) {
 
 export function BlogPage() {
   const { t } = useTranslation()
+  // Вибраний розділ — в адресі (?cat=care), щоб ним можна було поділитися
+  const [params, setParams] = useSearchParams()
+  const param = params.get('cat')
+  const cat = BLOG_CATEGORIES.some((c) => c.id === param) ? (param as BlogCategory) : null
+  const shown = cat ? ARTICLES.filter((a) => a.category === cat) : ARTICLES
+  const chip = (on: boolean) =>
+    `inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border-2 py-1.5 pr-1.5 pl-4 text-sm font-bold whitespace-nowrap transition-colors ${
+      on ? 'border-brand-600 bg-brand-600 text-sand-50' : 'border-sand-200 bg-sand-50 text-ink hover:border-brand-500'
+    }`
+  const count = (n: number, on: boolean) => (
+    <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] tabular-nums ${on ? 'bg-brand-700 text-sand-100' : 'bg-sand-200 text-sand-700'}`}>{n}</span>
+  )
   return (
     <div>
       <PageTitle>{t('blog.title')}</PageTitle>
-      <p className="-mt-2 mb-6 max-w-2xl text-sand-700">{t('blog.intro')}</p>
-      <ArticleGrid articles={ARTICLES} />
+      <p className="-mt-2 mb-5 max-w-2xl text-sand-700">{t('blog.intro')}</p>
+      {/* На телефоні розділи гортаються вбік одним рядком */}
+      <div className="-mx-4 mb-6 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0" role="group" aria-label={t('blog.categories')}>
+        <button type="button" onClick={() => setParams({}, { replace: true })} className={chip(!cat)} aria-pressed={!cat}>
+          {t('blog.allCategories')}
+          {count(ARTICLES.length, !cat)}
+        </button>
+        {BLOG_CATEGORIES.map((c) => {
+          const on = cat === c.id
+          return (
+            <button key={c.id} type="button" onClick={() => setParams({ cat: c.id }, { replace: true })} className={chip(on)} aria-pressed={on}>
+              {c.label}
+              {count(ARTICLES.filter((a) => a.category === c.id).length, on)}
+            </button>
+          )
+        })}
+      </div>
+      <ArticleGrid articles={shown} />
     </div>
   )
 }
@@ -156,7 +184,9 @@ export function ArticlePage() {
     )
   }
 
-  const others = ARTICLES.filter((a) => a.slug !== article.slug).slice(0, 3)
+  const others = ARTICLES.filter((a) => a.slug !== article.slug)
+    .sort((a, b) => Number(b.category === article.category) - Number(a.category === article.category))
+    .slice(0, 3)
 
   return (
     <div>
@@ -166,7 +196,13 @@ export function ArticlePage() {
       </Link>
       <article className="mx-auto mt-5 max-w-2xl">
         <Cover icon={article.icon} big />
-        <h1 className="mt-6 font-display text-3xl leading-tight font-extrabold text-brand-600 sm:text-4xl">{article.title}</h1>
+        <Link
+          to={`/blog?cat=${article.category}`}
+          className="mt-6 inline-block rounded-full bg-sunset-100 px-3 py-1 text-xs font-bold tracking-wider text-sunset-700 uppercase hover:bg-sunset-200"
+        >
+          {categoryLabel(article.category)}
+        </Link>
+        <h1 className="mt-3 font-display text-3xl leading-tight font-extrabold text-brand-600 sm:text-4xl">{article.title}</h1>
         <div className="mt-3">
           <Meta article={article} />
         </div>

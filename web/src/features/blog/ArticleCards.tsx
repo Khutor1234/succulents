@@ -4,6 +4,7 @@ import {
   Bug,
   Combine,
   Droplets,
+  Egg,
   FlaskConical,
   Leaf,
   Palette,
@@ -17,7 +18,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
-import type { Article, ArticleIcon } from './articles'
+import { categoryLabel, type Article, type ArticleIcon } from './articles'
 
 // Картки статей окремо від сторінки статті: головна показує їх, не завантажуючи важкі ілюстрації.
 
@@ -36,6 +37,7 @@ const COVERS: Record<ArticleIcon, { icon: LucideIcon; tint: string }> = {
   summer: { icon: ThermometerSun, tint: 'bg-sunset-100 text-sunset-700' },
   fertilizer: { icon: FlaskConical, tint: 'bg-brand-100 text-brand-700' },
   hybrids: { icon: Combine, tint: 'bg-sand-300/70 text-brand-700' },
+  lithops: { icon: Egg, tint: 'bg-sand-300/70 text-sunset-700' },
 }
 
 
@@ -59,6 +61,7 @@ export function ArticleCard({ article }: { article: Article }) {
     >
       <Cover icon={article.icon} />
       <div className="mx-1.5 mt-3 flex flex-1 flex-col">
+        <p className="mb-1 text-xs font-bold tracking-wider text-sunset-600 uppercase">{categoryLabel(article.category)}</p>
         <h3 className="font-display text-lg leading-snug font-extrabold group-hover:text-brand-600">{article.title}</h3>
         <p className="mt-1.5 flex-1 text-sm leading-relaxed text-sand-700">{article.excerpt}</p>
         <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-brand-600">
