@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, ArrowRight, Clock, Lightbulb, Search } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, Clock, ExternalLink, Lightbulb, Search } from 'lucide-react'
 import { Fragment, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams, useSearchParams } from 'react-router'
@@ -160,6 +160,22 @@ function BlockView({ block }: { block: Block }): ReactNode {
           <Search size={17} strokeWidth={2.25} aria-hidden />
           Знайти <i>{block.query}</i> у нашому магазині
         </Link>
+      )
+    case 'sources':
+      return (
+        <aside className="mt-10 border-t-2 border-sand-200 pt-5 text-sm">
+          <p className="font-bold text-sand-700">Джерела</p>
+          <ul className="mt-2 space-y-1.5">
+            {block.items.map((src) => (
+              <li key={src.url} className="flex gap-2">
+                <ExternalLink size={14} strokeWidth={2.25} className="mt-1 shrink-0 text-sand-700" aria-hidden />
+                <a href={src.url} target="_blank" rel="noopener noreferrer" className="break-words text-brand-600 underline decoration-brand-500/40 underline-offset-2 hover:decoration-brand-600">
+                  {src.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </aside>
       )
     case 'figure': {
       const Figure = FIGURES[block.id]
