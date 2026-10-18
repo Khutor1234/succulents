@@ -1,4 +1,4 @@
-import { Copy, Eye, EyeOff, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { Copy, Eye, FileSpreadsheet, EyeOff, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
@@ -128,6 +128,13 @@ export function ProductsPage() {
     <div>
       <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="font-display text-3xl font-extrabold text-brand-600">{t('admin.products')}</h1>
+        <Link
+          to="/admin/import"
+          className="ml-auto inline-flex min-h-11 items-center gap-2 rounded-xl bg-sand-200 px-4 font-bold text-ink transition-transform hover:bg-sand-300 active:scale-[0.97]"
+        >
+          <FileSpreadsheet {...ICON} />
+          <span className="hidden sm:inline">{t('admin.importFromSheet')}</span>
+        </Link>
         <Link
           to={category ? `/admin/products/new?category=${category}` : '/admin/products/new'}
           className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97]"
