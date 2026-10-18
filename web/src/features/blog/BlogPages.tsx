@@ -257,14 +257,14 @@ function CoverEditor({ slug, hasCover }: { slug: string; hasCover: boolean }) {
   const { t } = useTranslation()
   const save = useSetArticleCover(slug)
   const input = useRef<HTMLInputElement>(null)
-  // Вибране фото спершу відкривається в редакторі обрізання (широка рамка, як у заставки)
+  // Вибране фото спершу відкривається в редакторі обрізання (рамка 4:3, як у заставки)
   const [picked, setPicked] = useState<File | null>(null)
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
       {picked && (
         <ImageCropper
           file={picked}
-          aspect={16 / 9}
+          aspect={4 / 3}
           onDone={(file) => {
             setPicked(null)
             save.mutate(file)

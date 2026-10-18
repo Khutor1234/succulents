@@ -51,7 +51,7 @@ export function Cover({ icon, big, cover }: { icon: ArticleIcon; big?: boolean; 
   const { icon: Icon, tint } = COVERS[icon]
   return (
     <div
-      className={`group/cover relative flex items-center justify-center overflow-hidden rounded-2xl ${tint} ${big ? 'h-40 sm:h-64' : 'aspect-[16/9]'}`}
+      className={`group/cover relative flex items-center justify-center overflow-hidden rounded-2xl ${tint} aspect-[4/3]`}
     >
       <Icon size={big ? 64 : 44} strokeWidth={1.6} aria-hidden />
       {cover && (
