@@ -2,7 +2,7 @@ export const uk = {
   underConstructionShort: 'Сайт у розробці — замовлення ще не приймаємо',
   underConstruction: 'Магазин ще в розробці: товари й ціни можуть змінюватись, замовлення поки не обробляються.',
   brand: 'Сукуленти',
-  nav: { catalog: 'Каталог', cart: 'Кошик', login: 'Увійти', logout: 'Вийти', admin: 'Адмінка', menu: 'Меню', closeMenu: 'Закрити меню', home: 'Головна', search: 'Пошук', account: 'Кабінет', bottom: 'Швидке меню' },
+  nav: { catalog: 'Каталог', cart: 'Кошик', login: 'Увійти', logout: 'Вийти', admin: 'Адмінка', menu: 'Меню', closeMenu: 'Закрити меню', home: 'Головна', search: 'Пошук', account: 'Кабінет', bottom: 'Швидке меню', shop: 'Магазин' },
   home: {
     eyebrow: 'Сонце · пісок · мінімум води',
     title: 'Шматочок пустелі на твоєму підвіконні',
@@ -408,6 +408,7 @@ export const uk = {
     alphabet: 'Перейти до літери',
     menu: 'Меню адмінки',
     more: 'Ще',
+    toShop: 'До магазину',
     editNamed: 'Редагувати «{{name}}»',
     deleteNamed: 'Видалити «{{name}}»',
     copy: 'Створити копію',

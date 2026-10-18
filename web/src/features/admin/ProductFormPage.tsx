@@ -83,16 +83,14 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
 
   const err = (key?: string) => (key ? t(key) : undefined)
 
-  // Після збереження чи видалення — туди, звідки відкрили форму: сторінка товару, каталог, пошук
+  // «Скасувати» чи видалення — туди, звідки відкрили форму: сторінка товару, каталог, пошук
   // чи список в адмінці (з тим самим пошуком і сортуванням). Відкрили напряму — список категорії.
+  // (Після збереження — завжди на сторінку товару, див. onSubmit.)
   const from = useFrom()
-  function leave(category: string, { deleted = false, slug }: { deleted?: boolean; slug?: string } = {}) {
+  function leave(category: string, { deleted = false }: { deleted?: boolean } = {}) {
     const list = `/admin/products?category=${category}`
-    const fromProduct = from?.startsWith('/product/')
     // Видалили товар, відкритий зі сторінки товару, — тієї сторінки вже немає
-    if (!from || (fromProduct && deleted)) return navigate(list, { replace: !!from })
-    // Змінили адресу товару — показуємо сторінку з новою адресою замість старої
-    if (fromProduct && slug && from !== `/product/${slug}`) return navigate(`/product/${slug}`, { replace: true })
+    if (!from || (from.startsWith('/product/') && deleted)) return navigate(list, { replace: !!from })
     if (canGoBack()) return navigate(-1)
     navigate(from)
   }
@@ -154,7 +152,9 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
       tags: data.tags.filter((tg) => allowed.includes(tg)),
     }
     await save.mutateAsync({ id: target?.id, data: toProductInput(clean, images) })
-    leave(data.category, { slug: asNew ? undefined : data.slug })
+    // Зберегли (і «як новий» теж) — одразу на сторінку цього товару, щоб побачити результат.
+    // replace: «Назад» зі сторінки товару веде туди, звідки відкривали форму, а не знову у форму.
+    navigate(`/product/${data.slug}`, { replace: true })
   }
 
   // Адресу, яку ми самі підставили, оновлюємо разом із назвою — поки її не змінили вручну.
