@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, ArrowRight, Clock, Lightbulb } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, Clock, Lightbulb, Search } from 'lucide-react'
 import { Fragment, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router'
@@ -122,6 +122,16 @@ function BlockView({ block }: { block: Block }): ReactNode {
             <Rich text={block.text} />
           </p>
         </aside>
+      )
+    case 'shop':
+      return (
+        <Link
+          to={`/search?q=${encodeURIComponent(block.query)}`}
+          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-brand-600 px-4 font-bold text-brand-600 hover:bg-brand-600 hover:text-sand-50"
+        >
+          <Search size={17} strokeWidth={2.25} aria-hidden />
+          Знайти <i>{block.query}</i> у нашому магазині
+        </Link>
       )
     case 'figure': {
       const Figure = FIGURES[block.id]

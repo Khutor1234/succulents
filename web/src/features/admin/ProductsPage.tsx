@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Pencil, Plus, Search, X } from 'lucide-react'
+import { Eye, EyeOff, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
@@ -13,7 +13,7 @@ import { SucculentIcon } from '../../shared/ui'
 import { useProgressive } from '../../shared/useProgressive'
 import { TagBadges } from '../catalog/PlantFilters'
 import { useCategories } from '../catalog/categories'
-import { useAllProducts, useToggleProductActive } from './api'
+import { useAllProducts, useDeleteProduct, useToggleProductActive } from './api'
 
 const ALL = 'all'
 // Скільки товарів показуємо за раз (решта — коли догортали донизу)
@@ -52,6 +52,7 @@ export function ProductsPage() {
   const lang = useLang()
   const { data: products, isLoading, isError } = useAllProducts()
   const toggle = useToggleProductActive()
+  const remove = useDeleteProduct()
   const { nameOf, all: categories } = useCategories()
   // Вибрана категорія зберігається в адресі (?category=soil) — після редагування товару повертаємось туди ж.
   const [params, setParams] = useSearchParams()
@@ -272,7 +273,7 @@ export function ProductsPage() {
                 </p>
               </div>
 
-              <div className="col-span-2 grid grid-cols-2 gap-2 sm:col-span-1 sm:flex">
+              <div className="col-span-2 grid grid-cols-[1fr_1fr_auto] gap-2 sm:col-span-1 sm:flex">
                 <Link
                   to={`/admin/products/${p.id}`}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97]"
@@ -289,6 +290,17 @@ export function ProductsPage() {
                 >
                   {p.isActive ? <EyeOff {...ICON} /> : <Eye {...ICON} />}
                   {p.isActive ? t('admin.hide') : t('admin.show')}
+                </button>
+                {/* Видалення назавжди — з підтвердженням */}
+                <button
+                  type="button"
+                  disabled={remove.isPending}
+                  onClick={() => window.confirm(t('admin.deleteProductConfirm', { name: pick(p.name, lang) })) && remove.mutate(p.id)}
+                  aria-label={t('admin.deleteNamed', { name: pick(p.name, lang) })}
+                  title={t('admin.deleteProduct')}
+                  className="inline-flex min-h-12 w-12 items-center justify-center rounded-xl border-2 border-red-700/40 text-red-700 transition-colors hover:border-red-700 hover:bg-red-700 hover:text-white active:scale-[0.97] disabled:opacity-50"
+                >
+                  <Trash2 {...ICON} />
                 </button>
               </div>
             </li>

@@ -1,10 +1,10 @@
-import { ChevronDown, SlidersHorizontal, Sparkles, Sprout } from 'lucide-react'
+import { Award, ChevronDown, Leaf, SlidersHorizontal, Sparkles, Sprout } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ICON } from '../../shared/icon'
 import { ALL_TAGS, tagsFor, TAG_DOTS, TAG_STYLES, type PlantTag } from '../../lib/plants'
 import type { Product } from '../../lib/types'
-import type { PlantFiltersState as Filters } from './usePlantFilters'
+import { ORIGINS, originOf, type PlantFiltersState as Filters } from './usePlantFilters'
 
 // Рамка є завжди (у вибраного — того ж кольору, що й фон), тож кнопка не «стрибає» при виборі.
 const chip = (on: boolean) =>
@@ -39,25 +39,32 @@ export function PlantFilters({ products, filters, category }: { products: Produc
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
-  // Список видів — з усіх товарів категорії, а кількість — з урахуванням вибраної особливості (і навпаки):
+  // Варіанти — з усіх товарів категорії, а кількість — з урахуванням інших вибраних фільтрів:
   // вибрали Aeonium — біля Variegata стоїть, скільки саме варієгатних еоніумів.
   const genera = [...new Set(products.map((p) => p.genus).filter((g): g is string => !!g))].sort()
+  const breeders = [...new Set(products.map((p) => p.breeder?.trim()).filter((b): b is string => !!b))].sort((a, b) => a.localeCompare(b, 'uk'))
   const genusCounts = new Map<string, number>()
-  for (const p of products) {
-    if (p.genus && (!filters.tag || p.tags?.includes(filters.tag))) genusCounts.set(p.genus, (genusCounts.get(p.genus) ?? 0) + 1)
-  }
   const tagCounts = new Map<PlantTag, number>()
+  const originCounts = new Map<string, number>()
+  const breederCounts = new Map<string, number>()
+  const inc = <K,>(m: Map<K, number>, k: K) => m.set(k, (m.get(k) ?? 0) + 1)
   for (const p of products) {
-    if (filters.genus && p.genus !== filters.genus) continue
-    for (const tag of p.tags ?? []) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1)
+    if (p.genus && filters.matches(p, 'genus')) inc(genusCounts, p.genus)
+    if (filters.matches(p, 'tag')) for (const tag of p.tags ?? []) inc(tagCounts, tag)
+    const o = originOf(p)
+    if (o && filters.matches(p, 'origin')) inc(originCounts, o)
+    if (p.breeder && filters.matches(p, 'breeder')) inc(breederCounts, p.breeder.trim())
   }
+  const hasOrigins = products.some((p) => originOf(p))
   // Теги категорії показуємо завжди (рослини — Живець і форми, горщики й інструменти — Б/У),
   // навіть якщо зараз таких товарів немає.
   const tags = tagsFor(category)
 
-  if (genera.length === 0 && tags.length === 0) return null
+  if (genera.length === 0 && tags.length === 0 && !hasOrigins && breeders.length === 0) return null
 
-  const summary = [filters.genus, filters.tag && t(`tags.${filters.tag}`)].filter(Boolean).join(' · ')
+  const summary = [filters.genus, filters.tag && t(`tags.${filters.tag}`), filters.origin && t(`admin.fields.origins.${filters.origin}`), filters.breeder]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
     <div className="rounded-3xl border-2 border-sand-200 bg-sand-50/60">
@@ -128,6 +135,50 @@ export function PlantFilters({ products, filters, category }: { products: Produc
                   <span className={`h-2.5 w-2.5 rounded-full ${TAG_DOTS[tag]} ${on ? 'ring-2 ring-sand-50' : ''}`} aria-hidden="true" />
                   {t(`tags.${tag}`)}
                   <Count n={tagCounts.get(tag)} on={on} />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      {hasOrigins && (
+        <div>
+          <p className="mb-2 flex items-center gap-1.5 text-sm font-bold text-sand-700">
+            <Leaf size={16} strokeWidth={2.25} aria-hidden />
+            {t('catalog.origin')}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => filters.setOrigin('')} className={`${chip(!filters.origin)} pr-4`} aria-pressed={!filters.origin}>
+              {t('catalog.allGenera')}
+            </button>
+            {ORIGINS.map((o) => {
+              const on = filters.origin === o
+              return (
+                <button key={o} onClick={() => filters.setOrigin(o)} className={`${chip(on)} ${dim(on, originCounts.get(o))}`} aria-pressed={on}>
+                  {t(`admin.fields.origins.${o}`)}
+                  <Count n={originCounts.get(o)} on={on} />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      {breeders.length > 0 && (
+        <div>
+          <p className="mb-2 flex items-center gap-1.5 text-sm font-bold text-sand-700">
+            <Award size={16} strokeWidth={2.25} aria-hidden />
+            {t('search.breeder')}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => filters.setBreeder('')} className={`${chip(!filters.breeder)} pr-4`} aria-pressed={!filters.breeder}>
+              {t('catalog.allGenera')}
+            </button>
+            {breeders.map((b) => {
+              const on = filters.breeder === b
+              return (
+                <button key={b} onClick={() => filters.setBreeder(b)} className={`${chip(on)} ${dim(on, breederCounts.get(b))}`} aria-pressed={on}>
+                  {b}
+                  <Count n={breederCounts.get(b)} on={on} />
                 </button>
               )
             })}

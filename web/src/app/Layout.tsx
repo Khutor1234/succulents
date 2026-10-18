@@ -1,22 +1,23 @@
 import { signOut } from 'firebase/auth'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { AccountBanner } from '../features/auth/AccountBanner'
 import { useAuth } from '../features/auth/authStore'
 import { CartToast } from '../features/cart/CartToast'
-import { useFavoritesSync } from '../features/favorites/favoritesStore'
+import { useFavorites, useFavoritesSync } from '../features/favorites/favoritesStore'
 import { selectCount, useCart } from '../features/cart/cartStore'
 import { useBonusBalance } from '../features/account/api'
 import { auth } from '../firebase/config'
 import { formatPrice } from '../lib/format'
 import { ICON } from '../shared/icon'
-import { BookOpen, Construction, LogIn, LogOut, Search, ShieldCheck, ShoppingBag, User } from 'lucide-react'
+import { BookOpen, ChevronRight, Construction, Heart, LayoutGrid, LogIn, LogOut, Menu, Package, Search, ShieldCheck, ShoppingBag, User, X } from 'lucide-react'
 
 const YEAR = new Date().getFullYear()
 /** Плашка «у розробці» над шапкою. Прибрати — VITE_UNDER_CONSTRUCTION=false у web/.env.production і опублікувати. */
 const UNDER_CONSTRUCTION = import.meta.env.VITE_UNDER_CONSTRUCTION === 'true'
-const NAV_BTN = 'inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl px-3 font-medium transition-colors'
+// Без display: кожна кнопка сама каже, коли її видно (inline-flex — завжди, hidden md:inline-flex — лише на комп’ютері)
+const NAV_BTN = 'min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl px-3 font-medium transition-colors'
 
 /**
  * Поточна висота елемента (оновлюється при зміні розміру: поворот телефона, другий рядок шапки тощо).
@@ -73,6 +74,70 @@ function Logo({ className = '', bg }: { className?: string; bg?: string }) {
   )
 }
 
+/** Меню на телефоні: великі кнопки на всі розділи, вхід і вихід. */
+function MobileMenu({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
+  const { user, role } = useAuth()
+  const { balance } = useBonusBalance()
+  const favorites = useFavorites((s) => s.ids.length)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const item = (to: string, icon: ReactNode, label: string, extra?: ReactNode) => (
+    <Link
+      to={to}
+      onClick={onClose}
+      className="flex min-h-13 items-center gap-3 rounded-2xl px-3 py-2.5 font-bold transition-colors hover:bg-sand-200 active:bg-sand-200"
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-600">{icon}</span>
+      <span className="flex-1">{label}</span>
+      {extra}
+      <ChevronRight size={18} strokeWidth={2.25} className="text-sand-700" aria-hidden />
+    </Link>
+  )
+  const badge = (text: string | number) => <span className="rounded-full bg-sunset-100 px-2.5 py-0.5 text-sm font-bold text-sunset-700">{text}</span>
+
+  return (
+    <nav id="mobile-menu" aria-label={t('nav.menu')} className="absolute inset-x-0 top-full max-h-[calc(100dvh-var(--header-h,0px))] animate-menu-in overflow-y-auto border-b border-sand-200 bg-sand-100 px-4 pt-2 pb-4 shadow-[0_18px_30px_-18px_rgba(43,33,24,0.35)] md:hidden">
+      <div className="mx-auto max-w-6xl space-y-1">
+        {item('/c/plants', <LayoutGrid {...ICON} />, t('nav.catalog'))}
+        {item('/blog', <BookOpen {...ICON} />, t('blog.title'))}
+        {user && (
+          <>
+            {item('/account', <User {...ICON} />, t('account.nav'), balance > 0 ? badge(formatPrice(balance, 'uk')) : null)}
+            {item('/account/favorites', <Heart {...ICON} />, t('favorites.title'), favorites > 0 ? badge(favorites) : null)}
+            {item('/account/orders', <Package {...ICON} />, t('account.orders'))}
+          </>
+        )}
+        {role === 'seller' && item('/admin', <ShieldCheck {...ICON} />, t('nav.admin'))}
+        <div className="pt-2">
+          {user ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClose()
+                void signOut(auth)
+              }}
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border-2 border-red-700 font-bold text-red-700 hover:bg-red-100"
+            >
+              <LogOut {...ICON} />
+              {t('nav.logout')}
+            </button>
+          ) : (
+            <Link to="/login" onClick={onClose} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 font-bold text-sand-50 hover:bg-brand-700">
+              <LogIn {...ICON} />
+              {t('nav.login')}
+            </Link>
+          )}
+        </div>
+      </div>
+    </nav>
+  )
+}
+
 export function Layout() {
   const { t } = useTranslation()
   const count = useCart(selectCount)
@@ -80,6 +145,13 @@ export function Layout() {
   const { balance } = useBonusBalance()
   const { pathname } = useLocation()
   useFavoritesSync()
+  // Меню на телефоні; закривається при переході на іншу сторінку
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuPath, setMenuPath] = useState(pathname)
+  if (menuPath !== pathname) {
+    setMenuPath(pathname)
+    setMenuOpen(false)
+  }
   // У шапці лише логотип і кнопки — категорії є великими кнопками на головній і в каталозі.
   const [headerRef, headerHeight] = useElementHeight<HTMLElement>()
 
@@ -102,33 +174,33 @@ export function Layout() {
             </p>
           </div>
         )}
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-7 gap-y-2 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:gap-x-7">
           <Link to="/" className="text-2xl text-brand-600">
             <Logo />
           </Link>
-          {/* На телефоні лише іконки (підписи ховаються, але лишаються для екранних читалок) */}
+          {/* На телефоні: пошук, кошик і кнопка меню (решта — у меню). На комп’ютері — усі кнопки в шапці. */}
           <div className="ml-auto flex items-center gap-1.5 text-sm sm:gap-2">
-            <Link to="/search" aria-label={t('search.open')} title={t('search.open')} className={NAV_BTN + ' hover:bg-sand-200'}>
+            <Link to="/search" aria-label={t('search.open')} title={t('search.open')} className={NAV_BTN + ' inline-flex hover:bg-sand-200'}>
               <Search {...ICON} />
             </Link>
-            <Link to="/blog" aria-label={t('blog.title')} title={t('blog.title')} className={NAV_BTN + ' hover:bg-sand-200'}>
+            <Link to="/blog" aria-label={t('blog.title')} title={t('blog.title')} className={NAV_BTN + ' hidden hover:bg-sand-200 md:inline-flex'}>
               <BookOpen {...ICON} />
-              <span className="hidden md:inline">{t('blog.title')}</span>
+              <span>{t('blog.title')}</span>
             </Link>
             {role === 'seller' && (
-              <Link to="/admin" aria-label={t('nav.admin')} className={NAV_BTN + ' hover:bg-sand-200'}>
+              <Link to="/admin" aria-label={t('nav.admin')} className={NAV_BTN + ' hidden hover:bg-sand-200 md:inline-flex'}>
                 <ShieldCheck {...ICON} />
-                <span className="hidden md:inline">{t('nav.admin')}</span>
+                <span>{t('nav.admin')}</span>
               </Link>
             )}
             {user && (
-              <Link to="/account" aria-label={t('account.nav')} className={NAV_BTN + ' bg-sand-200 hover:bg-sand-300'}>
+              <Link to="/account" aria-label={t('account.nav')} className={NAV_BTN + ' hidden bg-sand-200 hover:bg-sand-300 md:inline-flex'}>
                 <User {...ICON} />
                 <span className="hidden md:inline">{t('account.nav')}</span>
                 {balance > 0 && <span className="font-bold text-sunset-600">{formatPrice(balance, 'uk')}</span>}
               </Link>
             )}
-            <Link to="/cart" aria-label={t('nav.cart')} className={`group ${NAV_BTN} bg-sand-200 font-bold hover:bg-sand-300`}>
+            <Link to="/cart" aria-label={t('nav.cart')} className={`group ${NAV_BTN} inline-flex bg-sand-200 font-bold hover:bg-sand-300`}>
               <ShoppingBag {...ICON} className="group-hover:animate-wiggle" />
               <span className="hidden sm:inline">{t('nav.cart')}</span>
               {count > 0 && (
@@ -146,20 +218,36 @@ export function Layout() {
               <button
                 onClick={() => void signOut(auth)}
                 aria-label={t('nav.logout')}
-                className={NAV_BTN + ' bg-red-700 font-bold text-white hover:bg-red-800'}
+                className={NAV_BTN + ' hidden bg-red-700 font-bold text-white hover:bg-red-800 md:inline-flex'}
               >
                 <LogOut {...ICON} />
-                <span className="hidden sm:inline">{t('nav.logout')}</span>
+                <span>{t('nav.logout')}</span>
               </button>
             ) : (
-              <Link to="/login" className={NAV_BTN + ' bg-brand-600 font-bold text-sand-50 hover:bg-brand-700'}>
+              <Link to="/login" className={NAV_BTN + ' hidden bg-brand-600 font-bold text-sand-50 hover:bg-brand-700 md:inline-flex'}>
                 <LogIn {...ICON} />
                 {t('nav.login')}
               </Link>
             )}
+            {/* Кнопка меню — лише на телефоні */}
+            <button
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-menu"
+              aria-label={t(menuOpen ? 'nav.closeMenu' : 'nav.menu')}
+              className={NAV_BTN + ' relative inline-flex bg-brand-600 text-sand-50 hover:bg-brand-700 md:hidden'}
+            >
+              {menuOpen ? <X {...ICON} /> : <Menu {...ICON} />}
+              {/* Крапка-нагадування: у меню є бонуси */}
+              {!menuOpen && balance > 0 && <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full border-2 border-brand-600 bg-sunset-500" aria-hidden />}
+            </button>
           </div>
         </div>
+        {menuOpen && <MobileMenu onClose={() => setMenuOpen(false)} />}
       </header>
+      {/* Затемнення під меню: натиснули поза меню — закрилось */}
+      {menuOpen && <div className="fixed inset-0 z-30 animate-page-in bg-ink/30 md:hidden" onClick={() => setMenuOpen(false)} aria-hidden />}
       <div aria-hidden="true" style={{ height: headerHeight }} />
       <AccountBanner />
       {/* key — щоб анімація появи спрацьовувала на кожному переході між сторінками */}

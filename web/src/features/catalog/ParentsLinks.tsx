@@ -33,7 +33,7 @@ function Kicker({ icon, children, big }: { icon: React.ReactNode; children: stri
 /**
  * Походження рослини.
  * - На картці (компактно): підпис типу і чипи — «Lola × Romeo», «від lilacina» або «Мексика».
- * - На сторінці товару (`label`): окрема картка «Походження» — для гібрида дві плитки ♀ материнська × ♂ батьківська,
+ * - На сторінці товару (`label`): окрема картка «Походження» — для гібрида дві плитки з батьками через ×,
  *   для природного виду — ареал, плюс селекціонер, якщо відомий.
  */
 export function ParentsLinks({
@@ -130,12 +130,9 @@ export function ParentsLinks({
   }
 
   // Детальна картка на сторінці товару
-  const parentTile = (sign: string, role: string, name?: string) => (
-    <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5 rounded-2xl bg-sand-100 px-2 py-3 text-center">
-      <span className="text-xs font-bold text-sand-700">
-        <span aria-hidden className="mr-1 text-base text-sunset-600">{sign}</span>
-        {role}
-      </span>
+  // Плитка одного з батьків — без підписів «материнська/батьківська»: часто це невідомо
+  const parentTile = (name?: string) => (
+    <div className="flex min-w-0 flex-1 items-center justify-center rounded-2xl bg-sand-100 px-2 py-3 text-center">
       {name ? <Chip to={name} title={find(name)} big>{name}</Chip> : unknown}
     </div>
   )
@@ -161,9 +158,9 @@ export function ParentsLinks({
       )}
       {!natural && !cultivar && names.length > 0 && (
         <div className="mt-3 flex items-center gap-2">
-          {parentTile('♀', t('search.mother'), names[0])}
+          {parentTile(names[0])}
           {cross}
-          {parentTile('♂', t('search.father'), names[1])}
+          {parentTile(names[1])}
         </div>
       )}
       {breeder && !natural && (

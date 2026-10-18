@@ -19,6 +19,7 @@ import { PlantFilters, TagBadges } from './PlantFilters'
 import { SORTS, usePlantFilters, type SortOrder } from './usePlantFilters'
 import { ProductGrid } from './ProductCard'
 import { ProductGallery } from './ProductGallery'
+import { RelatedPlants } from './RelatedPlants'
 
 // Статті на головній довантажуються окремо — щоб тексти блогу не гальмували перше відкриття сайту
 const HomeArticles = lazy(() => import('../blog/HomeArticles'))
@@ -365,6 +366,8 @@ export function ProductPage() {
           )}
         </div>
       </div>
+      {/* Батьки, «діти», інші форми й рослини зі спільним батьком — ті, що є в наявності */}
+      <RelatedPlants product={product} />
     </div>
   )
 }

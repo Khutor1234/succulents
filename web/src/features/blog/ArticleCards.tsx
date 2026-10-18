@@ -2,6 +2,7 @@ import {
   ArrowRight,
   Award,
   Bug,
+  Combine,
   Droplets,
   FlaskConical,
   Leaf,
@@ -34,6 +35,7 @@ const COVERS: Record<ArticleIcon, { icon: LucideIcon; tint: string }> = {
   breeders: { icon: Award, tint: 'bg-sand-300/70 text-sunset-700' },
   summer: { icon: ThermometerSun, tint: 'bg-sunset-100 text-sunset-700' },
   fertilizer: { icon: FlaskConical, tint: 'bg-brand-100 text-brand-700' },
+  hybrids: { icon: Combine, tint: 'bg-sand-300/70 text-brand-700' },
 }
 
 
