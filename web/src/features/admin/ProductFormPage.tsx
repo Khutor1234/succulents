@@ -59,7 +59,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     getValues,
     setValue,
     setError,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<ProductFormInput, unknown, ProductFormData>({
     resolver: zodResolver(productFormSchema),
     // Новий товар з відфільтрованого списку (?category=soil) одразу отримує цю категорію.
@@ -90,7 +90,10 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
   // «Зберегти як новий товар»: зберігаємо форму як новий товар, а цей лишаємо без змін
   const formRef = useRef<HTMLFormElement>(null)
   const asNewRef = useRef(false)
+  // Копія без жодної зміни — просто дубль, тож кнопка активна лише після правок (полів або фото)
+  const changed = isDirty || images.join('|') !== (product?.images ?? []).join('|')
   function saveAsNew() {
+    if (!changed) return
     asNewRef.current = true
     formRef.current?.requestSubmit()
   }
@@ -183,7 +186,33 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-3xl font-extrabold text-brand-600">{product ? t('admin.editProduct') : t('admin.createProduct')}</h1>
+        {/* Дії з уже існуючим товаром — іконками праворуч від заголовка */}
+        {product && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={saveAsNew}
+              disabled={isSubmitting || uploading || !changed}
+              title={t(changed ? 'admin.saveAsNewHint' : 'admin.saveAsNewNoChanges')}
+              aria-label={t('admin.saveAsNew')}
+              className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-brand-600 text-brand-600 transition-colors hover:bg-brand-600 hover:text-sand-50 disabled:opacity-50"
+            >
+              <CopyPlus {...ICON} />
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={remove.isPending}
+              title={t('admin.deleteProduct')}
+              aria-label={t('admin.deleteProduct')}
+              className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-red-700 text-red-700 transition-colors hover:bg-red-700 hover:text-white disabled:opacity-50"
+            >
+              <Trash2 {...ICON} />
+            </button>
+          </div>
+        )}
       </div>
+      {remove.isError && <p className="text-sm text-red-700">{t('admin.saveError')}</p>}
       {source && (
         <p className="flex items-start gap-2 rounded-2xl border-2 border-sunset-500/40 bg-sunset-100/60 p-4 text-sm leading-relaxed">
           <Copy size={18} strokeWidth={2.25} className="mt-0.5 shrink-0 text-sunset-600" aria-hidden />
@@ -419,23 +448,6 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
 
       {save.isError && <p className="text-red-700">{t('admin.saveError')}</p>}
       {/* На телефоні кнопки прикріплені до низу екрана — не треба гортати довгу форму до кінця */}
-      {/* Видалення — окремо від «Зберегти», щоб не натиснути випадково; лише для вже існуючого товару */}
-      {product && (
-        <div className="rounded-3xl border-2 border-dashed border-red-200 p-4">
-          <p className="text-sm text-sand-700">{t('admin.deleteProductHint')}</p>
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={remove.isPending}
-            className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-red-700 px-4 font-bold text-red-700 transition-colors hover:bg-red-700 hover:text-white disabled:opacity-50"
-          >
-            <Trash2 {...ICON} />
-            {remove.isPending ? t('admin.deleting') : t('admin.deleteProduct')}
-          </button>
-          {remove.isError && <p className="mt-2 text-sm text-red-700">{t('admin.saveError')}</p>}
-        </div>
-      )}
-
       <div className="sticky bottom-0 z-30 -mx-4 flex gap-3 border-t-2 border-sand-200 bg-sand-100/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
         <Button type="submit" disabled={isSubmitting || uploading} className="min-w-0 flex-1 basis-0 whitespace-nowrap sm:flex-none sm:basis-auto">
           <Check {...ICON} />
@@ -446,8 +458,8 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
           <button
             type="button"
             onClick={saveAsNew}
-            disabled={isSubmitting || uploading}
-            title={t('admin.saveAsNewHint')}
+            disabled={isSubmitting || uploading || !changed}
+            title={t(changed ? 'admin.saveAsNewHint' : 'admin.saveAsNewNoChanges')}
             className="inline-flex min-h-11 min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 rounded-xl border-2 border-brand-600 px-2 font-bold whitespace-nowrap sm:basis-auto text-brand-600 hover:bg-brand-600 hover:text-sand-50 disabled:opacity-50 sm:flex-none"
           >
             <CopyPlus {...ICON} />

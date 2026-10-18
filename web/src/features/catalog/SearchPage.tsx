@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router'
 import { GENERA } from '../../lib/plants'
 import { searchProducts } from '../../lib/search'
 import { PageTitle } from '../../shared/ui'
+import { useAuth } from '../auth/authStore'
 import { useAllProducts } from './api'
 import { useCategories } from './categories'
 import { ProductGrid } from './ProductCard'
@@ -14,10 +15,12 @@ export function SearchPage() {
   const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
   const query = params.get('q') ?? ''
-  const { data: products, isLoading, isError } = useAllProducts()
+  // Продавець шукає по всьому каталогу — разом із прихованими товарами й категоріями.
+  const isSeller = useAuth((s) => s.role === 'seller')
+  const { data: products, isLoading, isError } = useAllProducts(isSeller)
   const { isVisible, nameOf } = useCategories()
 
-  const visible = useMemo(() => (products ?? []).filter((p) => isVisible(p.category)), [products, isVisible])
+  const visible = useMemo(() => (products ?? []).filter((p) => isSeller || isVisible(p.category)), [products, isVisible, isSeller])
   const results = useMemo(
     () => searchProducts(visible, query, { categoryName: nameOf, tagLabel: (tag) => t(`tags.${tag}`) }),
     [visible, query, nameOf, t],

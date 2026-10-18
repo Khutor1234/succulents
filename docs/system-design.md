@@ -215,21 +215,27 @@ Storage: читання `products/**` — всім, запис — тільки 
 ## 8. Структура фронтенду
 
 ```
-src/
-  app/            router.tsx, providers.tsx (QueryClient, Auth)
-  firebase/       config.ts, auth.ts, db.ts
+web/src/
+  app/            router.tsx, Layout.tsx (шапка, меню), ErrorPage
+  firebase/       config.ts (підключення, емулятори локально)
+  i18n/           uk.ts — усі тексти інтерфейсу
+  lib/            types.ts, format.ts (ціни в копійках), plants.ts / plantName.ts (назви й теги-форми), search.ts, slug.ts
   features/
-    catalog/      ProductList, ProductCard, ProductPage, useProducts.ts
-    cart/         cartStore.ts (Zustand), CartPage, CartIcon
-    checkout/     CheckoutForm, schema.ts (Zod)
-    auth/         LoginPage, RequireRole, useAuth.ts
-    orders/       MyOrdersPage
-    admin/        ProductForm, ProductsTable, OrdersTable   ← етап 2
-  shared/         ui/ (Button, Input…), lib/formatPrice.ts
-functions/
-  src/            createOrder.ts, setUserRole.ts, …
-  shared schemas  (Zod) — спільні з фронтом
+    catalog/      pages.tsx (головна, категорія, товар), ProductCard, SearchPage, PlantFilters, api.ts
+    cart/         cartStore.ts (Zustand), CartPage, AddToCart
+    checkout/     CheckoutPage, OrderSuccessPage, schema.ts (Zod)
+    auth/         LoginPage, RequireRole, authStore.ts (useAuth, роль)
+    account/      кабінет: замовлення, дані доставки, пам'ятка з догляду
+    favorites/    улюблене
+    blog/         articles.ts (статті в коді), сторінки, коментарі
+    admin/        AdminApp (маршрути), ProductsPage, ProductFormPage, ImagesEditor, ImportPage + sheetImport.ts,
+                  OrdersPage, CategoriesPage, CustomersPage, AnalyticsPage
+  shared/         ui (Button, ProductImage…), useProgressive
+functions/src/    createOrder, adjustOrder, onOrderStatusChanged, bonuses, syncAccount, listCustomers, notifications
 ```
+
+Продавець бачить у магазині й приховані товари (`isActive: false`) з позначкою «Приховано» та кнопками
+редагування / показати-приховати / копії / видалення замість «У кошик».
 
 ### Маршрути
 | URL | Сторінка |
@@ -239,9 +245,11 @@ functions/
 | `/product/:slug` | Сторінка товару |
 | `/cart` | Кошик |
 | `/checkout` | Оформлення |
+| `/search` | Пошук |
+| `/blog`, `/blog/:slug` | Блог |
 | `/login` | Вхід / реєстрація |
-| `/account/orders` | Мої замовлення |
-| `/admin/products`, `/admin/products/new`, `/admin/orders` | Адмінка (seller) |
+| `/account`, `/account/orders`, `/account/favorites` | Кабінет покупця |
+| `/admin/products`, `/admin/products/:id` (`new`, `new?copy=<id>`), `/admin/import`, `/admin/orders`, `/admin/categories`, `/admin/customers`, `/admin/analytics` | Адмінка (seller) |
 
 ---
 

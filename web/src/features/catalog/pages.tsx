@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Gift, Pencil, Shovel, Truck } from 'lucide-react'
+import { ArrowLeft, ArrowRight, EyeOff, Gift, Pencil, Shovel, Truck } from 'lucide-react'
 import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, NavLink, useParams } from 'react-router'
@@ -144,7 +144,8 @@ function BonusPromo({ compact = false }: { compact?: boolean }) {
 
 export function HomePage() {
   const { t } = useTranslation()
-  const latest = useLatestProducts()
+  const isSeller = useAuth((s) => s.role === 'seller')
+  const latest = useLatestProducts(8, isSeller)
   const { visible, isVisible } = useCategories()
   const firstCategory = visible[0] ?? 'plants'
   const shown = latest.data?.filter((p) => isVisible(p.category))
@@ -226,7 +227,8 @@ export function CategoryPage() {
   const { t } = useTranslation()
   const { category } = useParams()
   const { isVisible, nameOf, isLoading: settingsLoading } = useCategories()
-  const products = useProducts(category ?? '')
+  const isSeller = useAuth((s) => s.role === 'seller')
+  const products = useProducts(category ?? '', isSeller)
   const filters = usePlantFilters()
 
   if (!category || (!settingsLoading && !isVisible(category))) return <Navigate to="/" replace />
@@ -273,13 +275,14 @@ export function ProductPage() {
   const { t } = useTranslation()
   const lang = useLang()
   const { slug = '' } = useParams()
-  const { data: product, isLoading, isError } = useProduct(slug)
-  const { isVisible, nameOf } = useCategories()
   const isSeller = useAuth((s) => s.role === 'seller')
+  // Продавець відкриває й приховані товари (напр. з пошуку) — покупцям вони «не знайдено».
+  const { data: product, isLoading, isError } = useProduct(slug, isSeller)
+  const { isVisible, nameOf } = useCategories()
 
   if (isLoading || isError) return <Status isLoading={isLoading} isError={isError} />
   // Товар прибрали чи приховали (напр. посилання збережене раніше) — пропонуємо, куди піти далі.
-  if (!product || !isVisible(product.category)) {
+  if (!product || (!isSeller && !isVisible(product.category))) {
     return (
       <div className="py-8 text-center">
         <PageTitle>{t('product.notFound')}</PageTitle>
@@ -316,6 +319,12 @@ export function ProductPage() {
           </Link>
         )}
       </div>
+      {!product.isActive && (
+        <p className="mt-4 flex items-center gap-2 rounded-xl bg-sand-200 px-4 py-3 font-bold text-sand-800">
+          <EyeOff {...ICON} />
+          {t('product.hiddenNotice')}
+        </p>
+      )}
       <div className="mt-5 grid gap-8 md:grid-cols-2">
         <ProductGallery images={product.images} alt={name} />
         <div className="min-w-0">
@@ -349,10 +358,13 @@ export function ProductPage() {
           <p className="mt-1 text-sm text-sand-700">
             {product.stock > 0 ? t('product.inStock', { count: product.stock }) : t('product.outOfStock')}
           </p>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <AddToCart product={product} size="lg" />
-            <FavoriteButton product={product} variant="lg" />
-          </div>
+          {/* Кошик і улюблене — для покупця; продавець редагує товар кнопкою вгорі */}
+          {!isSeller && (
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <AddToCart product={product} size="lg" />
+              <FavoriteButton product={product} variant="lg" />
+            </div>
+          )}
           <p className="mt-8 leading-relaxed whitespace-pre-line">{pick(product.description, lang)}</p>
           {product.specs && product.specs.length > 0 && (
             <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border-2 border-sand-200 bg-sand-200 text-sm">

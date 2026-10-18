@@ -105,7 +105,8 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
       <div className="mx-auto max-w-6xl space-y-1">
         {item('/c/plants', <LayoutGrid {...ICON} />, t('nav.catalog'))}
         {item('/blog', <BookOpen {...ICON} />, t('blog.title'))}
-        {user && (
+        {/* Кабінет, улюблене й замовлення — для покупця; у продавця замість них адмінка */}
+        {user && role !== 'seller' && (
           <>
             {item('/account', <User {...ICON} />, t('account.nav'), balance > 0 ? badge(formatPrice(balance, 'uk')) : null)}
             {item('/account/favorites', <Heart {...ICON} />, t('favorites.title'), favorites > 0 ? badge(favorites) : null)}
@@ -188,18 +189,20 @@ export function Layout() {
               <span>{t('blog.title')}</span>
             </Link>
             {role === 'seller' && (
-              <Link to="/admin" aria-label={t('nav.admin')} className={NAV_BTN + ' hidden hover:bg-sand-200 md:inline-flex'}>
+              // Продавцю кошик і кабінет у шапці не потрібні — на їхньому місці адмінка, і на телефоні теж
+              <Link to="/admin" aria-label={t('nav.admin')} className={NAV_BTN + ' inline-flex bg-sand-200 font-bold hover:bg-sand-300'}>
                 <ShieldCheck {...ICON} />
-                <span>{t('nav.admin')}</span>
+                <span className="hidden sm:inline">{t('nav.admin')}</span>
               </Link>
             )}
-            {user && (
+            {user && role !== 'seller' && (
               <Link to="/account" aria-label={t('account.nav')} className={NAV_BTN + ' hidden bg-sand-200 hover:bg-sand-300 md:inline-flex'}>
                 <User {...ICON} />
                 <span className="hidden md:inline">{t('account.nav')}</span>
                 {balance > 0 && <span className="font-bold text-sunset-600">{formatPrice(balance, 'uk')}</span>}
               </Link>
             )}
+            {role !== 'seller' && (
             <Link to="/cart" aria-label={t('nav.cart')} className={`group ${NAV_BTN} inline-flex bg-sand-200 font-bold hover:bg-sand-300`}>
               <ShoppingBag {...ICON} className="group-hover:animate-wiggle" />
               <span className="hidden sm:inline">{t('nav.cart')}</span>
@@ -213,6 +216,7 @@ export function Layout() {
                 </span>
               )}
             </Link>
+            )}
             {/* Вхід і вихід — завжди найправіші: зелений «Увійти», червоний «Вийти» */}
             {user ? (
               <button

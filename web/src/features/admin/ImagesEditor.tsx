@@ -1,7 +1,11 @@
+import { Star, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { imageUrl } from '../../firebase/config'
 import { uploadProductImage } from './imageUpload'
+
+/** Кругла кнопка-іконка в куті фото. */
+const ICON_BTN = 'absolute top-1 left-1 flex h-9 w-9 items-center justify-center rounded-full shadow-sm transition-colors'
 
 interface Props {
   images: string[]
@@ -59,21 +63,34 @@ export function ImagesEditor({ images, onChange, onUploadingChange }: Props) {
                 </svg>
               </span>
             </button>
+            {/* Іконки замість дрібного тексту: зірка — головне фото (зафарбована, якщо вже головне), кошик — видалити */}
             {i === 0 ? (
-              <span className="pointer-events-none absolute top-1 left-1 rounded bg-brand-600 px-1.5 text-xs text-white">
-                {t('admin.fields.mainPhoto')}
+              <span
+                className={`${ICON_BTN} pointer-events-none bg-brand-600 text-sand-50`}
+                title={t('admin.fields.mainPhoto')}
+                aria-label={t('admin.fields.mainPhoto')}
+              >
+                <Star size={18} strokeWidth={2.25} fill="currentColor" aria-hidden />
               </span>
             ) : (
-              <button type="button" className="absolute top-1 left-1 rounded bg-sand-50/90 px-1.5 text-xs" onClick={() => makeMain(url)}>
-                {t('admin.fields.makeMain')}
+              <button
+                type="button"
+                className={`${ICON_BTN} bg-sand-50/90 text-brand-700 hover:bg-sand-50`}
+                onClick={() => makeMain(url)}
+                title={t('admin.fields.makeMain')}
+                aria-label={t('admin.fields.makeMain')}
+              >
+                <Star size={18} strokeWidth={2.25} aria-hidden />
               </button>
             )}
             <button
               type="button"
-              className="absolute top-1 right-1 rounded bg-sand-50/90 px-1.5 text-xs text-red-700"
+              className={`${ICON_BTN} right-1 left-auto bg-sand-50/90 text-red-700 hover:bg-sand-50`}
               onClick={() => remove(url)}
+              title={t('admin.fields.removePhoto')}
+              aria-label={t('admin.fields.removePhoto')}
             >
-              {t('admin.fields.removePhoto')}
+              <Trash2 size={18} strokeWidth={2.25} aria-hidden />
             </button>
           </div>
         ))}
