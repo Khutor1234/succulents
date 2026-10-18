@@ -1,4 +1,5 @@
-import { Copy, Eye, EyeOff, Package, Pencil, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Trash2 } from 'lucide-react'
+import { useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useLang } from '../../i18n'
@@ -28,6 +29,14 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
   const lang = useLang()
   const name = pick(product.name, lang)
   const isSeller = useAuth((s) => s.role === 'seller')
+  // Кілька фото — гортаються пальцем (або стрілками на комп’ютері); крапки під фото показують, котре зараз
+  const [photo, setPhoto] = useState(0)
+  const photosRef = useRef<HTMLDivElement>(null)
+  const photoCount = product.images.length
+  const showPhoto = (i: number) => {
+    const el = photosRef.current
+    if (el) el.scrollTo({ left: Math.max(0, Math.min(i, photoCount - 1)) * el.clientWidth, behavior: 'smooth' })
+  }
 
   return (
     // Картки з'являються одна за одною (затримка за індексом) і легко піднімаються при наведенні
@@ -36,16 +45,14 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
       className="@container flex animate-rise flex-col rounded-3xl border-2 border-sand-200 bg-sand-50 p-3 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:border-sand-300 hover:shadow-[0_12px_30px_-12px_rgba(43,33,24,0.25)]"
     >
       <div className="group relative overflow-hidden rounded-2xl">
-        <Link to={`/product/${product.slug}`} tabIndex={-1} aria-hidden className="block">
-          {/* Фото трохи наближається при наведенні; приховане — бліде, щоб одразу було видно, що покупці його не бачать */}
-          <div
-            className={`transition-[transform,opacity,filter] duration-500 group-hover:scale-[1.04] ${
-              product.isActive ? '' : 'opacity-60 grayscale-[40%] group-hover:opacity-100 group-hover:grayscale-0'
-            }`}
-          >
-            <ProductImage src={product.images[0]} alt={name} tint={TINTS[index % TINTS.length]} />
-          </div>
-        </Link>
+        {/* Фото трохи наближається при наведенні; приховане — бліде, щоб одразу було видно, що покупці його не бачать */}
+        <div
+          className={`transition-[transform,opacity,filter] duration-500 group-hover:scale-[1.04] ${
+            product.isActive ? '' : 'opacity-60 grayscale-[40%] group-hover:opacity-100 group-hover:grayscale-0'
+          }`}
+        >
+          <CardPhotos product={product} alt={name} tint={TINTS[index % TINTS.length]} onIndex={setPhoto} scrollRef={photosRef} />
+        </div>
         {/* Прихований товар у картках бачить лише продавець — плашка першою в ряду тегів на фото */}
         {/* Продавцю — службові плашки першими в ряду тегів: прихований чи ні й скільки на складі.
             Навмисно інший вигляд, ніж у тегів (квадратніші, дрібні великі літери), — щоб не плутати з тим, що бачать покупці. */}
@@ -76,7 +83,43 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
             className="absolute inset-x-2 bottom-2 rounded-2xl bg-sand-50/90 p-1.5 shadow-sm backdrop-blur"
           />
         )}
+        {/* Стрілки — для миші (на телефоні гортають пальцем), з’являються при наведенні */}
+        {photoCount > 1 &&
+          ([-1, 1] as const).map((dir) => {
+            const disabled = dir < 0 ? photo === 0 : photo === photoCount - 1
+            const Icon = dir < 0 ? ChevronLeft : ChevronRight
+            return (
+              <button
+                key={dir}
+                type="button"
+                onClick={() => showPhoto(photo + dir)}
+                disabled={disabled}
+                aria-label={t(dir < 0 ? 'gallery.prev' : 'gallery.next')}
+                className={`absolute top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-sand-50/90 text-ink opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:bg-sand-50 disabled:invisible md:flex ${
+                  dir < 0 ? 'left-2' : 'right-2'
+                }`}
+              >
+                <Icon size={18} strokeWidth={2.5} aria-hidden />
+              </button>
+            )
+          })}
       </div>
+      {photoCount > 1 && (
+        <div className="mt-2 flex justify-center gap-1.5">
+          {product.images.map((src, i) => (
+            <button
+              key={`${i}-${src}`}
+              type="button"
+              onClick={() => showPhoto(i)}
+              aria-label={t('gallery.show', { n: i + 1 })}
+              aria-current={i === photo}
+              className="flex h-4 items-center px-0.5"
+            >
+              <span className={`block h-1.5 rounded-full transition-all ${i === photo ? 'w-4 bg-brand-600' : 'w-1.5 bg-sand-300'}`} />
+            </button>
+          ))}
+        </div>
+      )}
       {/* flex-1: кнопки «У кошик» стоять на одній лінії, навіть якщо назви різної довжини.
           Вид окремо не пишемо — він і так перше слово назви («Echeveria Lola») */}
       <Link to={`/product/${product.slug}`} className="group mx-1.5 mt-2.5 flex flex-1 justify-between gap-3">
@@ -175,5 +218,45 @@ function SellerActions({ product, name }: { product: Product; name: string }) {
         <Trash2 size={18} strokeWidth={2.25} aria-hidden />
       </button>
     </>
+  )
+}
+
+/**
+ * Фото на картці. Одне — просто посилання на товар. Кілька — стрічка, яку гортають пальцем убік
+ * (кожне фото «прилипає» на місце); торкання будь-якого фото відкриває товар.
+ */
+function CardPhotos({
+  product,
+  alt,
+  tint,
+  onIndex,
+  scrollRef,
+}: {
+  product: Product
+  alt: string
+  tint: string
+  onIndex: (i: number) => void
+  scrollRef: RefObject<HTMLDivElement | null>
+}) {
+  const to = `/product/${product.slug}`
+  if (product.images.length <= 1) {
+    return (
+      <Link to={to} tabIndex={-1} aria-hidden className="block">
+        <ProductImage src={product.images[0]} alt={alt} tint={tint} />
+      </Link>
+    )
+  }
+  return (
+    <div
+      ref={scrollRef}
+      onScroll={(e) => onIndex(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
+      className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      {product.images.map((src, i) => (
+        <Link key={`${i}-${src}`} to={to} tabIndex={-1} aria-hidden className="block w-full shrink-0 snap-center">
+          <ProductImage src={src} alt={i === 0 ? alt : ''} tint={tint} />
+        </Link>
+      ))}
+    </div>
   )
 }

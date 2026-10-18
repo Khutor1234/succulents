@@ -335,7 +335,8 @@ export function ProductsPage() {
                 p.isActive ? 'border-sand-200' : 'border-dashed border-sand-300 bg-sand-100'
               }`}
             >
-              <Link to={`/admin/products/${p.id}`} className={p.isActive ? '' : 'opacity-60'}>
+              {/* Фото й назва — на сторінку товару в магазині (як його бачать покупці); редагування — окремою кнопкою */}
+              <Link to={`/product/${p.slug}`} className={p.isActive ? '' : 'opacity-60'}>
                 {p.images[0] ? (
                   <img src={imageUrl(p.images[0])} alt="" className="aspect-square w-full rounded-2xl object-cover" />
                 ) : (
@@ -347,7 +348,7 @@ export function ProductsPage() {
 
               <div className="min-w-0">
                 <Link
-                  to={`/admin/products/${p.id}`}
+                  to={`/product/${p.slug}`}
                   className={`line-clamp-2 leading-snug font-bold hover:text-brand-600 ${p.isActive ? '' : 'text-sand-700'}`}
                 >
                   {pick(p.name, lang)}

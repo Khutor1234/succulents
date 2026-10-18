@@ -81,7 +81,11 @@ function BonusPromo({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation()
   const lang = useLang()
   const user = useAuth((s) => s.user)
+  const isSeller = useAuth((s) => s.role === 'seller')
   const { balance } = useBonusBalance()
+
+  // Продавець не купує — бонусна програма йому ні до чого
+  if (isSeller) return null
 
   // Компактна смужка — для сторінок категорій, щоб не відсувати товари вниз.
   if (compact) {
@@ -144,8 +148,8 @@ function BonusPromo({ compact = false }: { compact?: boolean }) {
 
 export function HomePage() {
   const { t } = useTranslation()
-  const isSeller = useAuth((s) => s.role === 'seller')
-  const latest = useLatestProducts(8, isSeller)
+  // Новинки на головній — і продавцю лише показані: це вітрина магазину, приховані (часто ще без фото) тут лише заважають
+  const latest = useLatestProducts(8)
   const { visible, isVisible } = useCategories()
   const firstCategory = visible[0] ?? 'plants'
   const shown = latest.data?.filter((p) => isVisible(p.category))
