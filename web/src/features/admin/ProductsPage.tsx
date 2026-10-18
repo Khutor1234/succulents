@@ -126,18 +126,19 @@ export function ProductsPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h1 className="font-display text-3xl font-extrabold text-brand-600">{t('admin.products')}</h1>
+      <div className="mb-4 flex items-center justify-between gap-2 sm:gap-3">
+        <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-brand-600">{t('admin.products')}</h1>
         <Link
           to="/admin/import"
-          className="ml-auto inline-flex min-h-11 items-center gap-2 rounded-xl bg-sand-200 px-4 font-bold text-ink transition-transform hover:bg-sand-300 active:scale-[0.97]"
+          className="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-sand-200 px-3 sm:gap-2 sm:px-4 font-bold text-ink transition-transform hover:bg-sand-300 active:scale-[0.97]"
         >
           <FileSpreadsheet {...ICON} />
+          <span className="sm:hidden">{t('admin.importShort')}</span>
           <span className="hidden sm:inline">{t('admin.importFromSheet')}</span>
         </Link>
         <Link
           to={category ? `/admin/products/new?category=${category}` : '/admin/products/new'}
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97]"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-600 px-3 sm:gap-2 sm:px-4 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97]"
         >
           <Plus {...ICON} />
           {t('admin.addProduct')}
