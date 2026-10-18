@@ -8,6 +8,7 @@ import { formatPrice } from '../../lib/format'
 import { PageTitle } from '../../shared/ui'
 import { useBonusBalance, useBonusHistory, useMyOrders } from './api'
 import { useFavorites } from '../favorites/favoritesStore'
+import { CareGuide } from './CareGuide'
 import { DeliveryProfileSection } from './DeliveryProfileForm'
 
 export function formatDate(order: { createdAt?: { toDate(): Date } }) {
@@ -102,6 +103,8 @@ export function AccountPage() {
           </ul>
         </div>
       </section>
+
+      <CareGuide />
 
       <DeliveryProfileSection />
     </div>

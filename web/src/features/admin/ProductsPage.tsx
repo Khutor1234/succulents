@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { Copy, Eye, EyeOff, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
@@ -273,7 +273,7 @@ export function ProductsPage() {
                 </p>
               </div>
 
-              <div className="col-span-2 grid grid-cols-[1fr_1fr_auto] gap-2 sm:col-span-1 sm:flex">
+              <div className="col-span-2 grid grid-cols-[1fr_1fr_auto_auto] gap-2 sm:col-span-1 sm:flex">
                 <Link
                   to={`/admin/products/${p.id}`}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97]"
@@ -291,6 +291,15 @@ export function ProductsPage() {
                   {p.isActive ? <EyeOff {...ICON} /> : <Eye {...ICON} />}
                   {p.isActive ? t('admin.hide') : t('admin.show')}
                 </button>
+                {/* Копія — новий товар з тими самими даними (напр., для варієгатної форми) */}
+                <Link
+                  to={`/admin/products/new?copy=${p.id}`}
+                  aria-label={t('admin.copyNamed', { name: pick(p.name, lang) })}
+                  title={t('admin.copy')}
+                  className="inline-flex min-h-12 w-12 items-center justify-center rounded-xl border-2 border-brand-600/40 text-brand-600 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-sand-50 active:scale-[0.97]"
+                >
+                  <Copy {...ICON} />
+                </Link>
                 {/* Видалення назавжди — з підтвердженням */}
                 <button
                   type="button"

@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
-import { Check, ChevronDown, Link2, Lock, X, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, Copy, CopyPlus, Link2, Lock, X, Trash2 } from 'lucide-react'
 import { detectGenus, parseForms, withForms } from '../../lib/plantName'
 import { ICON } from '../../shared/icon'
 import { HABITATS, ORIGINS } from '../../lib/types'
@@ -23,26 +23,31 @@ import {
   type ProductFormInput,
 } from './productSchema'
 
-/** /admin/products/new — створення, /admin/products/:id — редагування. */
+/**
+ * /admin/products/new — створення, /admin/products/:id — редагування,
+ * /admin/products/new?copy=:id — новий товар, заповнений даними іншого (швидко зробити, напр., варієгатну форму).
+ */
 export function ProductFormPage() {
   const { t } = useTranslation()
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
   const isNew = id === 'new'
-  const { data: product, isLoading } = useProductById(isNew ? undefined : id)
+  const copyId = isNew ? (searchParams.get('copy') ?? undefined) : undefined
+  const { data: product, isLoading } = useProductById(isNew ? copyId : id)
   const { isLoading: categoriesLoading } = useCategories()
 
-  if ((!isNew && isLoading) || categoriesLoading) return <p className="text-sand-700">{t('loading')}</p>
+  if (((!isNew || copyId) && isLoading) || categoriesLoading) return <p className="text-sand-700">{t('loading')}</p>
   if (!isNew && !product) return <p>{t('product.notFound')}</p>
 
   // key: при переході між товарами форма створюється заново з новими значеннями.
-  return <ProductForm key={id} product={isNew ? null : product!} />
+  return <ProductForm key={`${id}-${copyId ?? ''}`} product={isNew ? null : product!} source={copyId ? (product ?? null) : null} />
 }
 
-function ProductForm({ product }: { product: Product | null }) {
+function ProductForm({ product, source }: { product: Product | null; source?: Product | null }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const save = useSaveProduct()
-  const [images, setImages] = useState<string[]>(product?.images ?? [])
+  const [images, setImages] = useState<string[]>(product?.images ?? source?.images ?? [])
   const [uploading, setUploading] = useState(false)
   const { all: categories } = useCategories()
   const [searchParams] = useSearchParams()
@@ -58,7 +63,10 @@ function ProductForm({ product }: { product: Product | null }) {
   } = useForm<ProductFormInput, unknown, ProductFormData>({
     resolver: zodResolver(productFormSchema),
     // Новий товар з відфільтрованого списку (?category=soil) одразу отримує цю категорію.
-    defaultValues: toFormValues(product, searchParams.get('category') ?? categories[0]?.id ?? ''),
+    // Копія: усе як в оригіналі, крім адреси сторінки — вона складеться з назви при збереженні.
+    defaultValues: source
+      ? { ...toFormValues(source, source.category), slug: '' }
+      : toFormValues(product, searchParams.get('category') ?? categories[0]?.id ?? ''),
   })
   const specs = useFieldArray({ control, name: 'specs' })
   // Вид і синхронізація назви — лише для рослин; теги — ті, що доступні в категорії (рослини, горщики, інструменти).
@@ -79,8 +87,28 @@ function ProductForm({ product }: { product: Product | null }) {
     navigate(`/admin/products?category=${product.category}`)
   }
 
+  // «Зберегти як новий товар»: зберігаємо форму як новий товар, а цей лишаємо без змін
+  const formRef = useRef<HTMLFormElement>(null)
+  const asNewRef = useRef(false)
+  function saveAsNew() {
+    asNewRef.current = true
+    formRef.current?.requestSubmit()
+  }
+
   async function onSubmit(data: ProductFormData) {
-    if (await isSlugTaken(data.slug, product?.id)) {
+    const asNew = asNewRef.current
+    asNewRef.current = false
+    // Куди зберігати: у цей товар чи в новий
+    const target = asNew ? null : product
+    // Новому товару — власна адреса сторінки з його назви
+    if (asNew) data = { ...data, slug: slugify(data.name.uk) }
+    // Новий товар з автоматичною адресою, яка вже зайнята (напр., копію ще не перейменували) — додаємо -2, -3…
+    if (!target && data.slug === slugify(data.name.uk) && (await isSlugTaken(data.slug))) {
+      let n = 2
+      while (await isSlugTaken(`${data.slug}-${n}`)) n++
+      data = { ...data, slug: `${data.slug}-${n}` }
+    }
+    if (await isSlugTaken(data.slug, target?.id)) {
       setError('slug', { message: 'admin.slugTaken' })
       return
     }
@@ -92,7 +120,7 @@ function ProductForm({ product }: { product: Product | null }) {
       parents: (data.category === PLANT_CATEGORY ? data.parents : ['', '']) as [string, string],
       tags: data.tags.filter((tg) => allowed.includes(tg)),
     }
-    await save.mutateAsync({ id: product?.id, data: toProductInput(clean, images) })
+    await save.mutateAsync({ id: target?.id, data: toProductInput(clean, images) })
     // Повертаємось до списку, відфільтрованого за категорією цього товару.
     navigate(`/admin/products?category=${data.category}`)
   }
@@ -145,6 +173,7 @@ function ProductForm({ product }: { product: Product | null }) {
 
   return (
     <form
+      ref={formRef}
       onSubmit={(e) => {
         // Посилання сховане й заповнюється саме — якщо воно ще порожнє (назву не чіпали), складаємо його з назви.
         if (!getValues('slug').trim()) setValue('slug', slugify(getValues('name.uk')))
@@ -152,7 +181,15 @@ function ProductForm({ product }: { product: Product | null }) {
       }}
       className="space-y-6"
     >
-      <h1 className="font-display text-3xl font-extrabold text-brand-600">{product ? t('admin.editProduct') : t('admin.createProduct')}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-3xl font-extrabold text-brand-600">{product ? t('admin.editProduct') : t('admin.createProduct')}</h1>
+      </div>
+      {source && (
+        <p className="flex items-start gap-2 rounded-2xl border-2 border-sunset-500/40 bg-sunset-100/60 p-4 text-sm leading-relaxed">
+          <Copy size={18} strokeWidth={2.25} className="mt-0.5 shrink-0 text-sunset-600" aria-hidden />
+          <span>{t('admin.copyHint', { name: source.name.uk })}</span>
+        </p>
+      )}
 
       {/* На широкому екрані — дві колонки на всю ширину: зліва назва й опис, справа фото, ціна, характеристики */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] [&>*]:min-w-0">
@@ -404,6 +441,20 @@ function ProductForm({ product }: { product: Product | null }) {
           <Check {...ICON} />
           {isSubmitting ? t('admin.saving') : t('admin.save')}
         </Button>
+        {/* Змінили щось (напр., поставили Variegata) і хочете окремий товар — оригінал лишиться як був */}
+        {product && (
+          <button
+            type="button"
+            onClick={saveAsNew}
+            disabled={isSubmitting || uploading}
+            title={t('admin.saveAsNewHint')}
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-brand-600 px-4 font-bold text-brand-600 hover:bg-brand-600 hover:text-sand-50 disabled:opacity-50 sm:flex-none"
+          >
+            <CopyPlus {...ICON} />
+            <span className="sm:hidden">{t('admin.saveAsNewShort')}</span>
+            <span className="hidden sm:inline">{t('admin.saveAsNew')}</span>
+          </button>
+        )}
         <Link
           to={product ? `/admin/products?category=${product.category}` : '/admin/products'}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-sand-200 px-5 font-bold hover:bg-sand-300"
