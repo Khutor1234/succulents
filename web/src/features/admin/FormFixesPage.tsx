@@ -93,7 +93,7 @@ export function FormFixesPage() {
                     >
                       <input type="checkbox" checked={!skipped.has(f.id)} onChange={() => toggle(f.id)} className="mt-1 h-5 w-5 shrink-0 accent-brand-600" />
                       <span className="min-w-0 flex-1">
-                        <Link to={`/admin/products/${f.id}`} className="font-bold hover:text-brand-600" onClick={(e) => e.stopPropagation()}>
+                        <Link to={`/admin/products/${f.id}`} state={{ from: '/admin/forms' }} className="font-bold hover:text-brand-600" onClick={(e) => e.stopPropagation()}>
                           {f.name}
                         </Link>
                         <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">

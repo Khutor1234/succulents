@@ -1,9 +1,10 @@
 import { Search, X } from 'lucide-react'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { GENERA } from '../../lib/plants'
 import { searchProducts } from '../../lib/search'
+import { rememberSearch } from '../../shared/navigation'
 import { PageTitle } from '../../shared/ui'
 import { useAuth } from '../auth/authStore'
 import { useAllProducts } from './api'
@@ -29,6 +30,8 @@ export function SearchPage() {
   const genera = useMemo(() => GENERA.filter((g) => visible.some((p) => p.genus === g)), [visible])
 
   const setQuery = (q: string) => setParams(q ? { q } : {}, { replace: true })
+  // Запам’ятовуємо запит (і набраний, і з посилання на кшталт «батько» на картці) — для «Пошуку» в меню
+  useEffect(() => rememberSearch(query), [query])
 
   return (
     <div className="space-y-6">

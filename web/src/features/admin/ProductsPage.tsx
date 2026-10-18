@@ -13,6 +13,7 @@ import { SucculentIcon } from '../../shared/ui'
 import { useProgressive } from '../../shared/useProgressive'
 import { TagBadges } from '../catalog/PlantFilters'
 import { useCategories } from '../catalog/categories'
+import { useHere } from '../../shared/navigation'
 import { useAllProducts, useDeleteProduct, useToggleProductActive } from './api'
 
 const ALL = 'all'
@@ -70,6 +71,8 @@ export function ProductsPage() {
   const toggle = useToggleProductActive()
   const remove = useDeleteProduct()
   const { nameOf, all: categories } = useCategories()
+  // Звідки відкрили редагування — після збереження форма повернеться сюди ж (з тим самим пошуком і сортуванням)
+  const here = useHere()
   // Вибрана категорія зберігається в адресі (?category=soil) — після редагування товару повертаємось туди ж.
   const [params, setParams] = useSearchParams()
   // Без параметра одразу відкриваються «Рослини» — їх редагують найчастіше; «Усі» — це ?category=all.
@@ -382,6 +385,7 @@ export function ProductsPage() {
               <div className="col-span-2 flex gap-2 sm:col-span-1">
                 <Link
                   to={`/admin/products/${p.id}`}
+                  state={{ from: here }}
                   className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97] sm:flex-none"
                 >
                   <Pencil {...ICON} />
@@ -401,6 +405,7 @@ export function ProductsPage() {
                 {/* Копія — новий товар з тими самими даними (напр., для варієгатної форми) */}
                 <Link
                   to={`/admin/products/new?copy=${p.id}`}
+                  state={{ from: here }}
                   aria-label={t('admin.copyNamed', { name: pick(p.name, lang) })}
                   title={t('admin.copy')}
                   className="inline-flex min-h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-brand-600/40 text-brand-600 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-sand-50 active:scale-[0.97]"

@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useRef, useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { Check, ChevronDown, Copy, CopyPlus, Eye, EyeOff, Link2, Lock, X, Trash2 } from 'lucide-react'
 import { detectGenus, parseForms, withForms } from '../../lib/plantName'
 import { ICON } from '../../shared/icon'
@@ -13,6 +13,7 @@ import type { Product } from '../../lib/types'
 import { Button, Input, Section, Select, Textarea } from '../../shared/ui'
 import { useCategories } from '../catalog/categories'
 import { isSlugTaken, useDeleteProduct, useProductById, useSaveProduct, useToggleProductActive } from './api'
+import { canGoBack, useFrom } from '../../shared/navigation'
 import { BackLink } from './BackLink'
 import { ImagesEditor } from './ImagesEditor'
 import {
@@ -82,11 +83,25 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
 
   const err = (key?: string) => (key ? t(key) : undefined)
 
+  // Після збереження чи видалення — туди, звідки відкрили форму: сторінка товару, каталог, пошук
+  // чи список в адмінці (з тим самим пошуком і сортуванням). Відкрили напряму — список категорії.
+  const from = useFrom()
+  function leave(category: string, { deleted = false, slug }: { deleted?: boolean; slug?: string } = {}) {
+    const list = `/admin/products?category=${category}`
+    const fromProduct = from?.startsWith('/product/')
+    // Видалили товар, відкритий зі сторінки товару, — тієї сторінки вже немає
+    if (!from || (fromProduct && deleted)) return navigate(list, { replace: !!from })
+    // Змінили адресу товару — показуємо сторінку з новою адресою замість старої
+    if (fromProduct && slug && from !== `/product/${slug}`) return navigate(`/product/${slug}`, { replace: true })
+    if (canGoBack()) return navigate(-1)
+    navigate(from)
+  }
+
   const remove = useDeleteProduct()
   async function onDelete() {
     if (!product || !window.confirm(t('admin.deleteProductConfirm', { name: product.name.uk }))) return
     await remove.mutateAsync(product.id)
-    navigate(`/admin/products?category=${product.category}`)
+    leave(product.category, { deleted: true })
   }
 
   // Око: показати / приховати товар одразу, без «Зберегти» (як на картці в магазині).
@@ -139,8 +154,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
       tags: data.tags.filter((tg) => allowed.includes(tg)),
     }
     await save.mutateAsync({ id: target?.id, data: toProductInput(clean, images) })
-    // Повертаємось до списку, відфільтрованого за категорією цього товару.
-    navigate(`/admin/products?category=${data.category}`)
+    leave(data.category, { slug: asNew ? undefined : data.slug })
   }
 
   // Адресу, яку ми самі підставили, оновлюємо разом із назвою — поки її не змінили вручну.
@@ -499,8 +513,10 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
             <span className="hidden sm:inline">{t('admin.saveAsNew')}</span>
           </button>
         )}
-        <Link
-          to={product ? `/admin/products?category=${product.category}` : '/admin/products'}
+        {/* «Скасувати» — без збереження назад, звідки відкрили форму */}
+        <button
+          type="button"
+          onClick={() => leave(product?.category ?? getValues('category'))}
           aria-label={t('admin.cancel')}
           title={t('admin.cancel')}
           className="inline-flex min-h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-sand-200 font-bold hover:bg-sand-300 sm:w-auto sm:px-5"
@@ -508,7 +524,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
           <X {...ICON} />
           {/* На телефоні — лише хрестик, щоб усі кнопки влізли в рядок */}
           <span className="hidden sm:inline">{t('admin.cancel')}</span>
-        </Link>
+        </button>
       </div>
     </form>
   )

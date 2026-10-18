@@ -11,6 +11,7 @@ import { useBonusBalance } from '../features/account/api'
 import { auth } from '../firebase/config'
 import { formatPrice } from '../lib/format'
 import { ICON } from '../shared/icon'
+import { searchHref } from '../shared/navigation'
 import { BookOpen, ChevronRight, Construction, Heart, Home, LayoutGrid, LogIn, LogOut, Menu, Package, Search, ShieldCheck, ShoppingBag, User, X } from 'lucide-react'
 
 const YEAR = new Date().getFullYear()
@@ -168,7 +169,7 @@ function ShopBottomNav() {
       <div className={`grid ${isSeller ? 'grid-cols-4' : 'grid-cols-5'}`}>
         <BottomItem to="/" end icon={<Home size={22} strokeWidth={2.2} aria-hidden />} label={t('nav.home')} />
         <BottomItem to="/c/plants" match="/c/" icon={<LayoutGrid size={22} strokeWidth={2.2} aria-hidden />} label={t('nav.catalog')} />
-        <BottomItem to="/search" icon={<Search size={22} strokeWidth={2.2} aria-hidden />} label={t('nav.search')} />
+        <BottomItem to={searchHref()} match="/search" icon={<Search size={22} strokeWidth={2.2} aria-hidden />} label={t('nav.search')} />
         {isSeller ? (
           <BottomItem to="/admin" icon={<ShieldCheck size={22} strokeWidth={2.2} aria-hidden />} label={t('nav.admin')} />
         ) : (
@@ -265,7 +266,7 @@ export function Layout() {
           </Link>
           {/* На телефоні в шапці лише кнопка меню: пошук, кошик, кабінет і адмінка — у нижньому меню. На комп’ютері — усі кнопки в шапці. */}
           <div className="ml-auto flex items-center gap-1.5 text-sm sm:gap-2">
-            <Link to="/search" aria-label={t('search.open')} title={t('search.open')} className={NAV_BTN + ' hidden hover:bg-sand-200 md:inline-flex'}>
+            <Link to={searchHref()} aria-label={t('search.open')} title={t('search.open')} className={NAV_BTN + ' hidden hover:bg-sand-200 md:inline-flex'}>
               <Search {...ICON} />
             </Link>
             <Link to="/blog" aria-label={t('blog.title')} title={t('blog.title')} className={NAV_BTN + ' hidden hover:bg-sand-200 md:inline-flex'}>

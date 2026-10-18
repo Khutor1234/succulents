@@ -7,6 +7,7 @@ import { formatPrice, pick } from '../../lib/format'
 import { PLANT_CATEGORY } from '../../lib/plants'
 import type { Product } from '../../lib/types'
 import { ProductImage } from '../../shared/ui'
+import { useHere } from '../../shared/navigation'
 import { useProgressive } from '../../shared/useProgressive'
 import { useAuth } from '../auth/authStore'
 import { useDeleteProduct, useToggleProductActive } from '../admin/api'
@@ -172,11 +173,14 @@ function SellerActions({ product, name }: { product: Product; name: string }) {
   const { t } = useTranslation()
   const remove = useDeleteProduct()
   const toggle = useToggleProductActive()
+  // Після збереження форма повернеться на цю сторінку (каталог, пошук, головна…)
+  const here = useHere()
   const VisIcon = product.isActive ? EyeOff : Eye
   return (
     <>
       <Link
         to={`/admin/products/${product.id}`}
+        state={{ from: here }}
         aria-label={t('admin.editNamed', { name })}
         className="flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-3 font-bold text-sand-50 transition-colors hover:bg-brand-700"
       >
@@ -201,6 +205,7 @@ function SellerActions({ product, name }: { product: Product; name: string }) {
       </button>
       <Link
         to={`/admin/products/new?copy=${product.id}`}
+        state={{ from: here }}
         aria-label={t('admin.copyNamed', { name })}
         title={t('admin.copy')}
         className={`${ICON_LINK} border-brand-600 text-brand-600 hover:bg-brand-600 hover:text-sand-50`}

@@ -1,7 +1,8 @@
 import { ArrowLeft, ArrowRight, BookOpen, EyeOff, Gift, Pencil, Truck } from 'lucide-react'
 import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, Navigate, NavLink, useParams } from 'react-router'
+import { Link, Navigate, NavLink, useNavigate, useParams } from 'react-router'
+import { canGoBack, useHere } from '../../shared/navigation'
 import { ICON } from '../../shared/icon'
 import { useLang } from '../../i18n'
 import { formatPrice, pick } from '../../lib/format'
@@ -274,6 +275,8 @@ export function CategoryPage() {
   )
 }
 
+const BACK = 'group inline-flex min-h-11 items-center gap-1.5 font-bold text-brand-600 hover:underline'
+
 export function ProductPage() {
   const { t } = useTranslation()
   const lang = useLang()
@@ -282,6 +285,8 @@ export function ProductPage() {
   // Продавець відкриває й приховані товари (напр. з пошуку) — покупцям вони «не знайдено».
   const { data: product, isLoading, isError } = useProduct(slug, isSeller)
   const { isVisible, nameOf } = useCategories()
+  const navigate = useNavigate()
+  const here = useHere()
 
   if (isLoading || isError) return <Status isLoading={isLoading} isError={isError} />
   // Товар прибрали чи приховали (напр. посилання збережене раніше) — пропонуємо, куди піти далі.
@@ -307,14 +312,24 @@ export function ProductPage() {
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
-        <Link to={`/c/${product.category}`} className="group inline-flex min-h-11 items-center gap-1.5 font-bold text-brand-600 hover:underline">
-          <ArrowLeft {...ICON} className="transition-transform group-hover:-translate-x-1" />
-          {t('product.backShort')}
-        </Link>
+        {/* Прийшли з пошуку, каталогу з фільтрами тощо — «Назад» повертає саме туди (з тим самим запитом).
+            Відкрили сторінку напряму — ведемо в каталог її категорії. */}
+        {canGoBack() ? (
+          <button type="button" onClick={() => navigate(-1)} className={BACK}>
+            <ArrowLeft {...ICON} className="transition-transform group-hover:-translate-x-1" />
+            {t('admin.back')}
+          </button>
+        ) : (
+          <Link to={`/c/${product.category}`} className={BACK}>
+            <ArrowLeft {...ICON} className="transition-transform group-hover:-translate-x-1" />
+            {t('product.backShort')}
+          </Link>
+        )}
         {/* Продавець бачить товар як покупець, але може одразу перейти до редагування */}
         {isSeller && (
           <Link
             to={`/admin/products/${product.id}`}
+            state={{ from: here }}
             className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97]"
           >
             <Pencil {...ICON} />
