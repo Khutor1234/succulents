@@ -1,4 +1,4 @@
-import { Copy, Eye, EyeOff, Pencil, Trash2 } from 'lucide-react'
+import { Copy, Eye, EyeOff, Package, Pencil, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useLang } from '../../i18n'
@@ -16,6 +16,9 @@ import { TagBadges } from './PlantFilters'
 
 // Картки по черзі отримують теплий пісочний і оливковий фон — як у макеті «Пустеля».
 const TINTS = ['bg-sand-300/60', 'bg-brand-100']
+// Службові плашки продавця («Приховано», залишок): квадратніші за теги, дрібні великі літери
+const SELLER_BADGE =
+  'inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] leading-none font-extrabold tracking-wide whitespace-nowrap uppercase shadow-sm ring-1 ring-sand-50/70'
 // Скільки карток показуємо за раз (решта — коли догортали донизу)
 const PAGE = 24
 
@@ -43,11 +46,20 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           </div>
         </Link>
         {/* Прихований товар у картках бачить лише продавець — плашка першою в ряду тегів на фото */}
-        <TagBadges tags={product.tags} className="pointer-events-none absolute top-2 right-14 left-2">
-          {!product.isActive && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-ink/85 px-2.5 py-0.5 text-xs font-bold text-sand-50 shadow-sm backdrop-blur">
-              <EyeOff size={12} strokeWidth={2.5} aria-hidden />
+        {/* Продавцю — службові плашки першими в ряду тегів: прихований чи ні й скільки на складі.
+            Навмисно інший вигляд, ніж у тегів (квадратніші, дрібні великі літери), — щоб не плутати з тим, що бачать покупці. */}
+        {/* У продавця немає сердечка — плашкам можна до правого краю */}
+        <TagBadges tags={product.tags} className={`pointer-events-none absolute top-2 left-2 ${isSeller ? 'right-2' : 'right-14'}`}>
+          {isSeller && !product.isActive && (
+            <span className={`${SELLER_BADGE} bg-ink/90 text-sand-50`}>
+              <EyeOff size={12} strokeWidth={2.75} aria-hidden />
               {t('product.hidden')}
+            </span>
+          )}
+          {isSeller && (
+            <span className={`${SELLER_BADGE} text-white ${product.stock > 0 ? 'bg-brand-700/90' : 'bg-red-700/90'}`}>
+              <Package size={12} strokeWidth={2.75} aria-hidden />
+              {product.stock > 0 ? t('admin.stockBadge', { count: product.stock }) : t('admin.noStockBadge')}
             </span>
           )}
         </TagBadges>

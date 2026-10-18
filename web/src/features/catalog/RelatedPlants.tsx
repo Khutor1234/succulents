@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { Product } from '../../lib/types'
+import { useAuth } from '../auth/authStore'
 import { useAllProducts } from './api'
 import { useCategories } from './categories'
 import { ProductCard } from './ProductCard'
@@ -48,38 +49,52 @@ const BADGE: Record<Relation, string> = {
   sibling: 'bg-sand-200 text-sand-700',
 }
 
-/** Пов’язані рослини, що є в наявності, — під карткою товару. */
+// Для продавця всередині кожного виду зв’язку: спершу в наявності, далі немає, у кінці приховані
+const rank = (p: Product) => (!p.isActive ? 2 : p.stock === 0 ? 1 : 0)
+
+/**
+ * Пов’язані рослини під карткою товару. Покупцям — лише ті, що є в наявності;
+ * продавцю — усі, разом із прихованими й закінченими (на картках є плашки «Приховано» / «Немає»).
+ */
 export function RelatedPlants({ product }: { product: Product }) {
   const { t } = useTranslation()
-  const { data } = useAllProducts()
+  const isSeller = useAuth((s) => s.role === 'seller')
+  const { data } = useAllProducts(isSeller)
   const { isVisible } = useCategories()
   if (!data) return null
 
   const related = data
-    .filter((p) => p.id !== product.id && p.isActive && p.stock > 0 && isVisible(p.category))
+    .filter((p) => p.id !== product.id && (isSeller || (p.isActive && p.stock > 0 && isVisible(p.category))))
     .map((p) => ({ p, rel: relationOf(product, p) }))
     .filter((x): x is { p: Product; rel: Relation } => !!x.rel)
-    .sort((a, b) => ORDER.indexOf(a.rel) - ORDER.indexOf(b.rel))
-    .slice(0, MAX)
-  if (related.length === 0) return null
+    .sort((a, b) => (isSeller ? rank(a.p) - rank(b.p) : 0))
+  // Групи за видом зв’язку — у кожній не більше MAX карток
+  const groups = ORDER.map((rel) => ({ rel, items: related.filter((x) => x.rel === rel).slice(0, MAX).map((x) => x.p) })).filter(
+    (g) => g.items.length > 0,
+  )
+  if (groups.length === 0) return null
 
   return (
     <section className="mt-14" aria-labelledby="related-title">
       <h2 id="related-title" className="font-display text-3xl font-extrabold text-brand-600">
         {t('related.title')}
       </h2>
-      <p className="mt-1 mb-5 text-sand-700">{t('related.hint')}</p>
-      <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-3">
-        {related.map(({ p, rel }, i) => (
-          <div key={p.id} className="flex flex-col">
-            {/* Підпис над карткою: як саме ця рослина пов’язана з поточною */}
-            <span className={`mb-2 self-start rounded-full px-3 py-1 text-xs font-bold ${BADGE[rel]}`}>{t(`related.${rel}`)}</span>
-            <div className="flex flex-1 flex-col [&>article]:flex-1">
-              <ProductCard product={p} index={i} />
-            </div>
+      <p className="mt-1 text-sand-700">{t(isSeller ? 'related.sellerHint' : 'related.hint')}</p>
+      {groups.map(({ rel, items }) => (
+        <div key={rel} className="mt-6">
+          {/* Підпис групи: як саме ці рослини пов’язані з поточною */}
+          <h3 className="mb-3 flex items-center gap-2">
+            <span className={`rounded-full px-3 py-1 text-sm font-bold ${BADGE[rel]}`}>{t(`related.groups.${rel}`)}</span>
+            <span className="text-sm font-bold text-sand-700 tabular-nums">{items.length}</span>
+          </h3>
+          {/* Дрібніші картки: на комп’ютері по 4 в ряд */}
+          <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {items.map((p, i) => (
+              <ProductCard key={p.id} product={p} index={i} />
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </section>
   )
 }

@@ -20,7 +20,7 @@ export interface FormFixPlan {
   fixes: FormFix[]
   /** Уже правильно: мутація саме від цієї рослини. */
   ok: number
-  /** Рослини з формою, для яких у магазині немає простішої версії. */
+  /** Рослини з формою, для яких у магазині немає звичайної версії (без форм). */
   noSource: string[]
 }
 
@@ -46,15 +46,12 @@ export function planFormFixes(products: Plant[]): FormFixPlan {
   for (const p of plants) {
     const forms = formsOf(p)
     if (forms.length === 0) continue
-    // Найближча простіша версія: форми — частина форм цієї рослини, але їх менше.
-    // «Debbie variegata cristata» → спершу «Debbie variegata», якщо такої немає — «Debbie».
-    // Серед однакових — та, що показана на сайті.
+    // Джерело — завжди звичайна версія, без жодної форми: «Cubic Frost variegata cristata» — від «Cubic Frost»,
+    // а не від «Cubic Frost variegata». Серед однакових — та, що показана на сайті.
     const candidates = (byKey.get(keyOf(p)) ?? [])
-      .filter((q) => q.id !== p.id)
-      .map((q) => ({ q, forms: formsOf(q) }))
-      .filter((c) => c.forms.length < forms.length && c.forms.every((f) => forms.includes(f)))
-      .sort((a, b) => b.forms.length - a.forms.length || Number(b.q.isActive) - Number(a.q.isActive))
-    const source = candidates[0]?.q.name.uk.trim()
+      .filter((q) => q.id !== p.id && formsOf(q).length === 0)
+      .sort((a, b) => Number(b.isActive) - Number(a.isActive))
+    const source = candidates[0]?.name.uk.trim()
     if (!source) {
       plan.noSource.push(p.name.uk)
       continue
