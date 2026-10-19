@@ -72,14 +72,14 @@ export function BlogPage() {
       <p className="-mt-2 mb-5 max-w-2xl text-sand-700">{t('blog.intro')}</p>
       {/* На телефоні розділи гортаються вбік одним рядком */}
       <div className="-mx-4 mb-6 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0" role="group" aria-label={t('blog.categories')}>
-        <button type="button" onClick={() => setParams({}, { replace: true })} className={chip(!cat)} aria-pressed={!cat}>
+        <button type="button" onClick={() => setParams({}, { replace: true, preventScrollReset: true })} className={chip(!cat)} aria-pressed={!cat}>
           {t('blog.allCategories')}
           {count(ARTICLES.length, !cat)}
         </button>
         {BLOG_CATEGORIES.map((c) => {
           const on = cat === c.id
           return (
-            <button key={c.id} type="button" onClick={() => setParams({ cat: c.id }, { replace: true })} className={chip(on)} aria-pressed={on}>
+            <button key={c.id} type="button" onClick={() => setParams({ cat: c.id }, { replace: true, preventScrollReset: true })} className={chip(on)} aria-pressed={on}>
               {c.label}
               {count(ARTICLES.filter((a) => a.category === c.id).length, on)}
             </button>
