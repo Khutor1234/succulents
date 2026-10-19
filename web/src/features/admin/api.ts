@@ -68,15 +68,21 @@ export function useSaveProduct() {
   })
 }
 
-/**
- * Показати / приховати товар. Разом зі зміною видимості правимо залишок:
- * приховали — 0 шт. на складі; показали — щонайменше 1 шт. (якщо було більше — лишається як було).
- */
+/** Залишок на складі — швидко з картки (кнопки − / +), без форми редагування. */
+export function useSetStock() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, stock }: { id: string; stock: number }) => updateDoc(doc(db, 'products', id), { stock: Math.max(0, stock), updatedAt: serverTimestamp() }),
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+}
+
+/** Показати / приховати товар. Залишок на складі не змінюється — лише видимість для покупців. */
 export function useToggleProductActive() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, isActive, stock }: { id: string; isActive: boolean; stock: number }) =>
-      updateDoc(doc(db, 'products', id), { isActive, stock: isActive ? Math.max(stock, 1) : 0, updatedAt: serverTimestamp() }),
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      updateDoc(doc(db, 'products', id), { isActive, updatedAt: serverTimestamp() }),
     onSuccess: () => queryClient.invalidateQueries(),
   })
 }

@@ -10,7 +10,7 @@ import { ProductImage } from '../../shared/ui'
 import { useHere } from '../../shared/navigation'
 import { useProgressive } from '../../shared/useProgressive'
 import { useAuth } from '../auth/authStore'
-import { useDeleteProduct, useToggleProductActive } from '../admin/api'
+import { useDeleteProduct, useSetStock, useToggleProductActive } from '../admin/api'
 import { AddToCart } from '../cart/AddToCart'
 import { FavoriteButton } from '../favorites/FavoriteButton'
 import { ParentsLinks } from './ParentsLinks'
@@ -43,9 +43,14 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
     // Картки з'являються одна за одною (затримка за індексом) і легко піднімаються при наведенні
     <article
       style={{ animationDelay: `${Math.min(index % PAGE, 11) * 45}ms` }}
-      // Прихований товар (бачить лише продавець) — інша картка: пунктирна рамка й темніший фон. Фото лишається яскравим.
+      // Продавцю картка одразу каже про стан (фото лишається яскравим):
+      // прихований — пунктирна рамка й темніший фон; показаний, але закінчився — рожевуватий фон і червона рамка
       className={`@container flex animate-rise flex-col rounded-3xl border-2 p-3 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:shadow-[0_12px_30px_-12px_rgba(43,33,24,0.25)] ${
-        product.isActive ? 'border-sand-200 bg-sand-50 hover:border-sand-300' : 'border-dashed border-sand-700/50 bg-sand-200/70 hover:border-sand-700'
+        !product.isActive
+          ? 'border-dashed border-sand-700/50 bg-sand-200/70 hover:border-sand-700'
+          : isSeller && product.stock === 0
+            ? 'border-red-700/30 bg-red-50 hover:border-red-700/60'
+            : 'border-sand-200 bg-sand-50 hover:border-sand-300'
       }`}
     >
       <div className="group relative overflow-hidden rounded-2xl">
@@ -138,6 +143,7 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
         </span>
       </Link>
       {/* Покупцю — «У кошик»; продавцю кошик не потрібен — замість нього редагування, копія й видалення */}
+      {isSeller && <SellerStock product={product} />}
       <div className="mt-2.5 flex gap-2">
         {isSeller ? (
           <SellerActions product={product} name={name} />
@@ -155,8 +161,9 @@ export function ProductGrid({ products }: { products: Product[] }) {
   // Спершу ті, що є в наявності, далі «немає в наявності», у самому кінці — приховані (їх бачить лише продавець).
   // Сортування стабільне, тож вибраний порядок (новизна, ціна) всередині кожної групи зберігається.
   const ordered = [...products].sort((a, b) => rank(a) - rank(b))
-  // Інший набір товарів (фільтр, сортування) — знову з першої порції
-  const { visible, sentinel } = useProgressive(ordered, PAGE, ordered.map((p) => p.id).join(','))
+  // Інший набір товарів (фільтр, пошук) — знову з першої порції. Ключ — без порядку: коли товар лише показали чи
+  // приховали (і він перейшов в іншу групу), список не скидається й сторінка не стрибає вгору
+  const { visible, sentinel } = useProgressive(ordered, PAGE, products.map((p) => p.id).sort().join(','))
   return (
     <>
       <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-3">
@@ -175,6 +182,59 @@ const ICON_LINK =
   'flex min-h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 transition-colors disabled:opacity-50'
 
 /** Кнопки продавця на картці: редагувати, показати/приховати, створити копію, видалити (з підтвердженням). */
+/**
+ * Продавцю на картці: «На складі − N +» — змінити залишок одразу, без форми редагування.
+ * Число змінюється миттєво; у базу зберігаємо, коли кнопки на мить перестали натискати (щоб не писати на кожен клік).
+ */
+function SellerStock({ product }: { product: Product }) {
+  const { t } = useTranslation()
+  const save = useSetStock()
+  const [value, setValue] = useState(product.stock)
+  const [base, setBase] = useState(product.stock)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [editing, setEditing] = useState(false)
+  // Залишок змінився деінде (форма, замовлення) — показуємо новий, якщо тут саме нічого не змінюють
+  if (product.stock !== base && !editing && !save.isPending) {
+    setBase(product.stock)
+    setValue(product.stock)
+  }
+  // Останнє значення — у ref: кілька швидких натискань поспіль мають додаватися, а не перезаписувати одне одного
+  const latest = useRef(value)
+  const change = (d: number) => {
+    setValue((v) => {
+      const next = Math.max(0, v + d)
+      latest.current = next
+      return next
+    })
+    setEditing(true)
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => {
+      timer.current = null
+      const next = latest.current
+      setEditing(false)
+      setBase(next)
+      if (next !== product.stock) save.mutate({ id: product.id, stock: next })
+    }, 600)
+  }
+  const btn = 'flex h-9 w-9 items-center justify-center rounded-lg text-lg font-bold leading-none hover:bg-sand-200 disabled:opacity-30'
+  return (
+    <div className="mx-1.5 mt-2 flex items-center justify-between gap-2 text-sm">
+      <span className={`font-bold ${value === 0 ? 'text-red-700' : 'text-sand-700'}`}>{t('admin.fields.stock')}</span>
+      <div className="flex items-center rounded-xl border-2 border-sand-200 bg-sand-50" role="group" aria-label={t('admin.fields.stock')}>
+        <button type="button" className={btn} onClick={() => change(-1)} disabled={value === 0} aria-label={t('cart.decrease')}>
+          −
+        </button>
+        <span className="w-9 text-center font-extrabold tabular-nums" aria-live="polite">
+          {value}
+        </span>
+        <button type="button" className={btn} onClick={() => change(1)} aria-label={t('cart.increase')}>
+          +
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function SellerActions({ product, name }: { product: Product; name: string }) {
   const { t } = useTranslation()
   const remove = useDeleteProduct()
@@ -197,7 +257,7 @@ function SellerActions({ product, name }: { product: Product; name: string }) {
       {/* Око: прихований товар — показати покупцям, видимий — сховати */}
       <button
         type="button"
-        onClick={() => toggle.mutate({ id: product.id, isActive: !product.isActive, stock: product.stock })}
+        onClick={() => toggle.mutate({ id: product.id, isActive: !product.isActive })}
         disabled={toggle.isPending}
         aria-label={t(product.isActive ? 'admin.hideNamed' : 'admin.showNamed', { name })}
         title={t(product.isActive ? 'admin.hide' : 'admin.show')}

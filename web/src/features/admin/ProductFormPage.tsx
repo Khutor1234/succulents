@@ -103,16 +103,14 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
   }
 
   // Око: показати / приховати товар одразу, без «Зберегти» (як на картці в магазині).
-  // Галочку й залишок у формі оновлюємо як збережені, щоб «Зберегти» потім не повернуло старе.
+  // Галочку у формі оновлюємо як збережену, щоб «Зберегти» потім не повернуло старе. Залишок не змінюється.
   const toggle = useToggleProductActive()
   const isActive = useWatch({ control, name: 'isActive' })
   async function onToggleActive() {
     if (!product) return
     const next = !isActive
-    const stock = Number(getValues('stock')) || 0
-    await toggle.mutateAsync({ id: product.id, isActive: next, stock })
+    await toggle.mutateAsync({ id: product.id, isActive: next })
     resetField('isActive', { defaultValue: next })
-    resetField('stock', { defaultValue: String(next ? Math.max(stock, 1) : 0) })
   }
 
   // «Зберегти як новий товар»: зберігаємо форму як новий товар, а цей лишаємо без змін

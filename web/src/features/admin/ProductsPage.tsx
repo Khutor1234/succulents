@@ -1,4 +1,4 @@
-import { FileSpreadsheet, Plus, Search, X } from 'lucide-react'
+import { Check, CheckSquare, FileSpreadsheet, Plus, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
@@ -12,6 +12,7 @@ import { useProgressive } from '../../shared/useProgressive'
 import { ProductCard } from '../catalog/ProductCard'
 import { useCategories } from '../catalog/categories'
 import { useAllProducts } from './api'
+import { BulkBar } from './BulkBar'
 
 const ALL = 'all'
 // Скільки товарів показуємо за раз (решта — коли догортали донизу)
@@ -106,6 +107,16 @@ export function ProductsPage() {
     // nameOf і t створюються наново щоразу — від них не залежимо
   }, [products, category, query, sort, lang])
   const list = useProgressive(shown ?? [], PAGE, `${category}|${query}|${sort}`)
+  // Масові дії: режим вибору й вибрані товари
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const toggleSelected = (id: string) =>
+    setSelected((s) => {
+      const next = new Set(s)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
 
   // Абетка — коли список за назвою. Два рівні: перша літера (рід) і, коли її вибрали, літери сорту всередині роду
   // («Echeveria» → A, B, L… — 'Lola', 'Blue Bird'). Перший товар кожної літери отримує якір, до якого прокручує кнопка.
@@ -173,9 +184,24 @@ export function ProductsPage() {
     <div>
       <div className="mb-4 flex items-center justify-between gap-2 sm:gap-3">
         <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-brand-600">{t('admin.products')}</h1>
+        {/* Масові дії: вибрати кілька товарів і змінити їх разом */}
+        <button
+          type="button"
+          onClick={() => {
+            setSelecting(!selecting)
+            setSelected(new Set())
+          }}
+          aria-pressed={selecting}
+          className={`ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 font-bold transition-colors sm:px-4 ${
+            selecting ? 'bg-brand-600 text-sand-50' : 'bg-sand-200 text-ink hover:bg-sand-300'
+          }`}
+        >
+          <CheckSquare {...ICON} />
+          {t('admin.bulk.choose')}
+        </button>
         <Link
           to="/admin/import"
-          className="ml-auto hidden min-h-11 items-center gap-2 rounded-xl bg-sand-200 px-4 font-bold text-ink md:inline-flex transition-transform hover:bg-sand-300 active:scale-[0.97]"
+          className="hidden min-h-11 items-center gap-2 rounded-xl bg-sand-200 px-4 font-bold text-ink md:inline-flex transition-transform hover:bg-sand-300 active:scale-[0.97]"
         >
           <FileSpreadsheet {...ICON} />
           {/* На телефоні імпорт — у нижньому меню «Ще» */}
@@ -183,7 +209,7 @@ export function ProductsPage() {
         </Link>
         <Link
           to={category ? `/admin/products/new?category=${category}` : '/admin/products/new'}
-          className="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-600 px-3 font-bold text-sand-50 md:ml-0 sm:gap-2 sm:px-4 transition-transform hover:bg-brand-700 active:scale-[0.97]"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-600 px-3 font-bold text-sand-50 sm:gap-2 sm:px-4 transition-transform hover:bg-brand-700 active:scale-[0.97]"
         >
           <Plus {...ICON} />
           {t('admin.addProduct')}
@@ -328,15 +354,48 @@ export function ProductsPage() {
       {/* Ті самі картки, що й у магазині (з кнопками продавця й плашками «Приховано» / залишок), по кілька в ряд */}
       {shown && shown.length > 0 && (
         <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-3">
-          {list.visible.map((p, i) => (
-            // id — якір для абетки: до першого товару літери прокручує кнопка
-            <div key={p.id} id={anchors.has(p.id) ? `p-${p.id}` : undefined} className="flex flex-col [&>article]:flex-1">
-              <ProductCard product={p} index={i} />
-            </div>
-          ))}
+          {list.visible.map((p, i) => {
+            const on = selected.has(p.id)
+            return (
+              // id — якір для абетки: до першого товару літери прокручує кнопка
+              <div key={p.id} id={anchors.has(p.id) ? `p-${p.id}` : undefined} className="relative flex flex-col [&>article]:flex-1">
+                <ProductCard product={p} index={i} />
+                {/* Режим вибору: картка — одна велика кнопка-галочка (кнопки картки й посилання не спрацьовують) */}
+                {selecting && (
+                  <button
+                    type="button"
+                    onClick={() => toggleSelected(p.id)}
+                    aria-pressed={on}
+                    aria-label={t(on ? 'admin.bulk.unselect' : 'admin.bulk.select', { name: pick(p.name, lang) })}
+                    className={`absolute inset-0 rounded-3xl border-4 transition-colors ${on ? 'border-brand-600 bg-brand-600/15' : 'border-transparent hover:bg-ink/5'}`}
+                  >
+                    <span
+                      className={`absolute top-3 right-3 flex h-9 w-9 items-center justify-center rounded-xl border-2 shadow ${
+                        on ? 'border-brand-600 bg-brand-600 text-sand-50' : 'border-sand-300 bg-sand-50 text-transparent'
+                      }`}
+                    >
+                      <Check size={20} strokeWidth={3} aria-hidden />
+                    </span>
+                  </button>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
       {list.sentinel}
+      {selecting && shown && (
+        <BulkBar
+          selected={shown.filter((p) => selected.has(p.id))}
+          total={shown.length}
+          onSelectAll={() => setSelected(new Set(shown.map((p) => p.id)))}
+          onClear={() => setSelected(new Set())}
+          onClose={() => {
+            setSelecting(false)
+            setSelected(new Set())
+          }}
+        />
+      )}
     </div>
   )
 }
