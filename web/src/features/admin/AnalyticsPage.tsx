@@ -17,7 +17,7 @@ import {
   Leaf,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useLang } from '../../i18n'
 import { formatPrice, pick } from '../../lib/format'
@@ -216,7 +216,14 @@ function SalesAnalytics() {
                       <ProductImage src={p.image} alt="" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold">{p.name ? pick(p.name, lang) : p.id}</p>
+                      {/* Товар, що ще є в базі, — посилання на його сторінку; видалений — просто назва із замовлень */}
+                      {p.product ? (
+                        <Link to={`/product/${p.product.slug}`} className="block truncate text-sm font-bold hover:text-brand-600 hover:underline">
+                          {pick(p.product.name, lang)}
+                        </Link>
+                      ) : (
+                        <p className="truncate text-sm font-bold">{p.name ? pick(p.name, lang) : p.id}</p>
+                      )}
                       <Bar value={p.qty} max={stats.topProducts[0].qty} />
                     </div>
                     <div className="shrink-0 text-right text-sm">
@@ -230,7 +237,12 @@ function SalesAnalytics() {
 
             <div className="space-y-6">
               <Card title={t('analytics.topGenera')} icon={Sprout}>
-                <RankList rows={stats.topGenera.map(([g, n]) => ({ key: g, label: <span className="italic">{g}</span>, value: n, text: t('analytics.pcs', { count: n }) }))} />
+                <RankList rows={stats.topGenera.map(([g, n]) => ({ key: g, label: (
+                      <Link to={`/c/plants?genus=${encodeURIComponent(g)}`} className="italic hover:text-brand-600 hover:underline">
+                        {g}
+                      </Link>
+                    ),
+                    value: n, text: t('analytics.pcs', { count: n }) }))} />
               </Card>
               <Card title={t('analytics.topCities')} icon={MapPin}>
                 <RankList rows={stats.topCities.map(([c, n]) => ({ key: c, label: c, value: n, text: t('analytics.ordersCount', { count: n }) }))} />

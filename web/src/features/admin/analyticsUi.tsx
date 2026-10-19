@@ -28,7 +28,7 @@ export function Tile({ icon: Icon, label, value, hint, accent }: { icon: LucideI
   )
 }
 
-export function Fact({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
+export function Fact({ icon: Icon, title, children }: { icon: LucideIcon; title: ReactNode; children: ReactNode }) {
   return (
     <div className="flex gap-3 rounded-2xl border-2 border-dashed border-sunset-500/60 bg-sand-50 p-4">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sunset-100 text-sunset-700">

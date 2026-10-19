@@ -200,6 +200,23 @@ export function PlantAnalytics() {
     const byPrice = [...priced].sort((a, b) => b.price - a.price)
     const byLength = [...plants].sort((a, b) => d(b).cultivar.length - d(a).cultivar.length)
     const named = byLength.filter((p) => d(p).cultivar.length > 0)
+    // Куди веде назва рослини: її сторінка в магазині (точна назва, або та сама рослина в іншому написанні/формі),
+    // а якщо такої рослини в магазині немає (напр. вид-батько) — пошук за назвою
+    const slugByKey = new Map<string, string>()
+    const slugByBase = new Map<string, string>()
+    for (const p of [...products].filter((x) => x.category === PLANT_CATEGORY).sort((x, y) => Number(y.isActive) - Number(x.isActive))) {
+      const k = nameKey(p.name.uk)
+      if (!slugByKey.has(k)) slugByKey.set(k, p.slug)
+      const b = baseKey(p.name.uk)
+      // Для «бази» беремо звичайну форму, якщо вона є (у неї ключ без форм збігається з повним)
+      if (!slugByBase.has(b) || k === b) slugByBase.set(b, p.slug)
+    }
+    // base: назва без форм (напр. «королівські» сорти) — тоді підходить і рослина в будь-якій формі.
+    // Для батьків — лише точна назва: батько «lilacina» не має вести на «lilacina monstrose».
+    const hrefFor = (name: string, base = false) => {
+      const slug = slugByKey.get(nameKey(name)) ?? (base ? slugByBase.get(baseKey(name)) : undefined)
+      return slug ? `/product/${slug}` : `/search?q=${encodeURIComponent(name)}`
+    }
     const stockUnits = plants.reduce((s, p) => s + p.stock, 0)
     const stockValue = plants.reduce((s, p) => s + p.stock * p.price, 0)
 
@@ -236,6 +253,7 @@ export function PlantAnalytics() {
       stockUnits,
       stockValue,
       name: (p: Product) => d(p).base,
+      hrefFor,
     }
   }, [products, scope])
 
@@ -244,6 +262,31 @@ export function PlantAnalytics() {
 
   const pct = (n: number) => (stats ? Math.round((n / stats.total) * 100) : 0)
   const plantsWord = (n: number) => t('plantStats.plants', { count: n })
+  // Назва рослини — посилання на її сторінку (або на пошук, якщо такої рослини в магазині немає)
+  const plant = (name: string, href?: string) =>
+    stats ? (
+      <Link key={name} to={href ?? stats.hrefFor(name)} className="underline decoration-current/30 underline-offset-2 hover:text-brand-600 hover:decoration-brand-600">
+        {name}
+      </Link>
+    ) : (
+      name
+    )
+  // Текст перекладу з назвою всередині («Найдовша назва — X»): назву робимо посиланням
+  const MARK = '\u0001'
+  const linked = (text: string, name: string, href?: string) => {
+    const [before, after = ''] = text.split(MARK)
+    return (
+      <>
+        {before}
+        {plant(name, href)}
+        {after}
+      </>
+    )
+  }
+  const list = (names: string[], base = false) =>
+    names.flatMap((n, i) => { const el = plant(n, stats?.hrefFor(n, base)); return i ? [', ', el] : [el] })
+  // Посилання прямо на сторінку конкретного товару
+  const own = (p: Product) => `/product/${p.slug}`
 
   return (
     <div className="space-y-6">
@@ -375,7 +418,7 @@ export function PlantAnalytics() {
                       <span className="text-sm font-bold text-sunset-600 tabular-nums">×{f.names.length}</span>
                     </p>
                     <p className="mt-1 text-sm text-sand-700">
-                      {f.names.slice(0, 5).join(', ')}
+                      {list(f.names.slice(0, 5))}
                       {f.names.length > 5 && ` ${t('plantStats.andMore', { count: f.names.length - 5 })}`}
                     </p>
                   </li>
@@ -400,7 +443,7 @@ export function PlantAnalytics() {
                 <RankList
                   rows={stats.parents.map((p) => ({
                     key: p.name,
-                    label: <span className="italic">{p.name}</span>,
+                    label: <span className="italic">{plant(p.name)}</span>,
                     value: p.kids,
                     text: t('plantStats.kids', { count: p.kids }),
                   }))}
@@ -433,7 +476,7 @@ export function PlantAnalytics() {
                     <li key={x.written.join('|')} className="rounded-2xl border-2 border-sunset-500/40 bg-sunset-100/40 p-3 text-sm">
                       <span className="font-bold text-red-700 line-through decoration-red-700/50">{x.written.join(' / ')}</span>
                       {' → '}
-                      <span className="font-bold text-brand-700">{x.suggestion}</span>
+                      <span className="font-bold text-brand-700">{plant(x.suggestion)}</span>
                       <span className="text-sand-700"> · {t('plantStats.kids', { count: x.kids })}</span>
                       <Link to={`/admin/products?category=${PLANT_CATEGORY}&q=${encodeURIComponent(x.written[0])}`} className="ml-2 font-bold text-brand-600 underline">
                         {t('plantStats.typosFind')}
@@ -477,7 +520,7 @@ export function PlantAnalytics() {
             </h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {stats.parents[0] && (
-                <Fact icon={Baby} title={t('plantStats.factParent', { name: stats.parents[0].name })}>
+                <Fact icon={Baby} title={linked(t('plantStats.factParent', { name: MARK }), stats.parents[0].name)}>
                   {t('plantStats.factParentText', { count: stats.parents[0].kids })}
                 </Fact>
               )}
@@ -488,14 +531,14 @@ export function PlantAnalytics() {
               ) : null}
               {stats.royals.length > 0 && (
                 <Fact icon={Crown} title={t('plantStats.factRoyal', { count: stats.royals.length })}>
-                  {stats.royals.slice(0, 5).join(', ')}
+                  {list(stats.royals.slice(0, 5), true)}
                 </Fact>
               )}
               {stats.priciest && (
                 <Fact icon={Gem} title={t('plantStats.factPriciest', { amount: formatPrice(stats.priciest.price, lang) })}>
-                  {stats.name(stats.priciest)}
+                  {plant(stats.name(stats.priciest), own(stats.priciest))}
                   {stats.cheapest && stats.cheapest !== stats.priciest &&
-                    ` · ${t('plantStats.factCheapest', { name: stats.name(stats.cheapest), amount: formatPrice(stats.cheapest.price, lang) })}`}
+                    <> · {linked(t('plantStats.factCheapest', { name: MARK, amount: formatPrice(stats.cheapest.price, lang) }), stats.name(stats.cheapest), own(stats.cheapest))}</>}
                 </Fact>
               )}
               {stats.avgPrice > 0 && (
@@ -505,17 +548,17 @@ export function PlantAnalytics() {
               )}
               {stats.multiForm.length > 0 && (
                 <Fact icon={Layers} title={t('plantStats.factMultiForm', { count: stats.multiForm.length })}>
-                  {t('plantStats.factMultiFormText', { name: stats.multiForm[0][0], count: stats.multiForm[0][1].size })}
+                  {linked(t('plantStats.factMultiFormText', { name: MARK, count: stats.multiForm[0][1].size }), stats.multiForm[0][0], stats.hrefFor(stats.multiForm[0][0], true))}
                 </Fact>
               )}
               {stats.longest && stats.shortest && stats.longest !== stats.shortest && (
-                <Fact icon={Ruler} title={t('plantStats.factLongest', { name: stats.name(stats.longest) })}>
-                  {t('plantStats.factShortest', { name: stats.name(stats.shortest) })}
+                <Fact icon={Ruler} title={linked(t('plantStats.factLongest', { name: MARK }), stats.name(stats.longest), own(stats.longest))}>
+                  {linked(t('plantStats.factShortest', { name: MARK }), stats.name(stats.shortest), own(stats.shortest))}
                 </Fact>
               )}
               {stats.duplicates.length > 0 && (
                 <Fact icon={Copy} title={t('plantStats.factDuplicates', { count: stats.duplicates.length })}>
-                  {t('plantStats.factDuplicatesText', { name: stats.duplicates[0][0], count: stats.duplicates[0][1] })}
+                  {linked(t('plantStats.factDuplicatesText', { name: MARK, count: stats.duplicates[0][1] }), stats.duplicates[0][0])}
                 </Fact>
               )}
               {stats.noPhoto > 0 && (
