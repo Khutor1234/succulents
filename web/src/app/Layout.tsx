@@ -178,17 +178,17 @@ export function Layout() {
           </div>
         )}
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:gap-x-7">
-          <Link to="/" className="text-2xl text-brand-600">
+          <Link to="/" className="text-xl text-brand-600 sm:text-2xl">
             <Logo />
           </Link>
-          {/* На телефоні в шапці лише кнопка меню: пошук, кошик, кабінет і адмінка — у нижньому меню. На комп’ютері — усі кнопки в шапці. */}
+          {/* На телефоні в шапці — Каталог, пошук і кнопка меню; кошик, кабінет і адмінка — у нижньому меню. На комп’ютері — усі кнопки в шапці. */}
           <div className="ml-auto flex items-center gap-1.5 text-sm sm:gap-2">
             {/* «Каталог» — одразу до рослин; видно завжди, і на телефоні (поруч із кнопкою меню) */}
             <Link to="/c/plants" className={NAV_BTN + ' inline-flex font-bold text-brand-600 hover:bg-sand-200'}>
-              <LayoutGrid {...ICON} />
+              <LayoutGrid {...ICON} className="hidden sm:block" />
               <span>{t('nav.catalog')}</span>
             </Link>
-            <Link to={searchHref()} aria-label={t('search.open')} title={t('search.open')} className={NAV_BTN + ' hidden hover:bg-sand-200 md:inline-flex'}>
+            <Link to={searchHref()} aria-label={t('search.open')} title={t('search.open')} className={NAV_BTN + ' inline-flex hover:bg-sand-200'}>
               <Search {...ICON} />
             </Link>
             <Link to="/blog" aria-label={t('blog.title')} title={t('blog.title')} className={NAV_BTN + ' hidden hover:bg-sand-200 md:inline-flex'}>
