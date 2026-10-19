@@ -45,12 +45,12 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
     <article
       style={{ animationDelay: `${Math.min(index % PAGE, 11) * 45}ms` }}
       // Продавцю картка одразу каже про стан (фото лишається яскравим):
-      // прихований — пунктирна рамка й темніший фон; показаний, але закінчився — рожевуватий фон і червона рамка
+      // прихований — лавандовий фон і пунктирна рамка; показаний, але закінчився — ніжний персиковий фон
       className={`@container flex animate-rise flex-col rounded-3xl border-2 p-3 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:shadow-[0_12px_30px_-12px_rgba(43,33,24,0.25)] ${
         !product.isActive
-          ? 'border-dashed border-sand-700/50 bg-sand-200/70 hover:border-sand-700'
+          ? 'border-dashed border-lavender-400 bg-lavender-50 hover:border-lavender-700'
           : isSeller && product.stock === 0
-            ? 'border-red-700/30 bg-red-50 hover:border-red-700/60'
+            ? 'border-sunset-200 bg-sunset-100/50 hover:border-sunset-500'
             : 'border-sand-200 bg-sand-50 hover:border-sand-300'
       }`}
     >
@@ -65,7 +65,7 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
         {/* У продавця немає сердечка — плашкам можна до правого краю */}
         <TagBadges tags={product.tags} className={`pointer-events-none absolute top-2 left-2 ${isSeller ? 'right-2' : 'right-14'}`}>
           {isSeller && !product.isActive && (
-            <span className={`${SELLER_BADGE} bg-ink/90 text-sand-50`}>
+            <span className={`${SELLER_BADGE} bg-lavender-700/90 text-sand-50`}>
               <EyeOff size={12} strokeWidth={2.75} aria-hidden />
               {t('product.hidden')}
             </span>

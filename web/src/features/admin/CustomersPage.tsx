@@ -84,6 +84,9 @@ export function CustomersPage() {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            // Enter — сховати клавіатуру (шукаємо й так одразу під час набору)
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+            enterKeyHint="search"
             placeholder={t('admin.customers.searchPlaceholder')}
             className="w-full rounded-xl border-2 border-sand-200 bg-sand-50 px-3.5 py-2.5 focus:border-brand-500 focus:outline-none"
           />

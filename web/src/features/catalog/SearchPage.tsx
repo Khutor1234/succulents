@@ -29,7 +29,8 @@ export function SearchPage() {
   // Підказки, коли запит порожній: роди, які зараз є в магазині.
   const genera = useMemo(() => GENERA.filter((g) => visible.some((p) => p.genus === g)), [visible])
 
-  const setQuery = (q: string) => setParams(q ? { q } : {}, { replace: true })
+  // preventScrollReset: зміна запиту не прокручує сторінку на початок
+  const setQuery = (q: string) => setParams(q ? { q } : {}, { replace: true, preventScrollReset: true })
   // Запам’ятовуємо запит (і набраний, і з посилання на кшталт «батько» на картці) — для «Пошуку» в меню
   useEffect(() => rememberSearch(query), [query])
 
@@ -37,7 +38,15 @@ export function SearchPage() {
     <div className="space-y-6">
       <PageTitle>{t('search.title')}</PageTitle>
 
-      <form role="search" onSubmit={(e) => e.preventDefault()} className="relative">
+      {/* Шукаємо одразу під час набору; Enter («Пошук» на клавіатурі телефона) — ховає клавіатуру, щоб було видно результати */}
+      <form
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault()
+          ;(document.activeElement as HTMLElement | null)?.blur()
+        }}
+        className="relative"
+      >
         <Search size={22} strokeWidth={2.25} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-sand-700" aria-hidden />
         <input
           type="search"

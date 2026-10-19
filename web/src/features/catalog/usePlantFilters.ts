@@ -53,7 +53,8 @@ export function usePlantFilters() {
     const s = next.sort ?? sort
     if (s !== DEFAULT_SORT) p.set('sort', s)
     if (next.inStock ?? inStock) p.set('stock', '1')
-    setParams(p, { replace: true })
+    // preventScrollReset: перемкнули фільтр чи сортування — лишаємось на тому ж місці сторінки, а не летимо вгору
+    setParams(p, { replace: true, preventScrollReset: true })
   }
 
   /** Чи підходить товар під усі вибрані фільтри, крім `except` (щоб порахувати варіанти саме цього фільтра). */

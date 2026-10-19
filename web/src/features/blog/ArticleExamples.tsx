@@ -68,7 +68,7 @@ export function ArticleExamples({ filter, compact = false }: { filter: ExampleFi
     <Link to={`/product/${p.slug}`} className="group block rounded-2xl border-2 border-sand-200 bg-sand-50 p-2 transition-colors hover:border-brand-500">
       <div className="relative overflow-hidden rounded-xl">
         {!p.isActive && (
-          <span className="absolute top-1.5 left-1.5 z-10 inline-flex items-center gap-1 rounded-md bg-ink/90 px-1.5 py-0.5 text-[10px] font-extrabold tracking-wide text-sand-50 uppercase">
+          <span className="absolute top-1.5 left-1.5 z-10 inline-flex items-center gap-1 rounded-md bg-lavender-700/90 px-1.5 py-0.5 text-[10px] font-extrabold tracking-wide text-sand-50 uppercase">
             <EyeOff size={11} strokeWidth={2.75} aria-hidden />
             {t('product.hidden')}
           </span>

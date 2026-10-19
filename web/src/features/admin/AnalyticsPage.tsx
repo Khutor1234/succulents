@@ -409,7 +409,7 @@ export function AnalyticsPage() {
                 key={id}
                 role="tab"
                 aria-selected={tab === id}
-                onClick={() => setParams(id === 'sales' ? {} : { tab: id }, { replace: true })}
+                onClick={() => setParams(id === 'sales' ? {} : { tab: id }, { replace: true, preventScrollReset: true })}
                 className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-bold transition-colors ${
                   tab === id ? 'bg-brand-600 text-sand-50 shadow-sm' : 'text-sand-700 hover:text-ink'
                 }`}
