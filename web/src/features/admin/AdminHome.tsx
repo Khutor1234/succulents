@@ -1,4 +1,4 @@
-import { BarChart3, ChevronRight, ClipboardList, FileSpreadsheet, LayoutGrid, Plus, Sparkles, Tags, Users, type LucideIcon } from 'lucide-react'
+import { BarChart3, ChevronRight, ClipboardList, FileSpreadsheet, GitFork, LayoutGrid, Plus, Sparkles, Tags, Users, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -46,6 +46,7 @@ export function AdminHome() {
         <Tile to="/admin/categories" icon={Tags} title={t('admin.categories')} text={t('admin.home.categoriesText')} />
         <Tile to="/admin/customers" icon={Users} title={t('admin.customers.title')} text={t('admin.home.customersText')} />
         <Tile to="/admin/analytics" icon={BarChart3} title={t('analytics.title')} text={t('admin.home.analyticsText')} />
+        <Tile to="/admin/pedigrees" icon={GitFork} title={t('admin.pedigrees.title')} text={t('admin.home.pedigreesText')} />
       </Group>
 
       <Group title={t('admin.home.tools')} hint={t('admin.home.toolsHint')}>

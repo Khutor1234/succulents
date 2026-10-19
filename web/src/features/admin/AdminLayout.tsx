@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardList, LayoutDashboard, Tags, Users } from 'lucide-react'
+import { BarChart3, ClipboardList, GitFork, LayoutDashboard, Tags, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet } from 'react-router'
 import { ICON } from '../../shared/icon'
@@ -9,6 +9,7 @@ const TABS = [
   { to: '/admin/categories', label: 'admin.categories', Icon: Tags },
   { to: '/admin/customers', label: 'admin.customers.title', Icon: Users },
   { to: '/admin/analytics', label: 'analytics.title', Icon: BarChart3 },
+  { to: '/admin/pedigrees', label: 'admin.pedigrees.title', Icon: GitFork },
 ] as const
 
 const tab = ({ isActive }: { isActive: boolean }) =>

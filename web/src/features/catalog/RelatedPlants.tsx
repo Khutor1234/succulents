@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { baseKey, editDistance, nameKey } from '../../lib/plantName'
+import { baseKey, makeNameResolver, nameKey } from '../../lib/plantName'
 import type { Product } from '../../lib/types'
 import { useAuth } from '../auth/authStore'
 import { useAllProducts } from './api'
@@ -18,34 +18,6 @@ const MAX = 8
  * - гібрид, у якого вона — один із батьків;
  * - рослина зі спільним батьком.
  */
-/**
- * Батька записали з опискою («Graptoveria 'Debbi'», а рослина — «Graptoveria 'Debbie'»)? Якщо точної назви серед товарів
- * немає, беремо товар того самого роду, що відрізняється щонайбільше на 2 букви. Інакше лишаємо як записано.
- */
-function makeResolver(keys: string[]) {
-  const known = new Set(keys)
-  const cache = new Map<string, string>()
-  return (name: string) => {
-    const key = nameKey(name)
-    if (known.has(key)) return key
-    const hit = cache.get(key)
-    if (hit !== undefined) return hit
-    const genus = key.split(' ')[0]
-    let best = key
-    let bestDist = 3
-    for (const k of keys) {
-      if (k.split(' ')[0] !== genus || k.length < 6) continue
-      const dist = editDistance(key, k)
-      if (dist < bestDist) {
-        best = k
-        bestDist = dist
-      }
-    }
-    cache.set(key, best)
-    return best
-  }
-}
-
 function relationOf(product: Product, other: Product, resolve: (name: string) => string): Relation | null {
   // Назви порівнюємо без лапок, регістру й різниці в написанні форм (lib/plantName: nameKey, baseKey)
   if (baseKey(other.name.uk) === baseKey(product.name.uk)) return 'form'
@@ -84,7 +56,7 @@ export function RelatedPlants({ product }: { product: Product }) {
   const { isVisible } = useCategories()
   if (!data) return null
   // Описки в назвах батьків виправляємо за назвами товарів, які бачить цей відвідувач
-  const resolve = makeResolver(data.map((p) => nameKey(p.name.uk)))
+  const resolve = makeNameResolver(data.map((p) => nameKey(p.name.uk)))
 
   const related = data
     .filter((p) => p.id !== product.id && (isSeller || (p.isActive && p.stock > 0 && isVisible(p.category))))

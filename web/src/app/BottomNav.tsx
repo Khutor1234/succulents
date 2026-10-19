@@ -2,6 +2,7 @@ import {
   BarChart3,
   ClipboardList,
   FileSpreadsheet,
+  GitFork,
   Home,
   LayoutDashboard,
   LayoutGrid,
@@ -135,6 +136,7 @@ function BuyerNav() {
 const MORE: { to: string; label: string; Icon: LucideIcon }[] = [
   { to: '/search', label: 'nav.search', Icon: Search },
   { to: '/admin/analytics', label: 'analytics.title', Icon: BarChart3 },
+  { to: '/admin/pedigrees', label: 'admin.pedigrees.title', Icon: GitFork },
   { to: '/admin/categories', label: 'admin.categories', Icon: Tags },
   { to: '/admin/customers', label: 'admin.customers.title', Icon: Users },
   { to: '/admin/import', label: 'admin.importFromSheet', Icon: FileSpreadsheet },

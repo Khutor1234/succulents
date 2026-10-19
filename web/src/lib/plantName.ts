@@ -160,3 +160,31 @@ export function editDistance(a: string, b: string): number {
   }
   return prev[b.length]
 }
+
+/**
+ * Батька записали з опискою («Graptoveria 'Debbi'», а рослина — «Graptoveria 'Debbie'»)? Якщо точної назви серед товарів
+ * немає, беремо товар того самого роду, що відрізняється щонайбільше на 2 букви. Інакше лишаємо як записано.
+ */
+export function makeNameResolver(keys: string[]) {
+  const known = new Set(keys)
+  const cache = new Map<string, string>()
+  return (name: string) => {
+    const key = nameKey(name)
+    if (known.has(key)) return key
+    const hit = cache.get(key)
+    if (hit !== undefined) return hit
+    const genus = key.split(' ')[0]
+    let best = key
+    let bestDist = 3
+    for (const k of keys) {
+      if (k.split(' ')[0] !== genus || k.length < 6) continue
+      const dist = editDistance(key, k)
+      if (dist < bestDist) {
+        best = k
+        bestDist = dist
+      }
+    }
+    cache.set(key, best)
+    return best
+  }
+}

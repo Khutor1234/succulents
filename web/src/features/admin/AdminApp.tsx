@@ -8,6 +8,7 @@ import { CustomersPage } from './CustomersPage'
 import { FormFixesPage } from './FormFixesPage'
 import { ImportPage } from './ImportPage'
 import { OrdersPage } from './OrdersPage'
+import { PedigreesPage } from './PedigreesPage'
 import { ProductFormPage } from './ProductFormPage'
 
 // Цей модуль вантажиться ліниво (див. app/router.tsx) — покупці не завантажують код адмінки.
@@ -27,6 +28,7 @@ export default function AdminApp() {
         <Route path="categories" element={<CategoriesPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="pedigrees" element={<PedigreesPage />} />
       </Route>
     </Routes>
   )
