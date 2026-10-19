@@ -1,11 +1,11 @@
-import { BarChart3, ClipboardList, Package, Store, Tags, Users } from 'lucide-react'
+import { BarChart3, ClipboardList, LayoutDashboard, Store, Tags, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, NavLink, Outlet } from 'react-router'
 import { ICON } from '../../shared/icon'
 import { useOrders } from './api'
 
 const TABS = [
-  { to: '/admin/products', label: 'admin.products', Icon: Package },
+  { to: '/admin', label: 'admin.home.tab', Icon: LayoutDashboard },
   { to: '/admin/categories', label: 'admin.categories', Icon: Tags },
   { to: '/admin/customers', label: 'admin.customers.title', Icon: Users },
   { to: '/admin/analytics', label: 'analytics.title', Icon: BarChart3 },
@@ -17,7 +17,8 @@ const tab = ({ isActive }: { isActive: boolean }) =>
   }`
 
 /**
- * Каркас адмінки. Комп'ютер: вкладки зліва, «До магазину» і «Замовлення» праворуч.
+ * Каркас адмінки. Комп'ютер: вкладки зліва (огляд, категорії, покупці, аналітика), «До магазину» і «Замовлення» праворуч.
+ * Товари — у магазині (кнопки продавця на картках), окремого списку тут немає.
  * Телефон: верхніх вкладок немає — усі розділи в нижньому меню (app/BottomNav, однакове з магазином).
  */
 export function AdminLayout() {
@@ -30,7 +31,7 @@ export function AdminLayout() {
       <nav className="mb-6 hidden items-center gap-3 md:flex">
         <div className="flex gap-2">
           {TABS.map(({ to, label, Icon }) => (
-            <NavLink key={to} to={to} className={tab}>
+            <NavLink key={to} to={to} end={to === '/admin'} className={tab}>
               <Icon {...ICON} />
               {t(label)}
             </NavLink>

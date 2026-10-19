@@ -478,7 +478,7 @@ export function PlantAnalytics() {
                       {' → '}
                       <span className="font-bold text-brand-700">{plant(x.suggestion)}</span>
                       <span className="text-sand-700"> · {t('plantStats.kids', { count: x.kids })}</span>
-                      <Link to={`/admin/products?category=${PLANT_CATEGORY}&q=${encodeURIComponent(x.written[0])}`} className="ml-2 font-bold text-brand-600 underline">
+                      <Link to={`/search?q=${encodeURIComponent(x.written[0])}`} className="ml-2 font-bold text-brand-600 underline">
                         {t('plantStats.typosFind')}
                       </Link>
                     </li>
@@ -496,7 +496,7 @@ export function PlantAnalytics() {
                           <span key={written} className="inline-flex items-center gap-1.5">
                             {i > 0 && <span className="text-sand-700">=</span>}
                             <Link
-                              to={`/admin/products?category=${PLANT_CATEGORY}&q=${encodeURIComponent(written)}`}
+                              to={`/search?q=${encodeURIComponent(written)}`}
                               className="rounded-lg bg-sand-100 px-2 py-1 font-bold hover:bg-brand-600 hover:text-sand-50"
                               title={t('plantStats.typosFind')}
                             >

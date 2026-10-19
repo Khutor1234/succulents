@@ -23,8 +23,10 @@ firestore.rules, storage.rules, firestore.indexes.json
 
 - Усі тексти інтерфейсу — `web/src/i18n/uk.ts` (лише українська).
 - Каталог: `web/src/features/catalog` (картки `ProductCard.tsx`, сторінки `pages.tsx`, пошук `SearchPage.tsx`, запити `api.ts`).
-- Адмінка: `web/src/features/admin` (вантажиться окремим шматком, маршрути в `AdminApp.tsx`: `/admin/products`, `/admin/products/:id`,
-  `/admin/import`, `/admin/orders`, `/admin/categories`, `/admin/customers`, `/admin/analytics`).
+- Адмінка: `web/src/features/admin` (вантажиться окремим шматком, маршрути в `AdminApp.tsx`): `/admin` — огляд із плитками,
+  `/admin/products/:id` і `/admin/products/new` — форма товару, `/admin/orders`, `/admin/categories`, `/admin/customers`,
+  `/admin/analytics`, інструменти `/admin/import` і `/admin/forms`. **Окремого списку товарів немає** — товари керуються
+  в магазині: кнопки продавця на картках, «Вибрати» (масові дії, `BulkBar`), «Додати» в каталозі й пошуку.
 - Блог: статті прямо в коді — `web/src/features/blog/articles.ts`.
 - Назви рослин і теги-форми: `web/src/lib/plants.ts`, `web/src/lib/plantName.ts`.
   Повна назва = рід + сорт + форми з галочок, напр. «Echeveria Lola variegata».

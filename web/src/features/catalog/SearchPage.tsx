@@ -87,7 +87,7 @@ export function SearchPage() {
             {results.length ? t('search.found', { count: results.length }) : t('search.nothing', { query })}
           </p>
           {results.length === 0 && <p className="text-sand-700">{t('search.nothingHint')}</p>}
-          <ProductGrid products={results} />
+          <ProductGrid products={results} sellerTools={{}} />
         </>
       )}
     </div>

@@ -9,7 +9,7 @@ const CLASS = 'group mb-3 inline-flex min-h-11 items-center gap-1.5 font-bold te
  * «← Назад» над окремими сторінками адмінки (імпорт, виправлення форм): повертає туди, звідки прийшли.
  * Якщо сторінку відкрили напряму (нема куди «назад») — веде на `fallback`.
  */
-export function BackLink({ fallback = '/admin/products' }: { fallback?: string }) {
+export function BackLink({ fallback = '/admin' }: { fallback?: string }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   // react-router рахує переходи всередині сайту: idx > 0 — є попередня сторінка сайту

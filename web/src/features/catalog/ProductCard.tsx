@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Heart, Package, Pencil, Trash2 } from 'lucide-react'
+import { Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Heart, Package, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -11,6 +11,7 @@ import { useHere } from '../../shared/navigation'
 import { useProgressive } from '../../shared/useProgressive'
 import { useAuth } from '../auth/authStore'
 import { useDeleteProduct, useSetStock, useToggleProductActive } from '../admin/api'
+import { BulkBar } from '../admin/BulkBar'
 import { AddToCart } from '../cart/AddToCart'
 import { FavoriteButton } from '../favorites/FavoriteButton'
 import { ParentsLinks } from './ParentsLinks'
@@ -157,21 +158,101 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
   )
 }
 
-export function ProductGrid({ products }: { products: Product[] }) {
+/**
+ * Сітка карток.
+ * - `sellerTools` — продавцю над сіткою «Вибрати» (масові дії над кількома товарами) і «Додати» (новий товар у цю категорію);
+ * - `keepOrder` — не групувати «в наявності / немає / приховані» (коли продавець вибрав своє сортування, напр. «Спершу без фото»).
+ */
+export function ProductGrid({ products, sellerTools, keepOrder = false }: { products: Product[]; sellerTools?: { category?: string }; keepOrder?: boolean }) {
+  const { t } = useTranslation()
+  const lang = useLang()
+  const isSeller = useAuth((s) => s.role === 'seller')
   // Спершу ті, що є в наявності, далі «немає в наявності», у самому кінці — приховані (їх бачить лише продавець).
   // Сортування стабільне, тож вибраний порядок (новизна, ціна) всередині кожної групи зберігається.
-  const ordered = [...products].sort((a, b) => rank(a) - rank(b))
+  const ordered = keepOrder ? products : [...products].sort((a, b) => rank(a) - rank(b))
   // Інший набір товарів (фільтр, пошук) — знову з першої порції. Ключ — без порядку: коли товар лише показали чи
   // приховали (і він перейшов в іншу групу), список не скидається й сторінка не стрибає вгору
   const { visible, sentinel } = useProgressive(ordered, PAGE, products.map((p) => p.id).sort().join(','))
+  // Масові дії: режим вибору й вибрані товари
+  const tools = isSeller && sellerTools
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const toggleSelected = (id: string) =>
+    setSelected((s) => {
+      const next = new Set(s)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
   return (
     <>
+      {tools && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setSelecting(!selecting)
+              setSelected(new Set())
+            }}
+            aria-pressed={selecting}
+            className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl border-2 px-4 font-bold transition-colors ${
+              selecting ? 'border-brand-600 bg-brand-600 text-sand-50' : 'border-sand-300 bg-sand-50 text-ink hover:border-brand-600'
+            }`}
+          >
+            <CheckSquare size={18} strokeWidth={2.25} aria-hidden />
+            {t('admin.bulk.choose')}
+          </button>
+          <Link
+            to={sellerTools.category ? `/admin/products/new?category=${sellerTools.category}` : '/admin/products/new'}
+            className="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-colors hover:bg-brand-700"
+          >
+            <Plus size={18} strokeWidth={2.5} aria-hidden />
+            {t('admin.addProduct')}
+          </Link>
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-5 min-[480px]:grid-cols-2 lg:grid-cols-3">
-        {visible.map((p, i) => (
-          <ProductCard key={p.id} product={p} index={i} />
-        ))}
+        {visible.map((p, i) => {
+          const on = selected.has(p.id)
+          return (
+            <div key={p.id} className="relative flex flex-col [&>article]:flex-1">
+              <ProductCard product={p} index={i} />
+              {/* Режим вибору: картка — одна велика кнопка-галочка (кнопки картки й посилання не спрацьовують) */}
+              {tools && selecting && (
+                <button
+                  type="button"
+                  onClick={() => toggleSelected(p.id)}
+                  aria-pressed={on}
+                  aria-label={t(on ? 'admin.bulk.unselect' : 'admin.bulk.select', { name: pick(p.name, lang) })}
+                  className={`absolute inset-0 rounded-3xl border-4 transition-colors ${on ? 'border-brand-600 bg-brand-600/15' : 'border-transparent hover:bg-ink/5'}`}
+                >
+                  <span
+                    className={`absolute top-3 right-3 flex h-9 w-9 items-center justify-center rounded-xl border-2 shadow ${
+                      on ? 'border-brand-600 bg-brand-600 text-sand-50' : 'border-sand-300 bg-sand-50 text-transparent'
+                    }`}
+                  >
+                    <Check size={20} strokeWidth={3} aria-hidden />
+                  </span>
+                </button>
+              )}
+            </div>
+          )
+        })}
       </div>
       {sentinel}
+      {tools && selecting && (
+        <BulkBar
+          selected={products.filter((p) => selected.has(p.id))}
+          total={products.length}
+          onSelectAll={() => setSelected(new Set(products.map((p) => p.id)))}
+          onClear={() => setSelected(new Set())}
+          onClose={() => {
+            setSelecting(false)
+            setSelected(new Set())
+          }}
+        />
+      )}
     </>
   )
 }

@@ -3,7 +3,9 @@ import { ALL_TAGS, type PlantTag } from '../../lib/plants'
 import type { PlantOrigin, Product } from '../../lib/types'
 
 // За замовчуванням — за абеткою (у ProductGrid спершу ті, що в наявності, потім решта — кожна група за абеткою)
-export const SORTS = ['name', 'new', 'price-asc', 'price-desc'] as const
+export const SORTS = ['name', 'new', 'price-asc', 'price-desc', 'no-photo-first', 'photo-first'] as const
+/** Сортування лише для продавця (покупцям у списку не показуємо): щоб швидко знайти, кому ще бракує фото. */
+export const SELLER_SORTS: readonly SortOrder[] = ['no-photo-first', 'photo-first']
 const DEFAULT_SORT = 'name'
 export type SortOrder = (typeof SORTS)[number]
 
@@ -17,6 +19,8 @@ const COMPARE: Record<SortOrder, (a: Product, b: Product) => number> = {
   new: (a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0) || byName(a, b),
   'price-asc': (a, b) => a.price - b.price || byName(a, b),
   'price-desc': (a, b) => b.price - a.price || byName(a, b),
+  'no-photo-first': (a, b) => Number(a.images.length > 0) - Number(b.images.length > 0) || byName(a, b),
+  'photo-first': (a, b) => Number(b.images.length > 0) - Number(a.images.length > 0) || byName(a, b),
 }
 
 /** Походження товару. У старих товарах поле не заповнене — якщо вказані батьки, це гібрид. */

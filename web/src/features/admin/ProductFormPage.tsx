@@ -88,7 +88,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
   // (Після збереження — завжди на сторінку товару, див. onSubmit.)
   const from = useFrom()
   function leave(category: string, { deleted = false }: { deleted?: boolean } = {}) {
-    const list = `/admin/products?category=${category}`
+    const list = `/c/${category}`
     // Видалили товар, відкритий зі сторінки товару, — тієї сторінки вже немає
     if (!from || (from.startsWith('/product/') && deleted)) return navigate(list, { replace: !!from })
     if (canGoBack()) return navigate(-1)
@@ -212,7 +212,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
       className="space-y-6"
     >
       {/* На телефоні верхнього меню адмінки немає — повернутися до списку можна стрілкою (або хрестиком унизу) */}
-      <BackLink fallback={product ? `/admin/products?category=${product.category}` : '/admin/products'} />
+      <BackLink fallback={product ? `/c/${product.category}` : '/admin'} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-3xl font-extrabold text-brand-600">{product ? t('admin.editProduct') : t('admin.createProduct')}</h1>
         {/* Дії з уже існуючим товаром — іконками праворуч від заголовка */}

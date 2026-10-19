@@ -17,7 +17,7 @@ import { PLANT_CATEGORY } from '../../lib/plants'
 import { useCategories } from './categories'
 import { ParentsLinks } from './ParentsLinks'
 import { PlantFilters, TagBadges } from './PlantFilters'
-import { SORTS, usePlantFilters, type SortOrder } from './usePlantFilters'
+import { SELLER_SORTS, SORTS, usePlantFilters, type SortOrder } from './usePlantFilters'
 import { ProductGrid } from './ProductCard'
 import { ProductGallery } from './ProductGallery'
 import { RelatedPlants } from './RelatedPlants'
@@ -270,7 +270,7 @@ export function CategoryPage() {
           <label className="flex items-center gap-2 text-sm font-bold text-sand-700">
             {t('catalog.sort')}
             <Select compact value={filters.sort} onChange={(e) => filters.setSort(e.target.value as SortOrder)}>
-              {SORTS.map((s) => (
+              {SORTS.filter((s) => isSeller || !SELLER_SORTS.includes(s)).map((s) => (
                 <option key={s} value={s}>
                   {t(`catalog.sorts.${s}`)}
                 </option>
@@ -280,7 +280,8 @@ export function CategoryPage() {
         </div>
       )}
       {shown && shown.length === 0 && products.data!.length > 0 && <p className="text-sand-700">{t('catalog.noMatches')}</p>}
-      {shown && <ProductGrid products={shown} />}
+      {/* Продавцю — «Вибрати» (масові дії) і «Додати»; своє сортування (за фото) — без поділу на групи */}
+      {shown && <ProductGrid products={shown} sellerTools={{ category }} keepOrder={SELLER_SORTS.includes(filters.sort)} />}
     </div>
   )
 }

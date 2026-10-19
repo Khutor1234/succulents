@@ -3,10 +3,10 @@ import {
   ClipboardList,
   FileSpreadsheet,
   Home,
+  LayoutDashboard,
   LayoutGrid,
   LogIn,
   MoreHorizontal,
-  Package,
   Search,
   ShoppingBag,
   Sparkles,
@@ -28,7 +28,7 @@ import { searchHref } from '../shared/navigation'
 /**
  * Нижнє меню на телефоні — як у застосунках: найпотрібніше завжди під пальцем. Одне й те саме на всіх сторінках:
  * - покупцю: головна, каталог, пошук, кошик, кабінет (або «Увійти»);
- * - продавцю (і в магазині, і в адмінці): магазин, товари, замовлення, аналітика й «Ще» з рештою розділів.
+ * - продавцю (і в магазині, і в адмінці): магазин, каталог (товари керуються в ньому), замовлення, адмінка й «Ще».
  * У формі товару не показуємо — там унизу своя панель «Зберегти».
  */
 export function BottomNav() {
@@ -133,8 +133,8 @@ function BuyerNav() {
 
 // Продавцю під «Ще» — решта розділів магазину й адмінки
 const MORE: { to: string; label: string; Icon: LucideIcon }[] = [
-  { to: '/c/plants', label: 'nav.catalog', Icon: LayoutGrid },
   { to: '/search', label: 'nav.search', Icon: Search },
+  { to: '/admin/analytics', label: 'analytics.title', Icon: BarChart3 },
   { to: '/admin/categories', label: 'admin.categories', Icon: Tags },
   { to: '/admin/customers', label: 'admin.customers.title', Icon: Users },
   { to: '/admin/import', label: 'admin.importFromSheet', Icon: FileSpreadsheet },
@@ -149,7 +149,7 @@ function SellerNav() {
   // «Ще» відкрите лише на тій сторінці, де його відкрили: перейшли деінде — закрилось само
   const [openOn, setOpenOn] = useState<string | null>(null)
   const moreOpen = openOn === pathname
-  const moreActive = MORE.some((m) => pathname.startsWith(m.to === '/c/plants' ? '/c/' : m.to))
+  const moreActive = MORE.some((m) => pathname.startsWith(m.to))
 
   const sheet = moreOpen && (
     <div className="absolute inset-x-3 bottom-full mb-2 animate-rise rounded-3xl border-2 border-sand-200 bg-sand-50 p-2 shadow-[0_-12px_30px_-12px_rgba(43,33,24,0.3)]">
@@ -170,9 +170,10 @@ function SellerNav() {
     <Bar cols={5} label={t('admin.menu')} above={sheet}>
       {/* «Магазин» — швидкий перехід із адмінки на вітрину; підсвічений на будь-якій сторінці магазину */}
       <Item to="/" end icon={<Store {...ICON} />} label={t('nav.shop')} match={(p) => !p.startsWith('/admin') && !p.startsWith('/c/') && !p.startsWith('/search')} />
-      <Item to="/admin/products" icon={<Package {...ICON} />} label={t('admin.products')} />
+      <Item to="/c/plants" match={(p) => p.startsWith('/c/')} icon={<LayoutGrid {...ICON} />} label={t('nav.catalog')} />
       <Item to="/admin/orders" icon={<ClipboardList {...ICON} />} label={t('admin.orders')} badge={newCount} />
-      <Item to="/admin/analytics" icon={<BarChart3 {...ICON} />} label={t('analytics.title')} />
+      {/* Адмінка — огляд з усіма розділами */}
+      <Item to="/admin" end icon={<LayoutDashboard {...ICON} />} label={t('nav.admin')} />
       <button type="button" onClick={() => setOpenOn(moreOpen ? null : pathname)} aria-expanded={moreOpen} className={itemClass(moreActive || moreOpen)}>
         {moreOpen ? <X {...ICON} /> : <MoreHorizontal {...ICON} />}
         {t('admin.more')}

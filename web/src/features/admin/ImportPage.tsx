@@ -1,11 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { doc, serverTimestamp, writeBatch } from 'firebase/firestore'
-import { ChevronRight, Sparkles } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
 import { db } from '../../firebase/config'
-import { ICON } from '../../shared/icon'
 import { Button } from '../../shared/ui'
 import { useAllProducts } from './api'
 import { BackLink } from './BackLink'
@@ -112,20 +109,6 @@ export function ImportPage() {
         </div>
       )}
 
-      {/* Окремий інструмент: після імпорту нові варієгати часто мають батьків гібрида — їх можна виправити одним махом */}
-      <Link
-        to="/admin/forms"
-        className="group mt-8 flex items-center gap-4 rounded-3xl border-2 border-sand-200 bg-sand-50 p-4 transition-colors hover:border-brand-500"
-      >
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sunset-100 text-sunset-700">
-          <Sparkles size={22} strokeWidth={2.25} aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold group-hover:text-brand-600">{t('admin.formFixes.title')}</span>
-          <span className="mt-0.5 block text-sm text-sand-700">{t('admin.formFixes.cardHint')}</span>
-        </span>
-        <ChevronRight {...ICON} className="shrink-0 text-sand-700 transition-transform group-hover:translate-x-1" />
-      </Link>
     </div>
   )
 }
