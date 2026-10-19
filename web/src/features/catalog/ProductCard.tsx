@@ -43,15 +43,14 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
     // Картки з'являються одна за одною (затримка за індексом) і легко піднімаються при наведенні
     <article
       style={{ animationDelay: `${Math.min(index % PAGE, 11) * 45}ms` }}
-      className="@container flex animate-rise flex-col rounded-3xl border-2 border-sand-200 bg-sand-50 p-3 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:border-sand-300 hover:shadow-[0_12px_30px_-12px_rgba(43,33,24,0.25)]"
+      // Прихований товар (бачить лише продавець) — інша картка: пунктирна рамка й темніший фон. Фото лишається яскравим.
+      className={`@container flex animate-rise flex-col rounded-3xl border-2 p-3 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:shadow-[0_12px_30px_-12px_rgba(43,33,24,0.25)] ${
+        product.isActive ? 'border-sand-200 bg-sand-50 hover:border-sand-300' : 'border-dashed border-sand-700/50 bg-sand-200/70 hover:border-sand-700'
+      }`}
     >
       <div className="group relative overflow-hidden rounded-2xl">
-        {/* Фото трохи наближається при наведенні; приховане — бліде, щоб одразу було видно, що покупці його не бачать */}
-        <div
-          className={`transition-[transform,opacity,filter] duration-500 group-hover:scale-[1.04] ${
-            product.isActive ? '' : 'opacity-60 grayscale-[40%] group-hover:opacity-100 group-hover:grayscale-0'
-          }`}
-        >
+        {/* Фото трохи наближається при наведенні */}
+        <div className="transition-transform duration-500 group-hover:scale-[1.04]">
           <CardPhotos product={product} alt={name} tint={TINTS[index % TINTS.length]} onIndex={setPhoto} scrollRef={photosRef} />
         </div>
         {/* Прихований товар у картках бачить лише продавець — плашка першою в ряду тегів на фото */}

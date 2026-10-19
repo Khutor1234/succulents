@@ -1,4 +1,4 @@
-import { ArrowRight, Gift } from 'lucide-react'
+import { ArrowRight, Gift, Info } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ICON } from '../../shared/icon'
 import { BONUS_RATE } from '../account/api'
@@ -87,6 +87,15 @@ export function CartPage() {
                   {formatPrice(item.price * item.qty, lang)}
                 </span>
               </div>
+              {/* Живець — нагадуємо ще раз перед оформленням, що це одна маленька рослинка без коріння */}
+              {item.cutting && (
+                <p className="col-span-2 flex gap-2 rounded-xl bg-sunset-100/70 px-3 py-2 text-xs leading-relaxed text-ink">
+                  <Info size={15} strokeWidth={2.4} className="mt-px shrink-0 text-sunset-600" aria-hidden />
+                  <span>
+                    <strong>{t('tags.cutting')}:</strong> {t('cart.cuttingNote', { count: item.qty })}
+                  </span>
+                </p>
+              )}
             </li>
           )
         })}

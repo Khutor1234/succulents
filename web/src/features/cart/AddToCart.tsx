@@ -36,6 +36,7 @@ export function AddToCart({ product, size = 'md' }: { product: Product; size?: '
       price: product.price,
       image: product.images[0],
       maxQty: product.stock,
+      cutting: product.tags?.includes('cutting') ?? false,
     })
     setBump((b) => b + 1)
     showToast({ productId: product.id, name: product.name, image: product.images[0] })

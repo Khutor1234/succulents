@@ -11,6 +11,8 @@ export interface CartItem {
   image?: string
   qty: number
   maxQty: number
+  /** Живець (тег «cutting») — у кошику підказка, що це одна маленька рослинка без коріння. */
+  cutting?: boolean
 }
 
 interface CartState {

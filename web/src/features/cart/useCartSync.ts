@@ -55,7 +55,7 @@ export function useCartSync() {
         found.push({ kind: 'gone', name })
         return []
       }
-      const updated = { ...item, price: p.price, maxQty: p.stock, name: p.name, image: p.images?.[0] ?? item.image }
+      const updated = { ...item, price: p.price, maxQty: p.stock, name: p.name, image: p.images?.[0] ?? item.image, cutting: p.tags?.includes('cutting') ?? false }
       if (p.price !== item.price) found.push({ kind: 'price', name, from: item.price, to: p.price })
       if (item.qty > p.stock) {
         found.push({ kind: 'less', name, left: p.stock })

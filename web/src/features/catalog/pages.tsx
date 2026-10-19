@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, BookOpen, EyeOff, Gift, Pencil, Truck } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, EyeOff, Gift, Info, Pencil, Truck } from 'lucide-react'
 import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, NavLink, useNavigate, useParams } from 'react-router'
@@ -376,6 +376,15 @@ export function ProductPage() {
           <p className="mt-1 text-sm text-sand-700">
             {product.stock > 0 ? t('product.inStock', { count: product.stock }) : t('product.outOfStock')}
           </p>
+          {/* Живець: покупець має знати, що отримає одну маленьку розетку, а не те, що може здатися з фото */}
+          {product.tags?.includes('cutting') && (
+            <p className="mt-4 flex gap-2.5 rounded-2xl border-2 border-sunset-500/40 bg-sunset-100/60 p-4 text-sm leading-relaxed">
+              <Info size={18} strokeWidth={2.25} className="mt-0.5 shrink-0 text-sunset-600" aria-hidden />
+              <span>
+                <strong>{t('product.cuttingTitle')}</strong> {t('product.cuttingNote')}
+              </span>
+            </p>
+          )}
           {/* Кошик і улюблене — для покупця; продавець редагує товар кнопкою вгорі */}
           {!isSeller && (
             <div className="mt-6 flex flex-wrap items-center gap-3">
