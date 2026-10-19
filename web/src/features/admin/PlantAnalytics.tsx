@@ -442,10 +442,29 @@ export function PlantAnalytics() {
                   ))}
                 </ul>
               )}
+              {/* Усі рослини, які серед батьків записані по-різному: кожне написання окремо, з пошуком товарів за ним */}
               {stats.variants.length > 0 && (
-                <p className="mt-3 text-xs text-sand-700">
-                  {t('plantStats.variants', { count: stats.variants.length })} {stats.variants.slice(0, 3).map((v) => v.join(' = ')).join('; ')}
-                </p>
+                <div className={stats.typos.length > 0 ? 'mt-4' : ''}>
+                  <p className="mb-2 text-sm text-sand-700">{t('plantStats.variants', { count: stats.variants.length })}</p>
+                  <ul className="space-y-2">
+                    {stats.variants.map((v) => (
+                      <li key={v.join('|')} className="flex flex-wrap items-center gap-1.5 rounded-2xl border-2 border-sand-200 p-3 text-sm">
+                        {v.map((written, i) => (
+                          <span key={written} className="inline-flex items-center gap-1.5">
+                            {i > 0 && <span className="text-sand-700">=</span>}
+                            <Link
+                              to={`/admin/products?category=${PLANT_CATEGORY}&q=${encodeURIComponent(written)}`}
+                              className="rounded-lg bg-sand-100 px-2 py-1 font-bold hover:bg-brand-600 hover:text-sand-50"
+                              title={t('plantStats.typosFind')}
+                            >
+                              {written}
+                            </Link>
+                          </span>
+                        ))}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </Card>
           )}
