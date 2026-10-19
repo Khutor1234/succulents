@@ -1,6 +1,6 @@
-import { BarChart3, ClipboardList, LayoutDashboard, Store, Tags, Users } from 'lucide-react'
+import { BarChart3, ClipboardList, LayoutDashboard, Tags, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Link, NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet } from 'react-router'
 import { ICON } from '../../shared/icon'
 import { useOrders } from './api'
 
@@ -17,7 +17,7 @@ const tab = ({ isActive }: { isActive: boolean }) =>
   }`
 
 /**
- * Каркас адмінки. Комп'ютер: вкладки зліва (огляд, категорії, покупці, аналітика), «До магазину» і «Замовлення» праворуч.
+ * Каркас адмінки. Комп'ютер: вкладки зліва (огляд, категорії, покупці, аналітика), «Замовлення» праворуч (у магазин — логотипом або кнопкою «Каталог» у шапці).
  * Товари — у магазині (кнопки продавця на картках), окремого списку тут немає.
  * Телефон: верхніх вкладок немає — усі розділи в нижньому меню (app/BottomNav, однакове з магазином).
  */
@@ -37,18 +37,10 @@ export function AdminLayout() {
             </NavLink>
           ))}
         </div>
-        {/* Швидкий перехід на вітрину — подивитися магазин очима покупця */}
-        <Link
-          to="/"
-          className="ml-auto inline-flex min-h-13 items-center gap-2 rounded-2xl border-2 border-brand-600 px-4 font-bold text-brand-600 transition-colors hover:bg-brand-600 hover:text-sand-50"
-        >
-          <Store {...ICON} />
-          {t('admin.toShop')}
-        </Link>
         <NavLink
           to="/admin/orders"
           className={({ isActive }) =>
-            `flex min-h-13 items-center justify-center gap-2.5 rounded-2xl px-5 py-3 text-lg font-extrabold shadow-sm transition-[background-color,transform] active:scale-[0.98] ${
+            `ml-auto flex min-h-13 items-center justify-center gap-2.5 rounded-2xl px-5 py-3 text-lg font-extrabold shadow-sm transition-[background-color,transform] active:scale-[0.98] ${
               isActive ? 'bg-sunset-700 text-sand-50 ring-4 ring-sunset-500/40' : 'bg-sunset-600 text-sand-50 hover:bg-sunset-700'
             }`
           }

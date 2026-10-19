@@ -1,4 +1,4 @@
-import { parseForms } from '../../lib/plantName'
+import { nameKey, parseForms } from '../../lib/plantName'
 import { STATE_TAGS, type PlantTag } from '../../lib/plants'
 import { slugify } from '../../lib/slug'
 import type { PlantOrigin, Product } from '../../lib/types'
@@ -191,9 +191,61 @@ export interface ImportPlan {
   creates: { id: string; rows: number[]; data: Omit<Product, 'id' | 'createdAt'> & { importedFrom: string } }[]
   /** Товари з бази, яких не знайшлося в таблиці, — їх не чіпаємо. */
   notInSheet: { id: string; name: string }[]
+  /**
+   * Наявні рослини, у яких у таблиці інші батьки, походження, ареал, селекціонер чи інші назви.
+   * Продавчиня сама вибирає галочками, що застосувати. Порожня клітинка в таблиці нічого не стирає.
+   */
+  updates: ProductUpdate[]
 }
 
-export function planImport(plants: SheetPlant[], products: Pick<Product, 'id' | 'slug' | 'name' | 'category' | 'tags'>[], today: string): ImportPlan {
+export type UpdateField = 'parents' | 'origin' | 'habitat' | 'breeder' | 'aliases'
+export interface ProductUpdate {
+  id: string
+  name: string
+  changes: { field: UpdateField; from: string; to: string }[]
+  /** Що записати в товар, якщо зміну вибрано */
+  patch: Partial<Pick<Product, 'parents' | 'origin' | 'habitat' | 'breeder' | 'aliases'>>
+}
+
+/** Що в таблиці не так, як на сайті (для наявної рослини). */
+function diffWithSheet(p: ImportProduct, plant: SheetPlant): ProductUpdate | null {
+  const changes: ProductUpdate['changes'] = []
+  const patch: ProductUpdate['patch'] = {}
+  const list = (xs?: string[]) => (xs ?? []).filter(Boolean)
+  // Варієгату / кристату вже зробили «мутацією від» звичайної версії («Виправити форми») — не повертаємо їй батьків гібрида
+  const fixedForm = p.origin === 'cultivar' && (p.tags ?? []).some((t) => STATE_TAGS.includes(t))
+  if (!fixedForm) {
+    if (plant.origin && plant.origin !== (p.origin ?? (list(p.parents).length ? 'hybrid' : undefined))) {
+      changes.push({ field: 'origin', from: p.origin ?? '', to: plant.origin })
+      patch.origin = plant.origin
+    }
+    const sheetParents = list(plant.parents)
+    if (sheetParents.length && sheetParents.map(nameKey).join('|') !== list(p.parents).map(nameKey).join('|')) {
+      changes.push({ field: 'parents', from: list(p.parents).join(' × '), to: sheetParents.join(' × ') })
+      patch.parents = sheetParents
+    }
+  }
+  if (plant.habitat && plant.habitat !== (p.habitat ?? '')) {
+    changes.push({ field: 'habitat', from: p.habitat ?? '', to: plant.habitat })
+    patch.habitat = plant.habitat
+  }
+  if (plant.breeder && plant.breeder !== (p.breeder ?? '')) {
+    changes.push({ field: 'breeder', from: p.breeder ?? '', to: plant.breeder })
+    patch.breeder = plant.breeder
+  }
+  // Інші назви — лише додаємо нові, наявні не прибираємо
+  const have = new Set(list(p.aliases).map((a) => a.toLowerCase()))
+  const extra = plant.aliases.filter((a) => a && !have.has(a.toLowerCase()))
+  if (extra.length) {
+    changes.push({ field: 'aliases', from: list(p.aliases).join(', '), to: [...list(p.aliases), ...extra].join(', ') })
+    patch.aliases = [...list(p.aliases), ...extra]
+  }
+  return changes.length ? { id: p.id, name: p.name.uk, changes, patch } : null
+}
+
+type ImportProduct = Pick<Product, 'id' | 'slug' | 'name' | 'category' | 'tags' | 'origin' | 'parents' | 'habitat' | 'breeder' | 'aliases'>
+
+export function planImport(plants: SheetPlant[], products: ImportProduct[], today: string): ImportPlan {
   const plantsDb = products.filter((p) => p.category === 'plants')
   const byKey = new Map<string, typeof plantsDb>()
   for (const p of plantsDb) byKey.set(key(p.name.uk), [...(byKey.get(key(p.name.uk)) ?? []), p])
@@ -228,10 +280,13 @@ export function planImport(plants: SheetPlant[], products: Pick<Product, 'id' | 
   }
 
   const renames: ImportPlan['renames'] = []
+  const updates: ProductUpdate[] = []
   let unchanged = 0
   for (const p of plantsDb) {
     const plant = matched.get(p.id)
     if (!plant) continue
+    const update = diffWithSheet(p, plant)
+    if (update) updates.push(update)
     const to = siteName(plant)
     const tagsChanged = states(p.tags) !== states(plant.tags)
     if (to === p.name.uk && !tagsChanged) unchanged++
@@ -294,5 +349,6 @@ export function planImport(plants: SheetPlant[], products: Pick<Product, 'id' | 
     unchanged,
     creates,
     notInSheet: plantsDb.filter((p) => !matched.has(p.id)).map((p) => ({ id: p.id, name: p.name.uk })),
+    updates: updates.sort((a, b) => a.name.localeCompare(b.name)),
   }
 }

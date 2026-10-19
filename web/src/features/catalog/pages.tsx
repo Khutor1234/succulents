@@ -396,13 +396,11 @@ export function ProductPage() {
               </span>
             </p>
           )}
-          {/* Кошик і улюблене — для покупця; продавець редагує товар кнопкою вгорі */}
-          {!isSeller && (
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <AddToCart product={product} size="lg" />
-              <FavoriteButton product={product} variant="lg" />
-            </div>
-          )}
+          {/* Кошик — для покупця (продавець редагує товар кнопкою вгорі); улюблене — для всіх, продавцю ще й з кількістю лайків */}
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            {!isSeller && <AddToCart product={product} size="lg" />}
+            <FavoriteButton product={product} variant="lg" />
+          </div>
           <p className="mt-8 leading-relaxed whitespace-pre-line">{pick(product.description, lang)}</p>
           {product.specs && product.specs.length > 0 && (
             <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border-2 border-sand-200 bg-sand-200 text-sm">

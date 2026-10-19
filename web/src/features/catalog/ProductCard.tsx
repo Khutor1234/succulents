@@ -1,4 +1,4 @@
-import { Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Heart, Package, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -62,8 +62,7 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
         {/* Прихований товар у картках бачить лише продавець — плашка першою в ряду тегів на фото */}
         {/* Продавцю — службові плашки першими в ряду тегів: прихований чи ні й скільки на складі.
             Навмисно інший вигляд, ніж у тегів (квадратніші, дрібні великі літери), — щоб не плутати з тим, що бачать покупці. */}
-        {/* У продавця немає сердечка — плашкам можна до правого краю */}
-        <TagBadges tags={product.tags} className={`pointer-events-none absolute top-2 left-2 ${isSeller ? 'right-2' : 'right-14'}`}>
+        <TagBadges tags={product.tags} className="pointer-events-none absolute top-2 right-14 left-2">
           {isSeller && !product.isActive && (
             <span className={`${SELLER_BADGE} bg-lavender-700/90 text-sand-50`}>
               <EyeOff size={12} strokeWidth={2.75} aria-hidden />
@@ -77,14 +76,9 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
             </span>
           )}
           {/* Продавцю — скільки покупців додали рослину в улюблене (у продавця немає сердечка-кнопки) */}
-          {isSeller && (product.likes ?? 0) > 0 && (
-            <span className={`${SELLER_BADGE} bg-sunset-600/90 text-white`} title={t('admin.likesHint')}>
-              <Heart size={12} strokeWidth={2.75} fill="currentColor" aria-hidden />
-              {product.likes}
-            </span>
-          )}
         </TagBadges>
-        {!isSeller && <FavoriteButton product={product} className="absolute top-2 right-2" />}
+        {/* Сердечко — для всіх; кількість лайків поруч бачить лише продавець */}
+        <FavoriteButton product={product} className="absolute top-2 right-2" />
         {/* Походження — плашкою внизу фото: під назвою не займає місця, тож картки з батьками й без однакові.
             Кожен батько — окреме посилання в пошук. */}
         {product.category === PLANT_CATEGORY && (

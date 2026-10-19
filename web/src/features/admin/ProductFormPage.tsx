@@ -12,7 +12,7 @@ import { slugify } from '../../lib/slug'
 import type { Product } from '../../lib/types'
 import { Button, Input, Section, Select, Textarea } from '../../shared/ui'
 import { useCategories } from '../catalog/categories'
-import { isSlugTaken, useDeleteProduct, useProductById, useSaveProduct, useToggleProductActive } from './api'
+import { isSlugTaken, useAllProducts, useDeleteProduct, useProductById, useSaveProduct, useToggleProductActive } from './api'
 import { canGoBack, useFrom } from '../../shared/navigation'
 import { BackLink } from './BackLink'
 import { ImagesEditor } from './ImagesEditor'
@@ -45,6 +45,9 @@ export function ProductFormPage() {
   return <ProductForm key={`${id}-${copyId ?? ''}`} product={isNew ? null : product!} source={copyId ? (product ?? null) : null} />
 }
 
+// Значення пункту «+ Додати новий рід» у списку родів (не справжній рід)
+const NEW_GENUS = '__new__'
+
 function ProductForm({ product, source }: { product: Product | null; source?: Product | null }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -75,6 +78,25 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
   // Вид і синхронізація назви — лише для рослин; теги — ті, що доступні в категорії (рослини, горщики, інструменти).
   const category = useWatch({ control, name: 'category' })
   const genusValue = useWatch({ control, name: 'genus' })
+  // Роди у списку: основні + ті, що вже є в товарах (додані раніше як «новий рід») + поточний
+  const { data: allProducts } = useAllProducts()
+  const generaOptions = [...new Set<string>([...GENERA, ...(allProducts ?? []).map((p) => p.genus ?? '').filter(Boolean), genusValue].filter(Boolean))].sort(
+    (a, b) => a.localeCompare(b),
+  )
+  const [addingGenus, setAddingGenus] = useState(false)
+  const [newGenus, setNewGenus] = useState('')
+  // Рід до вибору «+ Додати новий рід» — повертаємо його, поки нову назву не підтвердили
+  const [genusBefore, setGenusBefore] = useState(genusValue)
+  function applyNewGenus() {
+    // «mammillaria» → «Mammillaria»: рід латиною завжди з великої літери
+    const g = newGenus.trim().replace(/\s+/g, ' ')
+    if (!g) return
+    const value = g.charAt(0).toUpperCase() + g.slice(1)
+    setValue('genus', value, { shouldDirty: true })
+    setGenusBefore(value)
+    setAddingGenus(false)
+    syncPlantName()
+  }
   const fullName = useWatch({ control, name: 'name.uk' })
   const slugValue = useWatch({ control, name: 'slug' })
   const origin = useWatch({ control, name: 'origin' })
@@ -292,14 +314,58 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
         {/* Рослина: окремо вид і назва (сорт), форми — галочками нижче, а повна назва складається сама */}
         {isPlant ? (
           <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-            <Select label={t('catalog.genus')} current={genusValue} {...register('genus', { onChange: syncPlantName })}>
-              <option value="">{t('admin.fields.noGenus')}</option>
-              {GENERA.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </Select>
+            {/* Рід: зі списку (основні роди + ті, що вже є в товарах) або новий — пунктом «+ Додати новий рід» */}
+            {addingGenus ? (
+              <div>
+                <Input
+                  label={t('catalog.genus')}
+                  autoFocus
+                  value={newGenus}
+                  onChange={(e) => setNewGenus(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      applyNewGenus()
+                    }
+                  }}
+                  placeholder="Mammillaria"
+                />
+                <div className="mt-2 flex gap-2">
+                  <Button type="button" onClick={applyNewGenus} disabled={!newGenus.trim()}>
+                    {t('admin.fields.genusAdd')}
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={() => setAddingGenus(false)}>
+                    {t('admin.cancel')}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Select
+                label={t('catalog.genus')}
+                current={genusValue}
+                {...register('genus', {
+                  onChange: (e) => {
+                    if (e.target.value === NEW_GENUS) {
+                      // Пункт «+ Додати новий рід» — не значення, а відкриття поля для назви
+                      setValue('genus', genusBefore)
+                      setNewGenus('')
+                      setAddingGenus(true)
+                      return
+                    }
+                    setGenusBefore(e.target.value)
+                    syncPlantName()
+                  },
+                })}
+              >
+                <option value="">{t('admin.fields.noGenus')}</option>
+                {generaOptions.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+                <option value={NEW_GENUS}>{t('admin.fields.genusNew')}</option>
+              </Select>
+            )}
             <Input
               label={t('admin.fields.cultivar')}
               placeholder="Lola"

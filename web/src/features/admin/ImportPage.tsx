@@ -6,7 +6,7 @@ import { db } from '../../firebase/config'
 import { Button } from '../../shared/ui'
 import { useAllProducts } from './api'
 import { BackLink } from './BackLink'
-import { parseSheet, planImport, type ImportPlan } from './sheetImport'
+import { parseSheet, planImport, type ImportPlan, type ProductUpdate } from './sheetImport'
 
 /** Firestore приймає до 500 записів за раз — ділимо з запасом. */
 const CHUNK = 400
@@ -14,7 +14,7 @@ const CHUNK = 400
 function useApplyImport() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (plan: ImportPlan) => {
+    mutationFn: async ({ plan, updates }: { plan: ImportPlan; updates: ProductUpdate[] }) => {
       const writes = [
         ...plan.renames.map((r) => (batch: ReturnType<typeof writeBatch>) =>
           batch.update(doc(db, 'products', r.id), { 'name.uk': r.to, ...(r.tags ? { tags: r.tags } : {}), updatedAt: serverTimestamp() }),
@@ -22,13 +22,15 @@ function useApplyImport() {
         ...plan.creates.map((c) => (batch: ReturnType<typeof writeBatch>) =>
           batch.set(doc(db, 'products', c.id), { ...c.data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }),
         ),
+        // Оновлення даних наявних рослин — лише вибрані галочками
+        ...updates.map((u) => (batch: ReturnType<typeof writeBatch>) => batch.update(doc(db, 'products', u.id), { ...u.patch, updatedAt: serverTimestamp() })),
       ]
       for (let i = 0; i < writes.length; i += CHUNK) {
         const batch = writeBatch(db)
         writes.slice(i, i + CHUNK).forEach((w) => w(batch))
         await batch.commit()
       }
-      return { renamed: plan.renames.length, created: plan.creates.length }
+      return { renamed: plan.renames.length, created: plan.creates.length, updated: updates.length }
     },
     onSuccess: () => queryClient.invalidateQueries(),
   })
@@ -45,7 +47,17 @@ export function ImportPage() {
     () => (products && plants.length ? planImport(plants, products, new Date().toISOString().slice(0, 10)) : null),
     [plants, products],
   )
-  const hasChanges = !!plan && plan.renames.length + plan.creates.length > 0
+  // Оновлення даних: усі вибрані, доки продавчиня не зніме галочку
+  const [skipped, setSkipped] = useState<Set<string>>(new Set())
+  const chosenUpdates = plan?.updates.filter((u) => !skipped.has(u.id)) ?? []
+  const toggleUpdate = (id: string) =>
+    setSkipped((s) => {
+      const next = new Set(s)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  const hasChanges = !!plan && plan.renames.length + plan.creates.length + chosenUpdates.length > 0
 
   return (
     <div className="max-w-4xl">
@@ -88,6 +100,41 @@ export function ImportPage() {
             ))}
           </Section>
 
+          {/* Наявні рослини, у яких у таблиці інші дані: кожну можна застосувати чи пропустити */}
+          {plan.updates.length > 0 && (
+            <details open className="rounded-xl bg-sand-100 p-3">
+              <summary className="cursor-pointer font-bold">{t('admin.import.updates', { count: plan.updates.length })}</summary>
+              <p className="mt-1 text-sm text-sand-700">{t('admin.import.updatesHint')}</p>
+              <div className="mt-2 flex gap-3 text-sm font-bold">
+                <button type="button" className="text-brand-600 underline" onClick={() => setSkipped(new Set())}>{t('admin.formFixes.selectAll')}</button>
+                <button type="button" className="text-brand-600 underline" onClick={() => setSkipped(new Set(plan.updates.map((u) => u.id)))}>{t('admin.formFixes.selectNone')}</button>
+              </div>
+              <ul className="mt-2 max-h-[32rem] space-y-2 overflow-y-auto">
+                {plan.updates.map((u) => {
+                  const on = !skipped.has(u.id)
+                  return (
+                    <li key={u.id}>
+                      <label className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 bg-sand-50 p-3 transition-colors ${on ? 'border-brand-500/50' : 'border-sand-200 opacity-60'}`}>
+                        <input type="checkbox" checked={on} onChange={() => toggleUpdate(u.id)} className="mt-1 h-5 w-5 shrink-0 accent-brand-600" />
+                        <span className="min-w-0 flex-1 text-sm">
+                          <span className="block text-base font-bold">{u.name}</span>
+                          {u.changes.map((c) => (
+                            <span key={c.field} className="mt-1 block">
+                              <span className="font-bold text-sand-700">{t(`admin.import.fields.${c.field}`)}: </span>
+                              {c.from && <span className="text-sand-700 line-through">{c.field === 'origin' ? t(`admin.fields.origins.${c.from}`) : c.from}</span>}
+                              {c.from && ' → '}
+                              <span className="font-bold text-brand-700">{c.field === 'origin' ? t(`admin.fields.origins.${c.to}`) : c.to}</span>
+                            </span>
+                          ))}
+                        </span>
+                      </label>
+                    </li>
+                  )
+                })}
+              </ul>
+            </details>
+          )}
+
           <p className="text-sand-700">{t('admin.import.unchanged', { count: plan.unchanged })}</p>
 
           <Section title={t('admin.import.notInSheet', { count: plan.notInSheet.length })}>
@@ -99,7 +146,7 @@ export function ImportPage() {
           {apply.isSuccess ? (
             <p className="rounded-xl bg-brand-100 p-3 font-bold text-brand-700">{t('admin.import.done', apply.data)}</p>
           ) : hasChanges ? (
-            <Button onClick={() => apply.mutate(plan)} disabled={apply.isPending}>
+            <Button onClick={() => apply.mutate({ plan, updates: chosenUpdates })} disabled={apply.isPending}>
               {apply.isPending ? t('admin.import.applying') : t('admin.import.apply')}
             </Button>
           ) : (

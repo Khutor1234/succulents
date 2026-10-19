@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useLang } from '../../i18n'
 import { pick } from '../../lib/format'
 import type { Product } from '../../lib/types'
+import { useAuth } from '../auth/authStore'
 import { useFavorites } from './favoritesStore'
 
 /**
@@ -19,7 +20,9 @@ export function FavoriteButton({ product, variant = 'overlay', className = '' }:
   const name = pick(product.name, lang)
   // Скільки разів рослину лайкнули. Своє натискання враховуємо одразу (сервер оновить число трохи згодом)
   const [onAtLoad] = useState(on)
-  const likes = Math.max(0, (product.likes ?? 0) + Number(on) - Number(onAtLoad))
+  // Кількість лайків — лише для продавця (покупцям — просто сердечко)
+  const isSeller = useAuth((s) => s.role === 'seller')
+  const likes = isSeller ? Math.max(0, (product.likes ?? 0) + Number(on) - Number(onAtLoad)) : 0
 
   const icon = (
     <Heart
