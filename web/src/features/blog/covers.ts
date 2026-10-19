@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { collection, deleteField, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore'
+import { arrayRemove, arrayUnion, collection, deleteField, doc, getDoc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 
 /**
@@ -36,5 +36,33 @@ export function useSetArticleCover(slug: string) {
       return setDoc(ref, { cover, updatedAt: serverTimestamp() }, { merge: true })
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['blogCovers'] }),
+  })
+}
+
+/** Фото до статті (блок «Фото» під текстом): посилання на фото у сховищі, у порядку додавання. */
+export function useArticlePhotos(slug: string) {
+  return useQuery({
+    queryKey: ['blogPhotos', slug],
+    queryFn: async () => {
+      const snap = await getDoc(doc(db, 'blog', slug))
+      const photos = snap.data()?.photos
+      return Array.isArray(photos) ? (photos.filter((p) => typeof p === 'string') as string[]) : []
+    },
+    staleTime: 10 * 60 * 1000,
+  })
+}
+
+/** Додати фото (file) або прибрати (url) з блоку «Фото» статті. Лише для продавця. */
+export function useEditArticlePhotos(slug: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (change: { add: File } | { remove: string }) => {
+      const ref = doc(db, 'blog', slug)
+      if ('remove' in change) return setDoc(ref, { photos: arrayRemove(change.remove), updatedAt: serverTimestamp() }, { merge: true })
+      const { uploadBlogCover } = await import('../admin/imageUpload')
+      const url = await uploadBlogCover(change.add)
+      return setDoc(ref, { photos: arrayUnion(url), updatedAt: serverTimestamp() }, { merge: true })
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['blogPhotos', slug] }),
   })
 }

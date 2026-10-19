@@ -1,4 +1,5 @@
 import { Heart } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLang } from '../../i18n'
 import { pick } from '../../lib/format'
@@ -16,6 +17,9 @@ export function FavoriteButton({ product, variant = 'overlay', className = '' }:
   const on = useFavorites((s) => s.ids.includes(product.id))
   const toggle = useFavorites((s) => s.toggle)
   const name = pick(product.name, lang)
+  // Скільки разів рослину лайкнули. Своє натискання враховуємо одразу (сервер оновить число трохи згодом)
+  const [onAtLoad] = useState(on)
+  const likes = Math.max(0, (product.likes ?? 0) + Number(on) - Number(onAtLoad))
 
   const icon = (
     <Heart
@@ -41,6 +45,7 @@ export function FavoriteButton({ product, variant = 'overlay', className = '' }:
       >
         {icon}
         {t(on ? 'favorites.inFavorites' : 'favorites.add')}
+        {likes > 0 && <span className="tabular-nums opacity-70">· {likes}</span>}
       </button>
     )
   }
@@ -57,11 +62,12 @@ export function FavoriteButton({ product, variant = 'overlay', className = '' }:
       aria-pressed={on}
       aria-label={t(on ? 'favorites.removeNamed' : 'favorites.addNamed', { name })}
       title={t(on ? 'favorites.inFavorites' : 'favorites.add')}
-      className={`flex h-10 w-10 items-center justify-center rounded-full bg-sand-50/90 shadow-sm backdrop-blur transition-transform hover:scale-110 active:scale-95 ${
+      className={`flex h-10 min-w-10 items-center justify-center gap-1 rounded-full bg-sand-50/90 shadow-sm backdrop-blur transition-transform hover:scale-110 active:scale-95 ${likes > 0 ? 'px-2.5' : ''} ${
         on ? 'text-sunset-600' : 'text-ink'
       } ${className}`}
     >
       {icon}
+      {likes > 0 && <span className="text-sm font-extrabold tabular-nums">{likes}</span>}
     </button>
   )
 }

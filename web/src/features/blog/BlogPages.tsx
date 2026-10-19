@@ -7,6 +7,8 @@ import { ImageCropper } from '../../shared/ImageCropper'
 import { PageTitle } from '../../shared/ui'
 import { ARTICLES, BLOG_CATEGORIES, categoryLabel, findArticle, SOIL_RECIPES, type Article, type BlogCategory, type Block } from './articles'
 import { ArticleGrid, Cover } from './ArticleCards'
+import { ArticleExamples } from './ArticleExamples'
+import { ArticlePhotos } from './ArticlePhotos'
 import { useAuth } from '../auth/authStore'
 import { Comments } from './Comments'
 import { useArticleCovers, useSetArticleCover } from './covers'
@@ -154,6 +156,8 @@ function BlockView({ block }: { block: Block }): ReactNode {
           </p>
         </aside>
       )
+    case 'examples':
+      return <ArticleExamples filter={block} compact />
     case 'shop':
       return (
         <Link
@@ -229,9 +233,19 @@ export function ArticlePage() {
           <Meta article={article} />
         </div>
         <p className="mt-5 text-lg leading-relaxed text-sand-700">{article.excerpt}</p>
-        {article.body.map((block, i) => (
-          <BlockView key={i} block={block} />
-        ))}
+        {/* Приклади з колекції — після тексту, але перед «Джерелами» */}
+        {article.body
+          .filter((b) => b.type !== 'sources')
+          .map((block, i) => (
+            <BlockView key={i} block={block} />
+          ))}
+        {article.examples && <ArticleExamples filter={article.examples} />}
+        <ArticlePhotos slug={article.slug} />
+        {article.body
+          .filter((b) => b.type === 'sources')
+          .map((block, i) => (
+            <BlockView key={`s${i}`} block={block} />
+          ))}
         <div className="mt-10 rounded-3xl bg-brand-600 p-6 text-sand-50">
           <p className="font-display text-xl font-extrabold">{t('blog.ctaTitle')}</p>
           <p className="mt-1 text-sm text-sand-100">{t('blog.ctaText')}</p>

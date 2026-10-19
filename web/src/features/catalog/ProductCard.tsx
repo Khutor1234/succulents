@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Heart, Package, Pencil, Trash2 } from 'lucide-react'
 import { useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -68,6 +68,13 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
             <span className={`${SELLER_BADGE} text-white ${product.stock > 0 ? 'bg-brand-700/90' : 'bg-red-700/90'}`}>
               <Package size={12} strokeWidth={2.75} aria-hidden />
               {product.stock > 0 ? t('admin.stockBadge', { count: product.stock }) : t('admin.noStockBadge')}
+            </span>
+          )}
+          {/* Продавцю — скільки покупців додали рослину в улюблене (у продавця немає сердечка-кнопки) */}
+          {isSeller && (product.likes ?? 0) > 0 && (
+            <span className={`${SELLER_BADGE} bg-sunset-600/90 text-white`} title={t('admin.likesHint')}>
+              <Heart size={12} strokeWidth={2.75} fill="currentColor" aria-hidden />
+              {product.likes}
             </span>
           )}
         </TagBadges>

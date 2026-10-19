@@ -1,4 +1,4 @@
-import { Check, Minus, Plus, X } from 'lucide-react'
+import { Check, Minus, Plus, RotateCcw, RotateCw, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -126,6 +126,27 @@ export function ImageCropper({
     if (blob) onDone(new File([blob], file.name.replace(/\.[^.]+$/, '') + '.webp', { type: 'image/webp' }))
   }
 
+  // Повернути фото на 90° (напр. зняте боком на телефоні): малюємо повернуту копію й далі працюємо з нею
+  async function rotate(dir: 1 | -1) {
+    if (!img) return
+    const canvas = document.createElement('canvas')
+    canvas.width = img.naturalHeight
+    canvas.height = img.naturalWidth
+    const ctx = canvas.getContext('2d')!
+    ctx.translate(canvas.width / 2, canvas.height / 2)
+    ctx.rotate((dir * Math.PI) / 2)
+    ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2)
+    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/webp', 0.95))
+    if (!blob) return
+    const turned = new Image()
+    turned.onload = () => {
+      setImg(turned)
+      setZoom(1)
+      setOffset({ x: 0, y: 0 })
+    }
+    turned.src = URL.createObjectURL(blob)
+  }
+
   const btn = 'flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sand-200 text-ink hover:bg-sand-300 disabled:opacity-40'
 
   return (
@@ -150,9 +171,9 @@ export function ImageCropper({
           style={{ width: frameW, height: frameH }}
           className="relative cursor-grab touch-none overflow-hidden rounded-2xl bg-sand-200 select-none active:cursor-grabbing"
         >
-          {url && img && (
+          {img && (
             <img
-              src={url}
+              src={img.src}
               alt=""
               draggable={false}
               className="pointer-events-none absolute top-1/2 left-1/2 max-w-none"
@@ -184,6 +205,18 @@ export function ImageCropper({
         />
         <button type="button" className={btn} onClick={() => setZoomKeep(zoom * 1.2)} disabled={zoom >= MAX_ZOOM} aria-label={t('cropper.zoomIn')}>
           <Plus size={18} strokeWidth={2.5} aria-hidden />
+        </button>
+      </div>
+
+      {/* Повернути фото, якщо зняте боком чи догори дриґом */}
+      <div className="mt-3 flex justify-center gap-2">
+        <button type="button" onClick={() => rotate(-1)} disabled={!img} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-sand-200 px-4 text-sm font-bold hover:bg-sand-300 disabled:opacity-40">
+          <RotateCcw size={18} strokeWidth={2.5} aria-hidden />
+          {t('cropper.rotateLeft')}
+        </button>
+        <button type="button" onClick={() => rotate(1)} disabled={!img} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-sand-200 px-4 text-sm font-bold hover:bg-sand-300 disabled:opacity-40">
+          <RotateCw size={18} strokeWidth={2.5} aria-hidden />
+          {t('cropper.rotateRight')}
         </button>
       </div>
 

@@ -38,11 +38,13 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Стаття блогу (самі тексти — у коді сайту): тут лише заставка, яку додає продавець. Бачать усі.
+    // Стаття блогу (самі тексти — у коді сайту): тут заставка й фото до статті, які додає продавець. Бачать усі.
     match /blog/{slug} {
       allow read: if true;
       allow write: if isSeller()
-        && request.resource.data.keys().hasOnly(['cover', 'updatedAt']);
+        && request.resource.data.keys().hasOnly(['cover', 'photos', 'updatedAt'])
+        && (!('photos' in request.resource.data) || (request.resource.data.photos is list
+          && request.resource.data.photos.size() <= 30));
     }
 
     // Коментарі під статтями блогу: читають усі, пишуть ті, хто увійшов (лише від свого імені),

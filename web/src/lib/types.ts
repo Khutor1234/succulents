@@ -56,6 +56,8 @@ export interface Product {
   breeder?: string
   /** Характеристики, напр. «Діаметр горщика: 8 см». */
   specs?: { label: Localized; value: Localized }[]
+  /** Скільки покупців (з акаунтом) додали в улюблене — рахує сервер (functions/onFavoritesChanged). */
+  likes?: number
   createdAt?: Timestamp
 }
 
