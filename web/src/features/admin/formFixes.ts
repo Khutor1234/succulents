@@ -1,4 +1,4 @@
-import { parseForms } from '../../lib/plantName'
+import { nameKey, parseForms } from '../../lib/plantName'
 import { PLANT_CATEGORY, STATE_TAGS, type PlantTag } from '../../lib/plants'
 import type { PlantOrigin, Product } from '../../lib/types'
 
@@ -57,7 +57,8 @@ export function planFormFixes(products: Plant[]): FormFixPlan {
       continue
     }
     const parents = (p.parents ?? []).filter(Boolean)
-    if (p.origin === 'cultivar' && parents.length === 1 && parents[0].trim() === source) {
+    // Уже правильно, навіть якщо джерело записане трохи інакше (без лапок, іншими літерами регістру)
+    if (p.origin === 'cultivar' && parents.length === 1 && nameKey(parents[0]) === nameKey(source)) {
       plan.ok++
       continue
     }

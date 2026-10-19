@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { baseKey, editDistance, nameKey } from '../../lib/plantName'
 import type { Product } from '../../lib/types'
 import { useAuth } from '../auth/authStore'
 import { useAllProducts } from './api'
@@ -6,19 +7,6 @@ import { useCategories } from './categories'
 import { ProductCard } from './ProductCard'
 
 type Relation = 'form' | 'parent' | 'child' | 'sibling'
-
-// Слова, що позначають особливу форму, — без них «Echeveria 'Lola' variegata» і «Echeveria 'Lola'» — та сама рослина
-const FORM_WORDS = /\b(variegat[a-z]*|cristat[a-z]*|monstros[a-z]*|forma|f\.|var\.)(?=\s|$)/g
-
-/** Назва без лапок, регістру й позначок форми — щоб порівнювати рослини між собою. */
-export function plantKey(name: string) {
-  return name
-    .toLowerCase()
-    .replace(/['‘’"«»`]/g, ' ')
-    .replace(FORM_WORDS, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
 
 const ORDER: Relation[] = ['form', 'parent', 'child', 'sibling']
 const MAX = 8
@@ -30,14 +18,43 @@ const MAX = 8
  * - гібрид, у якого вона — один із батьків;
  * - рослина зі спільним батьком.
  */
-function relationOf(product: Product, other: Product): Relation | null {
-  if (plantKey(other.name.uk) === plantKey(product.name.uk)) return 'form'
+/**
+ * Батька записали з опискою («Graptoveria 'Debbi'», а рослина — «Graptoveria 'Debbie'»)? Якщо точної назви серед товарів
+ * немає, беремо товар того самого роду, що відрізняється щонайбільше на 2 букви. Інакше лишаємо як записано.
+ */
+function makeResolver(keys: string[]) {
+  const known = new Set(keys)
+  const cache = new Map<string, string>()
+  return (name: string) => {
+    const key = nameKey(name)
+    if (known.has(key)) return key
+    const hit = cache.get(key)
+    if (hit !== undefined) return hit
+    const genus = key.split(' ')[0]
+    let best = key
+    let bestDist = 3
+    for (const k of keys) {
+      if (k.split(' ')[0] !== genus || k.length < 6) continue
+      const dist = editDistance(key, k)
+      if (dist < bestDist) {
+        best = k
+        bestDist = dist
+      }
+    }
+    cache.set(key, best)
+    return best
+  }
+}
+
+function relationOf(product: Product, other: Product, resolve: (name: string) => string): Relation | null {
+  // Назви порівнюємо без лапок, регістру й різниці в написанні форм (lib/plantName: nameKey, baseKey)
+  if (baseKey(other.name.uk) === baseKey(product.name.uk)) return 'form'
   // Батьки — точна назва разом із формою: батько «Echeveria lilacina» — це саме lilacina,
   // а не «lilacina variegata» чи «lilacina monstrose» (то її форми, а не батьки)
-  const self = exactKey(product.name.uk)
-  const otherKey = exactKey(other.name.uk)
-  const parents = (product.parents ?? []).filter(Boolean).map(exactKey)
-  const otherParents = (other.parents ?? []).filter(Boolean).map(exactKey)
+  const self = nameKey(product.name.uk)
+  const otherKey = nameKey(other.name.uk)
+  const parents = (product.parents ?? []).filter(Boolean).map(resolve)
+  const otherParents = (other.parents ?? []).filter(Boolean).map(resolve)
   if (parents.includes(otherKey)) return 'parent'
   if (otherParents.includes(self)) return 'child'
   // «Спільний батько» — лише між гібридами: мутація (напр. «lilacina monstrose») — це форма свого джерела,
@@ -45,14 +62,6 @@ function relationOf(product: Product, other: Product): Relation | null {
   if (product.origin !== 'cultivar' && other.origin !== 'cultivar' && parents.some((p) => otherParents.includes(p))) return 'sibling'
   return null
 }
-
-/** Назва без лапок і регістру, але з формами — щоб відрізняти «lilacina» від «lilacina variegata». */
-const exactKey = (name: string) =>
-  name
-    .toLowerCase()
-    .replace(/['‘’"«»`]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
 
 const BADGE: Record<Relation, string> = {
   form: 'bg-sunset-100 text-sunset-700',
@@ -74,10 +83,12 @@ export function RelatedPlants({ product }: { product: Product }) {
   const { data } = useAllProducts(isSeller)
   const { isVisible } = useCategories()
   if (!data) return null
+  // Описки в назвах батьків виправляємо за назвами товарів, які бачить цей відвідувач
+  const resolve = makeResolver(data.map((p) => nameKey(p.name.uk)))
 
   const related = data
     .filter((p) => p.id !== product.id && (isSeller || (p.isActive && p.stock > 0 && isVisible(p.category))))
-    .map((p) => ({ p, rel: relationOf(product, p) }))
+    .map((p) => ({ p, rel: relationOf(product, p, resolve) }))
     .filter((x): x is { p: Product; rel: Relation } => !!x.rel)
     .sort((a, b) => (isSeller ? rank(a.p) - rank(b.p) : 0))
   // Групи за видом зв’язку — у кожній не більше MAX карток

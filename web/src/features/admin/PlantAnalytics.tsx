@@ -12,6 +12,7 @@ import {
   Palette,
   Ruler,
   Sparkles,
+  SpellCheck,
   Sprout,
   Tag,
   UserRound,
@@ -22,7 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useLang } from '../../i18n'
 import { formatPrice } from '../../lib/format'
-import { parseForms } from '../../lib/plantName'
+import { baseKey, editDistance, nameKey, parseForms } from '../../lib/plantName'
 import { PLANT_CATEGORY, STATE_TAGS, TAG_DOTS } from '../../lib/plants'
 import type { Product } from '../../lib/types'
 import { originOf } from '../catalog/usePlantFilters'
@@ -133,18 +134,48 @@ export function PlantAnalytics() {
       .sort((a, b) => b.count - a.count)
 
     // Батьки: скільки нащадків у кожної рослини. Хто з батьків мама, а хто тато, часто невідомо — тож не розрізняємо.
+    // Ту саму рослину могли записати по-різному («Graptoveria 'Debbie'» і «graptoveria Debbie»), тож групуємо за
+    // nameKey, а показуємо назву, як вона є в магазині (або як її найчастіше записували).
+    const productByKey = new Map(products.filter((p) => p.category === PLANT_CATEGORY).map((p) => [nameKey(p.name.uk), p.name.uk.trim()]))
     const children = new Map<string, Set<string>>()
+    const spellings = new Map<string, Map<string, number>>()
     let crossGenus = 0
     for (const p of plants) {
       const named = (p.parents ?? []).map((x) => x.trim()).filter(Boolean)
-      for (const parent of named) children.set(parent, (children.get(parent) ?? new Set()).add(d(p).base))
+      for (const parent of named) {
+        const key = nameKey(parent)
+        // Нащадок — без форм: «Lola» і «Lola variegata» з тими самими батьками — один нащадок
+        children.set(key, (children.get(key) ?? new Set()).add(baseKey(p.name.uk)))
+        const sp = spellings.get(key) ?? new Map<string, number>()
+        spellings.set(key, sp)
+        count(sp, parent)
+      }
       // Міжродовий гібрид: батьки з різних родів (напр. Graptopetalum × Echeveria)
       if (named.length === 2 && genusOf(named[0]) !== genusOf(named[1])) crossGenus++
     }
+    const displayName = (key: string) => productByKey.get(key) ?? top(spellings.get(key) ?? new Map(), 1)[0]?.[0] ?? key
     const parents = [...children]
-      .map(([name, kids]) => ({ name, kids: kids.size }))
+      .map(([key, kids]) => ({ name: displayName(key), kids: kids.size }))
       .sort((a, b) => b.kids - a.kids || a.name.localeCompare(b.name))
       .slice(0, 8)
+    // Батьки, яких немає серед рослин магазину, але дуже схожа назва є — найімовірніше, описка («Debbi» → «Debbie»)
+    const productKeys = [...productByKey.keys()]
+    const typos = [...children.keys()]
+      .filter((key) => !productByKey.has(key))
+      .map((key) => {
+        let best: { key: string; dist: number } | null = null
+        for (const pk of productKeys) {
+          // Лише той самий рід і не надто короткі назви — так, як і на сторінці товару (RelatedPlants)
+          if (pk.split(' ')[0] !== key.split(' ')[0] || pk.length < 6) continue
+          const dist = editDistance(key, pk)
+          if (dist <= 2 && (!best || dist < best.dist)) best = { key: pk, dist }
+        }
+        return best && { written: [...(spellings.get(key)?.keys() ?? [])], suggestion: productByKey.get(best.key)!, kids: children.get(key)!.size }
+      })
+      .filter((x): x is { written: string[]; suggestion: string; kids: number } => !!x)
+      .sort((a, b) => b.kids - a.kids)
+    // Одна рослина записана серед батьків кількома способами (лапки, регістр) — сайт це вже зводить, але варто знати
+    const variants = [...spellings.values()].filter((sp) => sp.size > 1).map((sp) => [...sp.keys()])
 
     const breeders = new Map<string, number>()
     plants.forEach((p) => p.breeder?.trim() && count(breeders, p.breeder.trim()))
@@ -188,6 +219,8 @@ export function PlantAnalytics() {
       colors,
       royals: [...royals].sort(),
       parents,
+      typos,
+      variants,
       crossGenus,
       breeders: top(breeders, 6),
       habitats: top(habitats, 6),
@@ -388,6 +421,34 @@ export function PlantAnalytics() {
               )}
             </div>
           </div>
+
+          {/* Перевірка назв батьків: схожа, але не така сама назва, як у рослини магазину, — найімовірніше описка.
+              Через таку описку батько й дитина не «бачать» одне одного (на сторінці товару, в аналітиці). */}
+          {(stats.typos.length > 0 || stats.variants.length > 0) && (
+            <Card title={t('plantStats.typos')} icon={SpellCheck}>
+              <p className="-mt-2 mb-3 text-sm text-sand-700">{t('plantStats.typosHint')}</p>
+              {stats.typos.length > 0 && (
+                <ul className="space-y-2">
+                  {stats.typos.map((x) => (
+                    <li key={x.written.join('|')} className="rounded-2xl border-2 border-sunset-500/40 bg-sunset-100/40 p-3 text-sm">
+                      <span className="font-bold text-red-700 line-through decoration-red-700/50">{x.written.join(' / ')}</span>
+                      {' → '}
+                      <span className="font-bold text-brand-700">{x.suggestion}</span>
+                      <span className="text-sand-700"> · {t('plantStats.kids', { count: x.kids })}</span>
+                      <Link to={`/admin/products?category=${PLANT_CATEGORY}&q=${encodeURIComponent(x.written[0])}`} className="ml-2 font-bold text-brand-600 underline">
+                        {t('plantStats.typosFind')}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {stats.variants.length > 0 && (
+                <p className="mt-3 text-xs text-sand-700">
+                  {t('plantStats.variants', { count: stats.variants.length })} {stats.variants.slice(0, 3).map((v) => v.join(' = ')).join('; ')}
+                </p>
+              )}
+            </Card>
+          )}
 
           {/* Цікаві факти */}
           <section>

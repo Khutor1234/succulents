@@ -119,3 +119,44 @@ export function withForms(base: string, tags: PlantTag[]): string {
   const forms = STATE_TAGS.filter((t) => tags.includes(t)).map((t) => FORM_LABELS[t])
   return forms.length ? `${base.trim()} ${forms.join(' ')}` : base.trim()
 }
+
+/**
+ * Ключ для порівняння назв рослин між собою (батьки ↔ товари): без регістру й лапок,
+ * «×Graptoveria» = «Graptoveria», а форми в будь-якому написанні зводяться до одного
+ * («variegated», «Variegata» → variegata). Тож «Graptoveria 'Debbie'» і «graptoveria Debbie» — одна рослина.
+ */
+export function nameKey(name: string): string {
+  const words = name
+    .toLowerCase()
+    .replace(/['‘’"«»`ʼ]/g, ' ')
+    .replace(/×/g, ' x ')
+    .split(/\s+/)
+    .filter(Boolean)
+  // Позначка міжродового гібрида перед родом («x Graptoveria») — не частина назви
+  if (words[0] === 'x') words.shift()
+  return words
+    .filter((w) => !/^(f\.?|forma)$/.test(w))
+    .map((w) => FORM_PATTERNS.find(([, re]) => re.test(w.replace(/[,;]+$/, '')))?.[0] ?? w)
+    .join(' ')
+}
+
+/** Ключ без форм: «Echeveria 'Lola' variegata» і «Echeveria Lola» — та сама рослина в різних формах. */
+export function baseKey(name: string): string {
+  const forms = new Set<string>(STATE_TAGS)
+  return nameKey(name)
+    .split(' ')
+    .filter((w) => !forms.has(w))
+    .join(' ')
+}
+
+/** Відстань між двома рядками в буквах (скільки букв замінити, додати чи прибрати) — щоб знаходити описки. */
+export function editDistance(a: string, b: string): number {
+  if (Math.abs(a.length - b.length) > 3) return 99
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i]
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+    prev = cur
+  }
+  return prev[b.length]
+}
