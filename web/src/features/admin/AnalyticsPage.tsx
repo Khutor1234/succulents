@@ -326,13 +326,18 @@ function RevenueChart({ buckets, weekly }: { buckets: Bucket[]; weekly: boolean 
 
   return (
     <div>
-      <p className="mb-2 h-5 text-sm text-sand-700" aria-live="polite">
+      {/* Рядок над графіком: підказка або дані вибраного стовпчика. На телефоні — до двох рядків висоти,
+          щоб текст не налазив на графік; підказка там коротша («торкніться»), на комп’ютері — «наведіть». */}
+      <p className="mb-3 min-h-10 text-sm leading-5 text-sand-700 sm:min-h-5" aria-live="polite">
         {shown ? (
           <>
             <strong className="text-ink">{label(shown)}</strong> · {formatPrice(shown.revenue, lang)} · {t('analytics.ordersCount', { count: shown.orders })}
           </>
         ) : (
-          t('analytics.chartHint')
+          <>
+            <span className="sm:hidden">{t('analytics.chartHintTouch')}</span>
+            <span className="hidden sm:inline">{t('analytics.chartHint')}</span>
+          </>
         )}
       </p>
       <div className="relative h-44 border-b-2 border-sand-200" onMouseLeave={() => setActive(null)}>

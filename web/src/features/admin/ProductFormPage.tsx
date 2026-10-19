@@ -266,9 +266,10 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
         </p>
       )}
 
-      {/* На широкому екрані — дві колонки на всю ширину: зліва назва й опис, справа фото, ціна, характеристики */}
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] [&>*]:min-w-0">
-      <div className="space-y-6">
+      {/* Телефон: спершу фото, ціна й залишок (найчастіше змінюють саме їх), далі назва, опис і характеристики.
+          Широкий екран: дві колонки — зліва назва й опис, справа фото, ціна, характеристики. */}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-[auto_1fr] [&>*]:min-w-0">
+      <div className="space-y-6 lg:col-start-1 lg:row-span-2 lg:row-start-1">
       <Section title={t('admin.name')}>
         <Select
           label={t('admin.fields.category')}
@@ -449,7 +450,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
       </Section>
       </div>
 
-      <div className="space-y-6">
+      <div className="order-first space-y-6 lg:order-none lg:col-start-2 lg:row-start-1">
       <Section title={t('admin.fields.photos')}>
         <ImagesEditor images={images} onChange={setImages} onUploadingChange={setUploading} />
       </Section>
@@ -470,7 +471,9 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
           <input type="checkbox" {...register('isActive')} /> {t('admin.fields.isActive')}
         </label>
       </Section>
+      </div>
 
+      <div className="lg:col-start-2 lg:row-start-2">
       <Section title={t('admin.fields.specs')}>
         {specs.fields.map((field, i) => (
           <div key={field.id} className="grid gap-2 rounded-lg bg-sand-100 p-3 sm:grid-cols-2">
