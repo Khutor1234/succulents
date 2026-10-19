@@ -257,7 +257,17 @@ export function CategoryPage() {
               {t('catalog.resetFilters')}
             </button>
           )}
-          <label className="ml-auto flex items-center gap-2 text-sm font-bold text-sand-700">
+          {/* «Лише в наявності» — сховати рослини, яких зараз немає (за замовчуванням вони просто йдуть у кінці) */}
+          <label className="ml-auto inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl px-2 text-sm font-bold text-sand-700 hover:bg-sand-200">
+            <input
+              type="checkbox"
+              checked={filters.inStock}
+              onChange={(e) => filters.setInStock(e.target.checked)}
+              className="h-5 w-5 accent-brand-600"
+            />
+            {t('catalog.inStockOnly')}
+          </label>
+          <label className="flex items-center gap-2 text-sm font-bold text-sand-700">
             {t('catalog.sort')}
             <Select compact value={filters.sort} onChange={(e) => filters.setSort(e.target.value as SortOrder)}>
               {SORTS.map((s) => (

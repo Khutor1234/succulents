@@ -97,65 +97,77 @@ export function BulkBar({
     )
   }
 
-  const btn =
-    'inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-bold transition-colors disabled:opacity-40'
+  // Усі кнопки дій однакові на вигляд; вибрана (відкрита) — зафарбована, щоб було видно, що зараз обрано
+  const action = (on: boolean, danger = false) =>
+    `inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border-2 px-3 text-sm font-bold transition-colors disabled:opacity-40 ${
+      on
+        ? 'border-brand-600 bg-brand-600 text-sand-50'
+        : danger
+          ? 'border-sand-300 bg-sand-50 text-red-700 hover:border-red-700'
+          : 'border-sand-300 bg-sand-50 text-ink hover:border-brand-600'
+    }`
+  const disabled = !n || bulk.isPending
 
   return (
     <div className="sticky bottom-[calc(var(--bottom-nav-h,0px)+0.5rem)] z-30 mt-4 rounded-3xl border-2 border-brand-600 bg-sand-50/95 p-3 shadow-[0_-12px_30px_-12px_rgba(43,33,24,0.35)] backdrop-blur-md">
+      {/* 1. Скільки вибрано (або підказка, що робити) */}
       <div className="flex flex-wrap items-center gap-2">
-        <p className="mr-auto font-bold" aria-live="polite">
-          {done && n === 0 ? done : t('admin.bulk.selected', { count: n })}
+        <p className="mr-auto" aria-live="polite">
+          <span className="block font-display text-lg leading-tight font-extrabold text-brand-600">{t('admin.bulk.selected', { count: n })}</span>
+          <span className="text-xs text-sand-700">{n ? t('admin.bulk.stepAction') : t('admin.bulk.stepPick')}</span>
         </p>
-        <button type="button" onClick={n === total ? onClear : onSelectAll} className={`${btn} bg-sand-200 hover:bg-sand-300`}>
+        <button type="button" onClick={n === total ? onClear : onSelectAll} className={action(false)}>
           <CheckSquare size={16} strokeWidth={2.4} aria-hidden />
           {n === total ? t('admin.bulk.none') : t('admin.bulk.all', { count: total })}
         </button>
-        <button type="button" onClick={onClose} aria-label={t('admin.bulk.close')} className={`${btn} bg-sand-200 px-2.5 hover:bg-sand-300`}>
+        <button type="button" onClick={onClose} aria-label={t('admin.bulk.close')} className={`${action(false)} px-2.5`}>
           <X size={18} strokeWidth={2.4} aria-hidden />
         </button>
       </div>
 
+      {/* 2. Що зробити з вибраними */}
       <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
-        <button type="button" disabled={!n || bulk.isPending} onClick={() => setTagMenu(tagMenu === 'add' ? null : 'add')} className={`${btn} border-2 border-brand-600 text-brand-600 hover:bg-brand-600 hover:text-sand-50`}>
+        <button type="button" disabled={disabled} aria-pressed={tagMenu === 'add'} onClick={() => setTagMenu(tagMenu === 'add' ? null : 'add')} className={action(tagMenu === 'add')}>
           <Plus size={16} strokeWidth={2.4} aria-hidden />
           {t('admin.bulk.addTag')}
         </button>
-        <button type="button" disabled={!n || bulk.isPending} onClick={() => setTagMenu(tagMenu === 'remove' ? null : 'remove')} className={`${btn} border-2 border-sand-300 hover:border-brand-600`}>
+        <button type="button" disabled={disabled} aria-pressed={tagMenu === 'remove'} onClick={() => setTagMenu(tagMenu === 'remove' ? null : 'remove')} className={action(tagMenu === 'remove')}>
           <Minus size={16} strokeWidth={2.4} aria-hidden />
           {t('admin.bulk.removeTag')}
         </button>
-        <button type="button" disabled={!n || bulk.isPending} onClick={() => run({ kind: 'show' })} className={`${btn} bg-brand-600 text-sand-50 hover:bg-brand-700`}>
+        <button type="button" disabled={disabled} onClick={() => run({ kind: 'show' })} className={action(false)}>
           <Eye size={16} strokeWidth={2.4} aria-hidden />
           {t('admin.show')}
         </button>
-        <button type="button" disabled={!n || bulk.isPending} onClick={() => run({ kind: 'hide' })} className={`${btn} bg-sand-700 text-sand-50 hover:bg-ink`}>
+        <button type="button" disabled={disabled} onClick={() => run({ kind: 'hide' })} className={action(false)}>
           <EyeOff size={16} strokeWidth={2.4} aria-hidden />
           {t('admin.hide')}
         </button>
-        <button type="button" disabled={!n || bulk.isPending} onClick={() => run({ kind: 'delete' })} className={`${btn} border-2 border-red-700 text-red-700 hover:bg-red-700 hover:text-white`}>
+        <button type="button" disabled={disabled} onClick={() => run({ kind: 'delete' })} className={action(false, true)}>
           <Trash2 size={16} strokeWidth={2.4} aria-hidden />
           {t('admin.bulk.delete')}
         </button>
       </div>
 
-      {/* Який тег додати / прибрати */}
+      {/* 3. Для тегу — який саме (окремим рядком під вибраною дією) */}
       {tagMenu && (
-        <div className="mt-2 flex flex-wrap gap-2 border-t border-sand-200 pt-2">
-          <span className="self-center text-sm text-sand-700">{t(tagMenu === 'add' ? 'admin.bulk.addWhich' : 'admin.bulk.removeWhich')}</span>
-          {PLANT_TAGS.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => run({ kind: 'tag', tag, add: tagMenu === 'add' })}
-              className={`${btn} bg-sand-200 hover:bg-brand-600 hover:text-sand-50`}
-            >
-              {t(`tags.${tag}`)}
-            </button>
-          ))}
+        <div className="mt-2 rounded-2xl bg-brand-50 p-2.5">
+          <p className="mb-2 text-sm font-bold text-brand-700">{t(tagMenu === 'add' ? 'admin.bulk.addWhich' : 'admin.bulk.removeWhich')}</p>
+          <div className="flex flex-wrap gap-2">
+            {PLANT_TAGS.map((tag) => (
+              <button key={tag} type="button" onClick={() => run({ kind: 'tag', tag, add: tagMenu === 'add' })} className={action(false)}>
+                {tagMenu === 'add' ? <Plus size={14} strokeWidth={2.6} aria-hidden /> : <Minus size={14} strokeWidth={2.6} aria-hidden />}
+                {t(`tags.${tag}`)}
+              </button>
+            ))}
+          </div>
         </div>
       )}
-      {bulk.isPending && <p className="mt-2 text-sm text-sand-700">{t('admin.saving')}</p>}
-      {bulk.isError && <p className="mt-2 text-sm text-red-700">{t('admin.saveError')}</p>}
+
+      {/* Результат */}
+      {bulk.isPending && <p className="mt-2 rounded-xl bg-sand-200 px-3 py-2 text-sm font-bold">{t('admin.saving')}</p>}
+      {done && !bulk.isPending && !n && <p className="mt-2 rounded-xl bg-brand-100 px-3 py-2 text-sm font-bold text-brand-700">{done}</p>}
+      {bulk.isError && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{t('admin.saveError')}</p>}
     </div>
   )
 }
