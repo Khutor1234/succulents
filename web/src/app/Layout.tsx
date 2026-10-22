@@ -181,13 +181,14 @@ export function Layout() {
           <Link to="/" className="text-xl text-brand-600 sm:text-2xl">
             <Logo />
           </Link>
-          {/* На телефоні в шапці — Каталог, пошук і кнопка меню; кошик, кабінет і адмінка — у нижньому меню. На комп’ютері — усі кнопки в шапці. */}
+          {/* «Каталог» — окрема помітна кнопка поруч із логотипом, щоб не зливалась зі значками праворуч.
+              На телефоні її немає: каталог є в нижньому меню. */}
+          <Link to="/c/plants" className={NAV_BTN + ' hidden bg-brand-100 text-sm font-bold text-brand-700 hover:brightness-95 md:inline-flex'}>
+            <LayoutGrid {...ICON} />
+            <span>{t('nav.catalog')}</span>
+          </Link>
+          {/* На телефоні в шапці — пошук і кнопка меню; каталог, кошик, кабінет і адмінка — у нижньому меню. На комп’ютері — усі кнопки в шапці. */}
           <div className="ml-auto flex items-center gap-1.5 text-sm sm:gap-2">
-            {/* «Каталог» — одразу до рослин; видно завжди, і на телефоні (поруч із кнопкою меню) */}
-            <Link to="/c/plants" className={NAV_BTN + ' inline-flex font-bold text-brand-600 hover:bg-sand-200'}>
-              <LayoutGrid {...ICON} className="hidden sm:block" />
-              <span>{t('nav.catalog')}</span>
-            </Link>
             <Link to={searchHref()} aria-label={t('search.open')} title={t('search.open')} className={NAV_BTN + ' inline-flex hover:bg-sand-200'}>
               <Search {...ICON} />
             </Link>

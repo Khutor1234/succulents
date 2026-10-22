@@ -32,6 +32,11 @@ const synced = new Set<string>()
 
 async function sync(user: User) {
   try {
+    // Пошту підтвердили за посиланням у листі, а збережений токен ще старий (email_verified = false) —
+    // без оновлення сервер не нарахує вітальний бонус, а смужки з кнопкою «Я підтвердила» вже немає.
+    if (user.emailVerified && (await user.getIdTokenResult()).claims.email_verified !== true) {
+      await user.getIdToken(true)
+    }
     const { data } = await syncAccount()
     if (data.welcomeBonus > 0) {
       track('welcome_bonus_granted', { amount: data.welcomeBonus })
