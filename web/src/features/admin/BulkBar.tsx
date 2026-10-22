@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { doc, serverTimestamp, writeBatch } from 'firebase/firestore'
-import { CheckSquare, Eye, EyeOff, Minus, Plus, Trash2, X } from 'lucide-react'
+import { Ban, CheckSquare, Eye, EyeOff, Minus, Plus, Tag, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { db } from '../../firebase/config'
@@ -11,7 +11,13 @@ import type { Product } from '../../lib/types'
 /** Firestore приймає до 500 записів за раз — ділимо з запасом. */
 const CHUNK = 400
 
-type Action = { kind: 'tag'; tag: PlantTag; add: boolean } | { kind: 'show' } | { kind: 'hide' } | { kind: 'delete' }
+type Action =
+  | { kind: 'tag'; tag: PlantTag; add: boolean }
+  | { kind: 'show' }
+  | { kind: 'hide' }
+  | { kind: 'sell' }
+  | { kind: 'unsell' }
+  | { kind: 'delete' }
 
 /**
  * Що змінити в товарі. Форми (variegata, cristata, monstrose) — частина назви рослини за правилами таблиці
@@ -21,6 +27,9 @@ type Action = { kind: 'tag'; tag: PlantTag; add: boolean } | { kind: 'show' } | 
 function changesFor(p: Product, action: Action): Record<string, unknown> | null {
   if (action.kind === 'show') return p.isActive ? null : { isActive: true }
   if (action.kind === 'hide') return p.isActive ? { isActive: false } : null
+  // У продаж / з продажу: залишок теж не чіпаємо — покупці просто бачать 0, поки рослина не на продаж
+  if (action.kind === 'sell') return p.forSale === false ? { forSale: true } : null
+  if (action.kind === 'unsell') return p.forSale === false ? null : { forSale: false }
   if (action.kind !== 'tag') return null
   const tags = p.tags ?? []
   if (action.add === tags.includes(action.tag)) return null
@@ -142,6 +151,14 @@ export function BulkBar({
         <button type="button" disabled={disabled} onClick={() => run({ kind: 'hide' })} className={action(false)}>
           <EyeOff size={16} strokeWidth={2.4} aria-hidden />
           {t('admin.hide')}
+        </button>
+        <button type="button" disabled={disabled} onClick={() => run({ kind: 'sell' })} className={action(false)}>
+          <Tag size={16} strokeWidth={2.4} aria-hidden />
+          {t('admin.sell')}
+        </button>
+        <button type="button" disabled={disabled} onClick={() => run({ kind: 'unsell' })} className={action(false)}>
+          <Ban size={16} strokeWidth={2.4} aria-hidden />
+          {t('admin.unsell')}
         </button>
         <button type="button" disabled={disabled} onClick={() => run({ kind: 'delete' })} className={action(false, true)}>
           <Trash2 size={16} strokeWidth={2.4} aria-hidden />

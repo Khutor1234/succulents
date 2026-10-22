@@ -51,7 +51,7 @@ export function useCartSync() {
     const next = items.flatMap((item, i) => {
       const p = fresh[i]
       const name = item.name.uk
-      if (!p || !p.isActive || !visibleKey.split(',').includes(p.category) || p.stock <= 0) {
+      if (!p || !p.isActive || p.forSale === false || !visibleKey.split(',').includes(p.category) || p.stock <= 0) {
         found.push({ kind: 'gone', name })
         return []
       }

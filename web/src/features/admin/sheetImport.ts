@@ -330,6 +330,7 @@ export function planImport(plants: SheetPlant[], products: ImportProduct[], toda
         // Нові рослини з таблиці — поки «немає в наявності»: приховані й без залишку.
         stock: 0,
         isActive: false,
+        forSale: false,
         images: [],
         genus: p.genus,
         tags: p.tags,

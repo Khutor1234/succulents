@@ -534,6 +534,13 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
         <label className="flex items-center gap-2">
           <input type="checkbox" {...register('isActive')} /> {t('admin.fields.isActive')}
         </label>
+        <label className="flex items-start gap-2">
+          <input type="checkbox" className="mt-1" {...register('forSale')} />
+          <span>
+            {t('admin.fields.forSale')}
+            <span className="block text-sm text-sand-700">{t('admin.fields.forSaleHint')}</span>
+          </span>
+        </label>
       </Section>
       </div>
 

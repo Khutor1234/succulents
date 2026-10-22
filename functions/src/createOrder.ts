@@ -15,6 +15,8 @@ interface ProductDoc {
   price: number
   stock: number
   isActive: boolean
+  /** false — рослина не на продаж (покупці бачать «немає в наявності»). Не вказано — продається. */
+  forSale?: boolean
   images?: string[]
 }
 
@@ -57,7 +59,7 @@ export const createOrder = onCall(withLogging('createOrder', async (request) => 
     const items: OrderItem[] = productSnaps.map((snap) => {
       const product = snap.data() as ProductDoc | undefined
       const qty = qtyById.get(snap.id)!
-      if (!product || !product.isActive || hiddenCategories.has(product.category)) {
+      if (!product || !product.isActive || product.forSale === false || hiddenCategories.has(product.category)) {
         throw new HttpsError('not-found', `Product ${snap.id} is not available`, { productId: snap.id })
       }
       if (product.stock < qty) {

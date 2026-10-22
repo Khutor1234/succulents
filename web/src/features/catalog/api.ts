@@ -7,8 +7,12 @@ import type { Category, Product } from '../../lib/types'
 /** Прибирає з товару застарілі теги (напр. колишній 'hybrid'). */
 export const withKnownTags = (p: Product): Product => (p.tags ? { ...p, tags: knownTags(p.tags) } : p)
 
+/** Не на продаж — покупцю показуємо залишок 0 («немає в наявності»); продавець бачить справжній. */
+export const forBuyer = (p: Product): Product => (p.forSale === false ? { ...p, stock: 0 } : p)
+
+/** Для покупця: лише видимі товари, і ті, що не на продаж, — з нульовим залишком. */
 async function fetchProducts(...constraints: QueryConstraint[]): Promise<Product[]> {
-  return fetchAny(where('isActive', '==', true), ...constraints)
+  return (await fetchAny(where('isActive', '==', true), ...constraints)).map(forBuyer)
 }
 
 /** Без фільтра видимості — приховані товари бачить лише продавець (так дозволяють Rules). */

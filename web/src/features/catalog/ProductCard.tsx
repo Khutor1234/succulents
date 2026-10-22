@@ -1,4 +1,4 @@
-import { Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Ban, Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Plus, Tag, Trash2 } from 'lucide-react'
 import { useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -10,7 +10,7 @@ import { ProductImage } from '../../shared/ui'
 import { useHere } from '../../shared/navigation'
 import { useProgressive } from '../../shared/useProgressive'
 import { useAuth } from '../auth/authStore'
-import { useDeleteProduct, useSetStock, useToggleProductActive } from '../admin/api'
+import { useDeleteProduct, useSetStock, useToggleForSale, useToggleProductActive } from '../admin/api'
 import { BulkBar } from '../admin/BulkBar'
 import { AddToCart } from '../cart/AddToCart'
 import { FavoriteButton } from '../favorites/FavoriteButton'
@@ -139,6 +139,7 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
       </Link>
       {/* Покупцю — «У кошик»; продавцю кошик не потрібен — замість нього редагування, копія й видалення */}
       {isSeller && <SellerStock product={product} />}
+      {isSeller && <SellerForSale product={product} name={name} />}
       <div className="mt-2.5 flex gap-2">
         {isSeller ? (
           <SellerActions product={product} name={name} />
@@ -307,6 +308,34 @@ function SellerStock({ product }: { product: Product }) {
         </button>
       </div>
     </div>
+  )
+}
+
+/**
+ * Продавцю: «У продажу» / «Не продається» — одним натисканням. Не на продаж — покупці бачать «немає в наявності»,
+ * а продавець і далі бачить справжній залишок (рослина є в колекції, але її не продають).
+ */
+function SellerForSale({ product, name }: { product: Product; name: string }) {
+  const { t } = useTranslation()
+  const toggle = useToggleForSale()
+  const forSale = product.forSale !== false
+  return (
+    <button
+      type="button"
+      onClick={() => toggle.mutate({ id: product.id, forSale: !forSale })}
+      disabled={toggle.isPending}
+      aria-pressed={forSale}
+      aria-label={t(forSale ? 'admin.unsellNamed' : 'admin.sellNamed', { name })}
+      title={t(forSale ? 'admin.unsell' : 'admin.sell')}
+      className={`mx-1.5 mt-2 flex min-h-9 items-center justify-center gap-1.5 rounded-xl border-2 px-2 text-sm font-bold transition-colors disabled:opacity-50 ${
+        forSale
+          ? 'border-brand-600 text-brand-600 hover:bg-brand-600 hover:text-sand-50'
+          : 'border-[#8a5a00] bg-[#f3e7a8] text-[#5c4a00] hover:bg-[#ead98a]'
+      }`}
+    >
+      {forSale ? <Tag size={16} strokeWidth={2.4} aria-hidden /> : <Ban size={16} strokeWidth={2.4} aria-hidden />}
+      {forSale ? t('admin.forSaleOn') : t('admin.notForSaleBadge')}
+    </button>
   )
 }
 

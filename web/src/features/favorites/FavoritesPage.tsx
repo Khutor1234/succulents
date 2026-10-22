@@ -4,7 +4,7 @@ import { Heart } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { db } from '../../firebase/config'
-import { withKnownTags } from '../catalog/api'
+import { forBuyer, withKnownTags } from '../catalog/api'
 import type { Product } from '../../lib/types'
 import { useCategories } from '../catalog/categories'
 import { ProductGrid } from '../catalog/ProductCard'
@@ -21,7 +21,7 @@ function useFavoriteProducts(ids: string[]) {
         ids.map(async (id) => {
           try {
             const snap = await getDoc(doc(db, 'products', id))
-            return snap.exists() ? withKnownTags({ id: snap.id, ...snap.data() } as Product) : null
+            return snap.exists() ? forBuyer(withKnownTags({ id: snap.id, ...snap.data() } as Product)) : null
           } catch {
             return null // прихований товар покупцю не видно
           }

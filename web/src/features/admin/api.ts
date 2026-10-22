@@ -87,6 +87,16 @@ export function useToggleProductActive() {
   })
 }
 
+/** У продаж / зняти з продажу. Залишок не змінюється — покупці просто бачать 0, поки рослина не на продаж. */
+export function useToggleForSale() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, forSale }: { id: string; forSale: boolean }) =>
+      updateDoc(doc(db, 'products', id), { forSale, updatedAt: serverTimestamp() }),
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+}
+
 /**
  * Видаляє товар назавжди. Фото у сховищі не чіпаємо: на них посилаються вже оформлені замовлення
  * (в історії покупця й в адмінці вони мають лишитися з картинкою).

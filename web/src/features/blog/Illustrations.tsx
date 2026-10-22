@@ -701,9 +701,15 @@ const FORMS: Record<Form, { label: string; text: ReactNode }> = {
   },
   monstrose: {
     label: 'Monstrose',
-    text: <><b>Потворна форма.</b> Точок росту багато, і жодна не головна — рослина вкрита безліччю дрібних розеток і горбиків.</>,
+    text: <><b>Незвична форма листя.</b> Розетка та сама, але листки «неправильні»: круглі, квадратні, ложечкою чи хвилясті, товщі за звичайні, іноді з наростами — і кожен трохи інший.</>,
   },
 }
+
+// Листки монстрози — різної форми: круглий, «квадратний», ложечкою (вузький біля основи) і звичайний товстий
+const roundLeaf = (l: number, w: number) => `M0 0C${-w} ${-l * 0.15} ${-w} ${-l} 0 ${-l}C${w} ${-l} ${w} ${-l * 0.15} 0 0Z`
+const squareLeaf = (l: number, w: number) => `M${-w * 0.3} 0L${-w * 0.6} ${-l * 0.2}L${-w * 0.6} ${-l}L${w * 0.6} ${-l}L${w * 0.6} ${-l * 0.2}L${w * 0.3} 0Z`
+const spoonLeaf = (l: number, w: number) => `M0 0C${-w * 0.2} ${-l * 0.4} ${-w} ${-l * 0.5} ${-w * 0.7} ${-l * 0.9}C${-w * 0.4} ${-l * 1.1} ${w * 0.4} ${-l * 1.1} ${w * 0.7} ${-l * 0.9}C${w} ${-l * 0.5} ${w * 0.2} ${-l * 0.4} 0 0Z`
+const MONSTROSE_LEAVES = [roundLeaf, squareLeaf, spoonLeaf, (l: number, w: number) => leafPath(l, w * 1.3)]
 
 export function FormsDemo() {
   const [form, setForm] = useState<Form>('normal')
@@ -712,9 +718,6 @@ export function FormsDemo() {
     const x = -66 + i * 6
     return { x, y: -38 + Math.sin(i / 2.6) * 9 - Math.cos(i / 5) * 6 }
   })
-  const heads = [
-    [-34, -30, 0.42], [-8, -46, 0.5], [22, -34, 0.44], [40, -18, 0.34], [-46, -12, 0.32], [6, -18, 0.38], [-20, -14, 0.3],
-  ] as const
   return (
     <Demo
       title="Спробуйте: чим відрізняються форми"
@@ -742,11 +745,18 @@ export function FormsDemo() {
             <path d="M-60 4 Q0 -14 60 4 L60 6 L-60 6 Z" fill="#86a36f" />
           </g>
           <g style={show('monstrose')}>
-            {heads.map(([x, y, k], i) => (
-              <g key={i} transform={`translate(${x} ${y + 40}) scale(${k})`}>
-                <Rosette pot={false} blush={0.15} />
-              </g>
-            ))}
+            {/* Одна розетка, як у звичайної, але листки різної «неправильної» форми й товщі; на деяких — горбики */}
+            <rect x={-3} y={-6} width={6} height={6} fill="#86a36f" />
+            {COMPACT.map(([angle, length], i) => {
+              const l = length * 1.05
+              const w = length * 0.36
+              return (
+                <g key={i} transform={`translate(0 -16) rotate(${angle + (i % 3 - 1) * 8})`}>
+                  <path d={MONSTROSE_LEAVES[i % MONSTROSE_LEAVES.length](l, w)} fill={i % 2 ? '#7aa98f' : '#6d9f86'} stroke="#3f6f58" strokeWidth="1.8" strokeLinejoin="round" />
+                  {i % 4 === 1 && <circle cx={0} cy={-l * 0.55} r={3.2} fill="#9cc2ab" stroke="#3f6f58" strokeWidth="1.2" />}
+                </g>
+              )
+            })}
           </g>
           <path d="M-34 4 L34 4 L27 46 L-27 46 Z" fill="#c2774f" transform="translate(0 -2)" />
           <rect x={-39} y={-6} width={78} height={11} rx={3} fill="#a9603d" />
