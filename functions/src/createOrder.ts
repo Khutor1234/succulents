@@ -59,8 +59,12 @@ export const createOrder = onCall(withLogging('createOrder', async (request) => 
     const items: OrderItem[] = productSnaps.map((snap) => {
       const product = snap.data() as ProductDoc | undefined
       const qty = qtyById.get(snap.id)!
-      if (!product || !product.isActive || product.forSale === false || hiddenCategories.has(product.category)) {
+      if (!product || !product.isActive || hiddenCategories.has(product.category)) {
         throw new HttpsError('not-found', `Product ${snap.id} is not available`, { productId: snap.id })
+      }
+      // Не на продаж — для покупця так само «недоступний», але в журналі видно окрему причину
+      if (product.forSale === false) {
+        throw new HttpsError('not-found', `Product ${snap.id} is not for sale`, { productId: snap.id })
       }
       if (product.stock < qty) {
         throw new HttpsError('failed-precondition', `Not enough stock for ${snap.id}`, {
