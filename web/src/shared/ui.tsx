@@ -45,6 +45,39 @@ export function Input({ label, error, className = '', ...props }: InputProps) {
   )
 }
 
+type StepperInputProps = InputProps & {
+  /** На скільки змінюють кнопки, напр. 1 (кількість) чи 50 (ціна в гривнях). Не `step` — той лишається полю. */
+  by: number
+  onStep: (delta: number) => void
+  minusLabel: string
+  plusLabel: string
+}
+
+/**
+ * Числове поле з великими кнопками «−» і «+» обабіч (зручно пальцем на телефоні). Число можна й вписати.
+ * Не <label>: кнопки всередині label перехоплювали б натискання на підпис.
+ */
+export function StepperInput({ label, error, className = '', by, onStep, minusLabel, plusLabel, ...props }: StepperInputProps) {
+  const btn =
+    'flex h-12 min-w-12 shrink-0 items-center justify-center rounded-xl bg-sand-200 px-3 text-lg font-extrabold tabular-nums text-ink transition-colors hover:bg-sand-300 active:bg-sand-300'
+  const amount = by === 1 ? '' : String(by)
+  return (
+    <div className={className}>
+      <span className="mb-1.5 block text-sm font-medium text-sand-700">{label}</span>
+      <div className="flex items-stretch gap-2">
+        <button type="button" onClick={() => onStep(-by)} aria-label={minusLabel} className={btn}>
+          −{amount}
+        </button>
+        <input aria-label={label} className={`${FIELD} min-w-0 text-center text-lg font-bold`} {...props} />
+        <button type="button" onClick={() => onStep(by)} aria-label={plusLabel} className={btn}>
+          +{amount}
+        </button>
+      </div>
+      {error && <span className="mt-1 block text-sm text-red-700">{error}</span>}
+    </div>
+  )
+}
+
 type PasswordInputProps = Omit<InputProps, 'type'> & { showLabel: string; hideLabel: string }
 
 /** Поле пароля з кнопкою-«оком», що показує або ховає введене. */

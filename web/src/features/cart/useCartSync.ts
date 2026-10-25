@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { create } from 'zustand'
 import { db } from '../../firebase/config'
 import type { Product } from '../../lib/types'
+import { forBuyer } from '../catalog/api'
 import { useCategories } from '../catalog/categories'
 import { useCart } from './cartStore'
 
@@ -41,7 +42,8 @@ export function useCartSync() {
       items.map(async (item) => {
         try {
           const snap = await getDoc(doc(db, 'products', item.productId))
-          return snap.exists() ? (snap.data() as Product) : null
+          // Залишок — той, що доступний покупцю (без рослин «не на продаж» і без останньої рослини)
+          return snap.exists() ? forBuyer(snap.data() as Product) : null
         } catch {
           return null // прихований товар покупцю не видно — так само «недоступний»
         }
@@ -51,7 +53,7 @@ export function useCartSync() {
     const next = items.flatMap((item, i) => {
       const p = fresh[i]
       const name = item.name.uk
-      if (!p || !p.isActive || p.forSale === false || !visibleKey.split(',').includes(p.category) || p.stock <= 0) {
+      if (!p || !p.isActive || !visibleKey.split(',').includes(p.category) || p.stock <= 0) {
         found.push({ kind: 'gone', name })
         return []
       }

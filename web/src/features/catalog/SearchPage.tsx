@@ -1,10 +1,10 @@
 import { Search, X } from 'lucide-react'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { GENERA } from '../../lib/plants'
 import { searchProducts } from '../../lib/search'
-import { rememberSearch } from '../../shared/navigation'
+import { releaseSearchKeyboard, rememberSearch } from '../../shared/navigation'
 import { PageTitle } from '../../shared/ui'
 import { useAuth } from '../auth/authStore'
 import { useAllProducts } from './api'
@@ -33,6 +33,13 @@ export function SearchPage() {
   const setQuery = (q: string) => setParams(q ? { q } : {}, { replace: true, preventScrollReset: true })
   // Запам’ятовуємо запит (і набраний, і з посилання на кшталт «батько» на картці) — для «Пошуку» в меню
   useEffect(() => rememberSearch(query), [query])
+  // Одразу курсор у поле. На телефоні клавіатуру вже відкрило натискання «Пошуку» (openSearchKeyboard) —
+  // переводимо фокус із тимчасового поля, і вона лишається відкритою.
+  const field = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    field.current?.focus({ preventScroll: true })
+    releaseSearchKeyboard()
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -49,8 +56,9 @@ export function SearchPage() {
       >
         <Search size={22} strokeWidth={2.25} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-sand-700" aria-hidden />
         <input
+          ref={field}
           type="search"
-          autoFocus
+          data-search-field
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t('search.placeholder')}

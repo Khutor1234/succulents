@@ -10,7 +10,7 @@ import { HABITATS, ORIGINS } from '../../lib/types'
 import { DEFAULT_GENUS, GENERA, PLANT_CATEGORY, TAG_STYLES, tagsFor, type PlantTag } from '../../lib/plants'
 import { slugify } from '../../lib/slug'
 import type { Product } from '../../lib/types'
-import { Button, Input, Section, Select, Textarea } from '../../shared/ui'
+import { Button, Input, Section, Select, StepperInput, Textarea } from '../../shared/ui'
 import { useCategories } from '../catalog/categories'
 import { isSlugTaken, useAllProducts, useDeleteProduct, useProductById, useSaveProduct, useToggleProductActive } from './api'
 import { canGoBack, useFrom } from '../../shared/navigation'
@@ -35,15 +35,20 @@ export function ProductFormPage() {
   const [searchParams] = useSearchParams()
   const isNew = id === 'new'
   const copyId = isNew ? (searchParams.get('copy') ?? undefined) : undefined
-  const { data: product, isLoading } = useProductById(isNew ? copyId : id)
+  const { data: product, isFetchedAfterMount } = useProductById(isNew ? copyId : id)
   const { isLoading: categoriesLoading } = useCategories()
 
-  if (((!isNew || copyId) && isLoading) || categoriesLoading) return <p className="text-sand-700">{t('loading')}</p>
+  // Чекаємо свіжих даних із бази, а не показуємо збережену раніше копію: форма заповнюється один раз,
+  // і зі старої копії «Зберегти» повернуло б старі фото чи залишок (напр., після «±» на картці).
+  if (((!isNew || copyId) && !isFetchedAfterMount) || categoriesLoading) return <p className="text-sand-700">{t('loading')}</p>
   if (!isNew && !product) return <p>{t('product.notFound')}</p>
 
   // key: при переході між товарами форма створюється заново з новими значеннями.
   return <ProductForm key={`${id}-${copyId ?? ''}`} product={isNew ? null : product!} source={copyId ? (product ?? null) : null} />
 }
+
+// На скільки гривень змінюють ціну кнопки «−50» / «+50»
+const PRICE_STEP = 50
 
 // Значення пункту «+ Додати новий рід» у списку родів (не справжній рід)
 const NEW_GENUS = '__new__'
@@ -104,6 +109,12 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
   const categoryTags = tagsFor(category)
 
   const err = (key?: string) => (key ? t(key) : undefined)
+
+  // Кнопки «−» / «+» біля ціни й кількості: не нижче нуля; ціну округлюємо до копійок
+  function stepField(name: 'price' | 'stock', delta: number) {
+    const next = Math.max(0, Math.round(((Number(getValues(name)) || 0) + delta) * 100) / 100)
+    setValue(name, String(next), { shouldDirty: true, shouldValidate: !!errors[name] })
+  }
 
   // «Скасувати» чи видалення — туди, звідки відкрили форму: сторінка товару, каталог, пошук
   // чи список в адмінці (з тим самим пошуком і сортуванням). Відкрили напряму — список категорії.
@@ -520,16 +531,33 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
       </Section>
 
       <Section title={t('admin.price')}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input
+        {/* Одне під одним: колонка вузька, а кнопкам «−» / «+» і числу між ними потрібне місце */}
+        <div className="grid gap-4">
+          <StepperInput
             label={t('admin.fields.price')}
             type="number"
+            inputMode="decimal"
             step="0.01"
             min="0"
             {...register('price')}
             error={err(errors.price && 'errors.required')}
+            by={PRICE_STEP}
+            onStep={(d) => stepField('price', d)}
+            minusLabel={t('admin.priceMinus', { amount: PRICE_STEP })}
+            plusLabel={t('admin.pricePlus', { amount: PRICE_STEP })}
           />
-          <Input label={t('admin.fields.stock')} type="number" step="1" min="0" {...register('stock')} />
+          <StepperInput
+            label={t('admin.fields.stock')}
+            type="number"
+            inputMode="numeric"
+            step="1"
+            min="0"
+            {...register('stock')}
+            by={1}
+            onStep={(d) => stepField('stock', d)}
+            minusLabel={t('cart.decrease')}
+            plusLabel={t('cart.increase')}
+          />
         </div>
         <label className="flex items-center gap-2">
           <input type="checkbox" {...register('isActive')} /> {t('admin.fields.isActive')}

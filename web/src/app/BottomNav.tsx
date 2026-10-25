@@ -24,7 +24,7 @@ import { NavLink, useLocation } from 'react-router'
 import { useOrders } from '../features/admin/api'
 import { useAuth } from '../features/auth/authStore'
 import { selectCount, useCart } from '../features/cart/cartStore'
-import { searchHref } from '../shared/navigation'
+import { openSearchKeyboard, searchHref } from '../shared/navigation'
 
 /**
  * Нижнє меню на телефоні — як у застосунках: найпотрібніше завжди під пальцем. Одне й те саме на всіх сторінках:
@@ -93,10 +93,26 @@ const itemClass = (active: boolean) =>
   `flex min-h-16 flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition-colors ${active ? 'text-brand-600' : 'text-sand-700'}`
 
 /** Пункт меню. `match` — підсвічувати на всіх адресах, що так починаються (напр. будь-яка категорія /c/…). */
-function Item({ to, icon, label, end, match, badge = 0 }: { to: string; icon: ReactNode; label: string; end?: boolean; match?: (path: string) => boolean; badge?: number }) {
+function Item({
+  to,
+  icon,
+  label,
+  end,
+  match,
+  badge = 0,
+  onClick,
+}: {
+  to: string
+  icon: ReactNode
+  label: string
+  end?: boolean
+  match?: (path: string) => boolean
+  badge?: number
+  onClick?: () => void
+}) {
   const { pathname } = useLocation()
   return (
-    <NavLink to={to} end={end} className={({ isActive }) => itemClass(match ? match(pathname) : isActive)}>
+    <NavLink to={to} end={end} onClick={onClick} className={({ isActive }) => itemClass(match ? match(pathname) : isActive)}>
       <span className="relative">
         {icon}
         {badge > 0 && (
@@ -121,7 +137,7 @@ function BuyerNav() {
     <Bar cols={5} label={t('nav.bottom')}>
       <Item to="/" end icon={<Home {...ICON} />} label={t('nav.home')} />
       <Item to="/c/plants" match={(p) => p.startsWith('/c/')} icon={<LayoutGrid {...ICON} />} label={t('nav.catalog')} />
-      <Item to={searchHref()} match={(p) => p.startsWith('/search')} icon={<Search {...ICON} />} label={t('nav.search')} />
+      <Item to={searchHref()} match={(p) => p.startsWith('/search')} icon={<Search {...ICON} />} label={t('nav.search')} onClick={openSearchKeyboard} />
       <Item to="/cart" icon={<ShoppingBag {...ICON} />} label={t('nav.cart')} badge={count} />
       {user ? (
         <Item to="/account" match={(p) => p.startsWith('/account')} icon={<User {...ICON} />} label={t('nav.account')} />
@@ -159,6 +175,7 @@ function SellerNav() {
         <NavLink
           key={to}
           to={to === '/search' ? searchHref() : to}
+          onClick={to === '/search' ? openSearchKeyboard : undefined}
           className={({ isActive }) => `flex min-h-12 items-center gap-3 rounded-2xl px-4 font-bold ${isActive ? 'bg-brand-600 text-sand-50' : 'text-ink hover:bg-sand-200'}`}
         >
           <Icon size={20} strokeWidth={2.25} aria-hidden />

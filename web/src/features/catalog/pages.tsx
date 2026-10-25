@@ -24,6 +24,9 @@ import { RelatedPlants } from './RelatedPlants'
 
 // Статті на головній довантажуються окремо — щоб тексти блогу не гальмували перше відкриття сайту
 const HomeArticles = lazy(() => import('../blog/HomeArticles'))
+// Скільки новинок показати на головній і зі скількох найновіших вибирати (частину відсіюємо: немає в наявності, приховані)
+const LATEST_COUNT = 8
+const LATEST_POOL = 40
 
 function Status({ isLoading, isError }: { isLoading: boolean; isError: boolean }) {
   const { t } = useTranslation()
@@ -150,11 +153,16 @@ function BonusPromo({ compact = false }: { compact?: boolean }) {
 
 export function HomePage() {
   const { t } = useTranslation()
-  // Новинки на головній — і продавцю лише показані: це вітрина магазину, приховані (часто ще без фото) тут лише заважають
-  const latest = useLatestProducts(8)
+  // Новинки на головній — і продавцю лише показані: це вітрина магазину, приховані (часто ще без фото) тут лише заважають.
+  // Покупцю — лише те, що можна купити (є в наявності). Продавцю — справжні залишки (withHidden), щоб «±» на картці
+  // змінювали справжнє число, а не те, що бачить покупець. Беремо з запасом, бо частину відсіюємо.
+  const isSeller = useAuth((s) => s.role === 'seller')
+  const latest = useLatestProducts(LATEST_POOL, isSeller)
   const { visible, isVisible } = useCategories()
   const firstCategory = visible[0] ?? 'plants'
-  const shown = latest.data?.filter((p) => isVisible(p.category))
+  const shown = latest.data
+    ?.filter((p) => isVisible(p.category) && (isSeller ? p.isActive : p.stock > 0))
+    .slice(0, LATEST_COUNT)
 
   return (
     <div className="space-y-12">

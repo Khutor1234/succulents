@@ -11,7 +11,7 @@ import { useBonusBalance } from '../features/account/api'
 import { auth } from '../firebase/config'
 import { formatPrice } from '../lib/format'
 import { ICON } from '../shared/icon'
-import { searchHref } from '../shared/navigation'
+import { openSearchKeyboard, searchHref } from '../shared/navigation'
 import { BottomNav } from './BottomNav'
 import { BookOpen, ChevronRight, Construction, Heart, LayoutGrid, LogIn, LogOut, Menu, Package, Search, ShieldCheck, ShoppingBag, User, X } from 'lucide-react'
 
@@ -189,7 +189,7 @@ export function Layout() {
           </Link>
           {/* На телефоні в шапці — пошук і кнопка меню; каталог, кошик, кабінет і адмінка — у нижньому меню. На комп’ютері — усі кнопки в шапці. */}
           <div className="ml-auto flex items-center gap-1.5 text-sm sm:gap-2">
-            <Link to={searchHref()} aria-label={t('search.open')} title={t('search.open')} className={NAV_BTN + ' inline-flex hover:bg-sand-200'}>
+            <Link to={searchHref()} onClick={openSearchKeyboard} aria-label={t('search.open')} title={t('search.open')} className={NAV_BTN + ' inline-flex hover:bg-sand-200'}>
               <Search {...ICON} />
             </Link>
             <Link to="/blog" aria-label={t('blog.title')} title={t('blog.title')} className={NAV_BTN + ' hidden hover:bg-sand-200 md:inline-flex'}>

@@ -48,6 +48,10 @@ export async function isSlugTaken(slug: string, exceptId?: string): Promise<bool
   return snap.docs.some((d) => d.id !== exceptId)
 }
 
+/** Запити, що показують товари: вітрина (['products'…], ['product'…]) і списки адмінки (['admin', 'products' | 'product'…]). */
+const isProductQuery = (key: readonly unknown[]) =>
+  key[0] === 'products' || key[0] === 'product' || (key[0] === 'admin' && (key[1] === 'products' || key[1] === 'product'))
+
 export function useSaveProduct() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -63,8 +67,14 @@ export function useSaveProduct() {
       })
       return ref.id
     },
-    // Скидаємо кеш і адмінки, і вітрини, щоб зміни одразу було видно.
-    onSuccess: () => queryClient.invalidateQueries(),
+    // Перечитуємо товари одразу — і ті сторінки, що зараз закриті (каталог, пошук, сторінка товару):
+    // форма чекає на це, тож після «Зберегти» й «Назад» ніде не мигне старий стан (напр., без нового фото).
+    // Решту кешу (замовлення, аналітика…) просто позначаємо застарілим.
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ predicate: (q) => isProductQuery(q.queryKey), refetchType: 'all' }),
+        queryClient.invalidateQueries(),
+      ]),
   })
 }
 

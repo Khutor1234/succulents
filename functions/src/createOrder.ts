@@ -9,6 +9,10 @@ import { createOrderSchema, type Localized, type Order, type OrderItem } from '.
 /** Мінімальна сума замовлення за товари, копійки. Має збігатися з MIN_ORDER у web/src/lib/shop.ts. */
 export const MIN_ORDER = 1000_00
 
+/** Скільки рослин лишаємо собі (останню не продаємо). Має збігатися з KEEP_LAST у web/src/lib/shop.ts. */
+export const KEEP_LAST = 1
+const PLANT_CATEGORY = 'plants'
+
 interface ProductDoc {
   category: string
   name: Localized
@@ -66,10 +70,12 @@ export const createOrder = onCall(withLogging('createOrder', async (request) => 
       if (product.forSale === false) {
         throw new HttpsError('not-found', `Product ${snap.id} is not for sale`, { productId: snap.id })
       }
-      if (product.stock < qty) {
+      // Останню рослину не продаємо — лишається в колекції (KEEP_LAST)
+      const available = product.category === PLANT_CATEGORY ? Math.max(0, product.stock - KEEP_LAST) : product.stock
+      if (available < qty) {
         throw new HttpsError('failed-precondition', `Not enough stock for ${snap.id}`, {
           productId: snap.id,
-          available: product.stock,
+          available,
         })
       }
       const image = product.images?.[0]

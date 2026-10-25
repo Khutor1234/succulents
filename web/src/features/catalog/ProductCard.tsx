@@ -5,6 +5,7 @@ import { Link } from 'react-router'
 import { useLang } from '../../i18n'
 import { formatPrice, pick } from '../../lib/format'
 import { PLANT_CATEGORY } from '../../lib/plants'
+import { KEEP_LAST } from '../../lib/shop'
 import type { Product } from '../../lib/types'
 import { ProductImage } from '../../shared/ui'
 import { useHere } from '../../shared/navigation'
@@ -129,17 +130,29 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
       )}
       {/* flex-1: кнопки «У кошик» стоять на одній лінії, навіть якщо назви різної довжини.
           Вид окремо не пишемо — він і так перше слово назви («Echeveria Lola») */}
-      <Link to={`/product/${product.slug}`} className="group mx-1.5 mt-2.5 flex flex-1 justify-between gap-3">
-        <h3 className="leading-snug font-bold group-hover:text-brand-600">
-          {name}
+      <div className="group mx-1.5 mt-2.5 flex flex-1 justify-between gap-3">
+        <h3 className="leading-snug font-bold">
+          <Link to={`/product/${product.slug}`} className="hover:text-brand-600">
+            {name}
+          </Link>
+          {/* Продавцю — скопіювати назву одним натисканням (напр., щоб вставити в таблицю чи переписку) */}
+          {isSeller && <CopyName name={name} />}
         </h3>
-        <span className="font-display text-lg leading-snug font-extrabold whitespace-nowrap text-sunset-600">
+        <Link
+          to={`/product/${product.slug}`}
+          tabIndex={-1}
+          className="font-display text-lg leading-snug font-extrabold whitespace-nowrap text-sunset-600"
+        >
           {formatPrice(product.price, lang)}
-        </span>
-      </Link>
+        </Link>
+      </div>
       {/* Покупцю — «У кошик»; продавцю кошик не потрібен — замість нього редагування, копія й видалення */}
       {isSeller && <SellerStock product={product} />}
       {isSeller && <SellerForSale product={product} name={name} />}
+      {/* Остання рослина лишається продавцю (KEEP_LAST) — покупці бачать «немає в наявності» */}
+      {isSeller && product.category === PLANT_CATEGORY && product.stock > 0 && product.stock <= KEEP_LAST && product.forSale !== false && (
+        <p className="mx-1.5 mt-1.5 text-center text-xs font-bold text-[#5c4a00]">{t('admin.lastKept')}</p>
+      )}
       <div className="mt-2.5 flex gap-2">
         {isSeller ? (
           <SellerActions product={product} name={name} />
@@ -308,6 +321,41 @@ function SellerStock({ product }: { product: Product }) {
         </button>
       </div>
     </div>
+  )
+}
+
+/** Копіює назву рослини в буфер обміну; на мить показує галочку «Скопійовано». */
+function CopyName({ name }: { name: string }) {
+  const { t } = useTranslation()
+  const [copied, setCopied] = useState(false)
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(name)
+    } catch {
+      // Старіші браузери без доступу до буфера — через тимчасове поле
+      const el = document.createElement('textarea')
+      el.value = name
+      el.style.cssText = 'position:fixed;opacity:0'
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      el.remove()
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => void copy()}
+      aria-label={t(copied ? 'admin.nameCopied' : 'admin.copyName', { name })}
+      title={t(copied ? 'admin.nameCopied' : 'admin.copyName', { name })}
+      className={`ml-1 inline-flex h-7 w-7 translate-y-[3px] items-center justify-center rounded-lg align-baseline transition-colors ${
+        copied ? 'bg-brand-100 text-brand-700' : 'text-sand-700 hover:bg-sand-200 hover:text-ink'
+      }`}
+    >
+      {copied ? <Check size={15} strokeWidth={2.75} aria-hidden /> : <Copy size={15} strokeWidth={2.25} aria-hidden />}
+    </button>
   )
 }
 

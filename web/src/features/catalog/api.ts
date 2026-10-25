@@ -1,14 +1,21 @@
 import { useQuery } from '@tanstack/react-query'
 import { collection, getDocs, limit, orderBy, query, where, type QueryConstraint } from 'firebase/firestore'
 import { db } from '../../firebase/config'
-import { knownTags } from '../../lib/plants'
+import { knownTags, PLANT_CATEGORY } from '../../lib/plants'
+import { KEEP_LAST } from '../../lib/shop'
 import type { Category, Product } from '../../lib/types'
 
 /** Прибирає з товару застарілі теги (напр. колишній 'hybrid'). */
 export const withKnownTags = (p: Product): Product => (p.tags ? { ...p, tags: knownTags(p.tags) } : p)
 
-/** Не на продаж — покупцю показуємо залишок 0 («немає в наявності»); продавець бачить справжній. */
-export const forBuyer = (p: Product): Product => (p.forSale === false ? { ...p, stock: 0 } : p)
+/**
+ * Скільки може купити покупець: не на продаж — 0 («немає в наявності»); у рослин — без останньої (KEEP_LAST),
+ * її лишаємо собі. Продавець бачить справжній залишок.
+ */
+export const buyerStock = (p: Pick<Product, 'stock' | 'forSale' | 'category'>) =>
+  p.forSale === false ? 0 : p.category === PLANT_CATEGORY ? Math.max(0, p.stock - KEEP_LAST) : p.stock
+
+export const forBuyer = (p: Product): Product => ({ ...p, stock: buyerStock(p) })
 
 /** Для покупця: лише видимі товари, і ті, що не на продаж, — з нульовим залишком. */
 async function fetchProducts(...constraints: QueryConstraint[]): Promise<Product[]> {
