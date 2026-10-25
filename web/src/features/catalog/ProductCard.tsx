@@ -80,6 +80,8 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
         </TagBadges>
         {/* Сердечко — для всіх; кількість лайків поруч бачить лише продавець */}
         <FavoriteButton product={product} className="absolute top-2 right-2" />
+        {/* Продавцю — скопіювати назву одним натисканням (напр., щоб вставити в таблицю чи переписку): під сердечком */}
+        {isSeller && <CopyName name={name} className="absolute top-14 right-2" />}
         {/* Походження — плашкою внизу фото: під назвою не займає місця, тож картки з батьками й без однакові.
             Кожен батько — окреме посилання в пошук. */}
         {product.category === PLANT_CATEGORY && (
@@ -136,18 +138,13 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
             {name}
           </Link>
         </h3>
-        <div className="flex flex-col items-end gap-1">
-          <Link
-            to={`/product/${product.slug}`}
-            tabIndex={-1}
-            className="font-display text-lg leading-snug font-extrabold whitespace-nowrap text-sunset-600"
-          >
-            {formatPrice(product.price, lang)}
-          </Link>
-          {/* Продавцю — скопіювати назву одним натисканням (напр., щоб вставити в таблицю чи переписку).
-              Під ціною, праворуч — на всіх картках на тому самому місці, хоч би якої довжини назва */}
-          {isSeller && <CopyName name={name} />}
-        </div>
+        <Link
+          to={`/product/${product.slug}`}
+          tabIndex={-1}
+          className="font-display text-lg leading-snug font-extrabold whitespace-nowrap text-sunset-600"
+        >
+          {formatPrice(product.price, lang)}
+        </Link>
       </div>
       {/* Покупцю — «У кошик»; продавцю кошик не потрібен — замість нього редагування, копія й видалення */}
       {isSeller && <SellerStock product={product} />}
@@ -324,7 +321,7 @@ function SellerStock({ product }: { product: Product }) {
 }
 
 /** Копіює назву рослини в буфер обміну; на мить показує галочку «Скопійовано». */
-function CopyName({ name }: { name: string }) {
+function CopyName({ name, className = '' }: { name: string; className?: string }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   async function copy() {
@@ -346,14 +343,20 @@ function CopyName({ name }: { name: string }) {
   return (
     <button
       type="button"
-      onClick={() => void copy()}
+      onClick={(e) => {
+        // Кнопка лежить на фото-посиланні — не відкриваємо товар
+        e.preventDefault()
+        e.stopPropagation()
+        void copy()
+      }}
       aria-label={t(copied ? 'admin.nameCopied' : 'admin.copyName', { name })}
       title={t(copied ? 'admin.nameCopied' : 'admin.copyName', { name })}
-      className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-        copied ? 'bg-brand-100 text-brand-700' : 'text-sand-700 hover:bg-sand-200 hover:text-ink'
-      }`}
+      // Кругла, як сердечко над нею
+      className={`flex h-10 w-10 items-center justify-center rounded-full shadow-sm backdrop-blur transition-transform hover:scale-110 active:scale-95 ${
+        copied ? 'bg-brand-100 text-brand-700' : 'bg-sand-50/90 text-ink'
+      } ${className}`}
     >
-      {copied ? <Check size={15} strokeWidth={2.75} aria-hidden /> : <Copy size={15} strokeWidth={2.25} aria-hidden />}
+      {copied ? <Check size={18} strokeWidth={2.75} aria-hidden /> : <Copy size={18} strokeWidth={2.25} aria-hidden />}
     </button>
   )
 }
