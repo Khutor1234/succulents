@@ -135,16 +135,19 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
           <Link to={`/product/${product.slug}`} className="hover:text-brand-600">
             {name}
           </Link>
-          {/* Продавцю — скопіювати назву одним натисканням (напр., щоб вставити в таблицю чи переписку) */}
-          {isSeller && <CopyName name={name} />}
         </h3>
-        <Link
-          to={`/product/${product.slug}`}
-          tabIndex={-1}
-          className="font-display text-lg leading-snug font-extrabold whitespace-nowrap text-sunset-600"
-        >
-          {formatPrice(product.price, lang)}
-        </Link>
+        <div className="flex flex-col items-end gap-1">
+          <Link
+            to={`/product/${product.slug}`}
+            tabIndex={-1}
+            className="font-display text-lg leading-snug font-extrabold whitespace-nowrap text-sunset-600"
+          >
+            {formatPrice(product.price, lang)}
+          </Link>
+          {/* Продавцю — скопіювати назву одним натисканням (напр., щоб вставити в таблицю чи переписку).
+              Під ціною, праворуч — на всіх картках на тому самому місці, хоч би якої довжини назва */}
+          {isSeller && <CopyName name={name} />}
+        </div>
       </div>
       {/* Покупцю — «У кошик»; продавцю кошик не потрібен — замість нього редагування, копія й видалення */}
       {isSeller && <SellerStock product={product} />}
@@ -346,7 +349,7 @@ function CopyName({ name }: { name: string }) {
       onClick={() => void copy()}
       aria-label={t(copied ? 'admin.nameCopied' : 'admin.copyName', { name })}
       title={t(copied ? 'admin.nameCopied' : 'admin.copyName', { name })}
-      className={`ml-1 inline-flex h-7 w-7 translate-y-[3px] items-center justify-center rounded-lg align-baseline transition-colors ${
+      className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
         copied ? 'bg-brand-100 text-brand-700' : 'text-sand-700 hover:bg-sand-200 hover:text-ink'
       }`}
     >
