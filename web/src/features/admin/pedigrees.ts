@@ -29,9 +29,7 @@ export interface Family {
   parent: Product
   children: {
     child: Product
-    /** Ким батько є для дитини: мама (перший у записі), тато (другий) чи єдиний відомий батько */
-    role: 'mother' | 'father' | 'parent'
-    /** Як записаний другий батько (або порожньо) */
+    /** Як записаний другий батько (або порожньо). Хто з двох мама, а хто тато, — часто невідомо, тож не показуємо */
     other: string
   }[]
 }
@@ -77,7 +75,7 @@ export function buildPedigrees(products: Product[]) {
     found.forEach((parent, i) => {
       if (!parent || parent.id === child.id) return
       const family = families.get(parent.id) ?? { parent, children: [] }
-      family.children.push({ child, role: names.length === 2 ? (i === 0 ? 'mother' : 'father') : 'parent', other: names.length === 2 ? names[1 - i] : '' })
+      family.children.push({ child, other: names.length === 2 ? names[1 - i] : '' })
       families.set(parent.id, family)
     })
     if (found.length === 2 && found[0] && found[1] && found[0].id !== child.id && found[1].id !== child.id) {

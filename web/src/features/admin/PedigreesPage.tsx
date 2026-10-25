@@ -10,6 +10,8 @@ import { buildPedigrees } from './pedigrees'
 const TABS = ['trios', 'pairs', 'families', 'forms'] as const
 type Tab = (typeof TABS)[number]
 const TAB_ICONS: Record<Tab, LucideIcon> = { trios: UsersRound, pairs: Users, families: Network, forms: Layers }
+// «Нащадки»: ширина картки — однакова для рослини-батька і кожної дитини
+const FAMILY_CARD = 'w-28 shrink-0 sm:w-32'
 
 /**
  * «Родоводи» (лише продавець): підбірки з колекції — мама × тато → дитина, один із батьків → дитина,
@@ -122,19 +124,19 @@ export function PedigreesPage() {
         <ul className="space-y-4">
           {families.map(({ parent, children }) => (
             <li key={parent.id} className="rounded-3xl border-2 border-sand-200 bg-sand-50 p-3 sm:p-4">
+              {/* Батько й діти — картки однакового розміру (FAMILY_CARD) */}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                <div className="w-32 shrink-0 self-center sm:w-36 sm:self-start">
+                <div className={`${FAMILY_CARD} self-center sm:self-start`}>
                   <Mini p={parent} highlight />
                   <p className="mt-1 text-xs font-bold text-sand-700">{t('admin.pedigrees.childrenCount', { count: children.length })}</p>
                 </div>
-                <span className="flex justify-center text-sand-700 sm:mt-16">
+                <span className="flex justify-center text-sand-700 sm:mt-12">
                   <ArrowDown size={22} strokeWidth={2.6} className="sm:hidden" aria-hidden />
                   <ArrowRight size={22} strokeWidth={2.6} className="hidden sm:block" aria-hidden />
                 </span>
-                <div className="grid min-w-0 flex-1 grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
-                  {children.map(({ child, role, other }) => (
-                    <div key={child.id} className="min-w-0">
-                      <span className="mb-1 block truncate text-[11px] font-bold text-brand-700">{t(`admin.pedigrees.roles.${role}`)}</span>
+                <div className="flex min-w-0 flex-1 flex-wrap justify-center gap-2 sm:justify-start">
+                  {children.map(({ child, other }) => (
+                    <div key={child.id} className={FAMILY_CARD}>
                       <Mini p={child} />
                       {other && <span className="mt-0.5 block text-[11px] leading-snug break-words text-sand-700">{t('admin.pedigrees.withOther', { name: other })}</span>}
                     </div>

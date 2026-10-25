@@ -506,7 +506,6 @@ export const uk = {
       childrenCount_few: '{{count}} дитини',
       childrenCount_many: '{{count}} дітей',
       childrenCount_other: '{{count}} дитини',
-      roles: { mother: '♀ мама', father: '♂ тато', parent: 'один із батьків' },
       withOther: '× {{name}}',
       oneParent: 'Другий із батьків не вказаний.',
       formsCount_one: '{{count}} форма',
