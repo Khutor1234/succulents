@@ -11,18 +11,24 @@ import { parseSheet, planImport, type ImportPlan, type ProductUpdate } from './s
 /** Firestore приймає до 500 записів за раз — ділимо з запасом. */
 const CHUNK = 400
 
+/** Що саме записати — лише рядки, на яких лишилась галочка. */
+interface ChosenImport {
+  renames: ImportPlan['renames']
+  creates: ImportPlan['creates']
+  updates: ProductUpdate[]
+}
+
 function useApplyImport() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ plan, updates }: { plan: ImportPlan; updates: ProductUpdate[] }) => {
+    mutationFn: async ({ renames, creates, updates }: ChosenImport) => {
       const writes = [
-        ...plan.renames.map((r) => (batch: ReturnType<typeof writeBatch>) =>
+        ...renames.map((r) => (batch: ReturnType<typeof writeBatch>) =>
           batch.update(doc(db, 'products', r.id), { 'name.uk': r.to, ...(r.tags ? { tags: r.tags } : {}), updatedAt: serverTimestamp() }),
         ),
-        ...plan.creates.map((c) => (batch: ReturnType<typeof writeBatch>) =>
+        ...creates.map((c) => (batch: ReturnType<typeof writeBatch>) =>
           batch.set(doc(db, 'products', c.id), { ...c.data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }),
         ),
-        // Оновлення даних наявних рослин — лише вибрані галочками
         ...updates.map((u) => (batch: ReturnType<typeof writeBatch>) => batch.update(doc(db, 'products', u.id), { ...u.patch, updatedAt: serverTimestamp() })),
       ]
       for (let i = 0; i < writes.length; i += CHUNK) {
@@ -30,11 +36,16 @@ function useApplyImport() {
         writes.slice(i, i + CHUNK).forEach((w) => w(batch))
         await batch.commit()
       }
-      return { renamed: plan.renames.length, created: plan.creates.length, updated: updates.length }
+      return { renamed: renames.length, created: creates.length, updated: updates.length }
     },
     onSuccess: () => queryClient.invalidateQueries(),
   })
 }
+
+// Ключі галочок: розділ + id товару (той самий товар може бути і в «Нових назвах», і в «Оновити дані»)
+const renameKey = (id: string) => `rename:${id}`
+const createKey = (id: string) => `create:${id}`
+const updateKey = (id: string) => `update:${id}`
 
 export function ImportPage() {
   const { t } = useTranslation()
@@ -47,17 +58,29 @@ export function ImportPage() {
     () => (products && plants.length ? planImport(plants, products, new Date().toISOString().slice(0, 10)) : null),
     [plants, products],
   )
-  // Оновлення даних: усі вибрані, доки продавчиня не зніме галочку
+  // Усе вибране, доки продавчиня не зніме галочку; нова вставка таблиці — знову все вибране
   const [skipped, setSkipped] = useState<Set<string>>(new Set())
-  const chosenUpdates = plan?.updates.filter((u) => !skipped.has(u.id)) ?? []
-  const toggleUpdate = (id: string) =>
+  const toggle = (key: string) =>
     setSkipped((s) => {
       const next = new Set(s)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
-  const hasChanges = !!plan && plan.renames.length + plan.creates.length + chosenUpdates.length > 0
+  const setAll = (keys: string[], on: boolean) =>
+    setSkipped((s) => {
+      const next = new Set(s)
+      keys.forEach((k) => (on ? next.delete(k) : next.add(k)))
+      return next
+    })
+
+  const chosen: ChosenImport = {
+    renames: plan?.renames.filter((r) => !skipped.has(renameKey(r.id))) ?? [],
+    creates: plan?.creates.filter((c) => !skipped.has(createKey(c.id))) ?? [],
+    updates: plan?.updates.filter((u) => !skipped.has(updateKey(u.id))) ?? [],
+  }
+  const hasChanges = chosen.renames.length + chosen.creates.length + chosen.updates.length > 0
+  const fieldValue = (field: string, value: string) => (field === 'origin' && value ? t(`admin.fields.origins.${value}`) : value)
 
   return (
     <div className="max-w-4xl">
@@ -68,6 +91,7 @@ export function ImportPage() {
         value={text}
         onChange={(e) => {
           setText(e.target.value)
+          setSkipped(new Set())
           apply.reset()
         }}
         placeholder={t('admin.import.paste')}
@@ -80,60 +104,59 @@ export function ImportPage() {
       {plan && (
         <div className="mt-4 space-y-3">
           <p className="font-bold">{t('admin.import.rows', { count: plants.length })}</p>
+          <p className="text-sm text-sand-700">{t('admin.import.choiceHint')}</p>
 
-          <Section title={t('admin.import.renames', { count: plan.renames.length })} open>
-            {plan.renames.map((r) => (
-              <li key={r.id}>
-                <span className="text-sand-700 line-through">{r.from}</span> → <span className="font-bold">{r.to}</span>
-              </li>
-            ))}
-          </Section>
+          <ChoiceSection
+            title={t('admin.import.renames', { count: plan.renames.length })}
+            items={plan.renames.map((r) => ({
+              key: renameKey(r.id),
+              content: <WasWill was={r.from} will={r.to} />,
+            }))}
+            skipped={skipped}
+            onToggle={toggle}
+            onAll={setAll}
+          />
 
-          <Section title={t('admin.import.creates', { count: plan.creates.length })} open>
-            {plan.creates.map((c) => (
-              <li key={c.id}>
-                <span className="font-bold">{c.data.name.uk}</span>{' '}
-                <span className="text-sand-700">
-                  · {c.data.price / 100} ₴ · {t('admin.import.row', { rows: c.rows.join(', ') })}
-                </span>
-              </li>
-            ))}
-          </Section>
+          <ChoiceSection
+            title={t('admin.import.creates', { count: plan.creates.length })}
+            items={plan.creates.map((c) => ({
+              key: createKey(c.id),
+              content: (
+                <>
+                  <span className="block text-base font-bold">{c.data.name.uk}</span>
+                  <span className="text-sand-700">
+                    {c.data.price / 100} ₴ · {t('admin.import.row', { rows: c.rows.join(', ') })}
+                  </span>
+                </>
+              ),
+            }))}
+            skipped={skipped}
+            onToggle={toggle}
+            onAll={setAll}
+          />
 
-          {/* Наявні рослини, у яких у таблиці інші дані: кожну можна застосувати чи пропустити */}
-          {plan.updates.length > 0 && (
-            <details open className="rounded-xl bg-sand-100 p-3">
-              <summary className="cursor-pointer font-bold">{t('admin.import.updates', { count: plan.updates.length })}</summary>
-              <p className="mt-1 text-sm text-sand-700">{t('admin.import.updatesHint')}</p>
-              <div className="mt-2 flex gap-3 text-sm font-bold">
-                <button type="button" className="text-brand-600 underline" onClick={() => setSkipped(new Set())}>{t('admin.formFixes.selectAll')}</button>
-                <button type="button" className="text-brand-600 underline" onClick={() => setSkipped(new Set(plan.updates.map((u) => u.id)))}>{t('admin.formFixes.selectNone')}</button>
-              </div>
-              <ul className="mt-2 max-h-[32rem] space-y-2 overflow-y-auto">
-                {plan.updates.map((u) => {
-                  const on = !skipped.has(u.id)
-                  return (
-                    <li key={u.id}>
-                      <label className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 bg-sand-50 p-3 transition-colors ${on ? 'border-brand-500/50' : 'border-sand-200 opacity-60'}`}>
-                        <input type="checkbox" checked={on} onChange={() => toggleUpdate(u.id)} className="mt-1 h-5 w-5 shrink-0 accent-brand-600" />
-                        <span className="min-w-0 flex-1 text-sm">
-                          <span className="block text-base font-bold">{u.name}</span>
-                          {u.changes.map((c) => (
-                            <span key={c.field} className="mt-1 block">
-                              <span className="font-bold text-sand-700">{t(`admin.import.fields.${c.field}`)}: </span>
-                              {c.from && <span className="text-sand-700 line-through">{c.field === 'origin' ? t(`admin.fields.origins.${c.from}`) : c.from}</span>}
-                              {c.from && ' → '}
-                              <span className="font-bold text-brand-700">{c.field === 'origin' ? t(`admin.fields.origins.${c.to}`) : c.to}</span>
-                            </span>
-                          ))}
-                        </span>
-                      </label>
-                    </li>
-                  )
-                })}
-              </ul>
-            </details>
-          )}
+          {/* Наявні рослини, у яких у таблиці інші дані: для кожного поля — що було і що стане */}
+          <ChoiceSection
+            title={t('admin.import.updates', { count: plan.updates.length })}
+            hint={t('admin.import.updatesHint')}
+            items={plan.updates.map((u) => ({
+              key: updateKey(u.id),
+              content: (
+                <>
+                  <span className="block text-base font-bold">{u.name}</span>
+                  {u.changes.map((c) => (
+                    <span key={c.field} className="mt-2 block">
+                      <span className="block font-bold text-sand-800">{t(`admin.import.fields.${c.field}`)}</span>
+                      <WasWill was={fieldValue(c.field, c.from)} will={fieldValue(c.field, c.to)} />
+                    </span>
+                  ))}
+                </>
+              ),
+            }))}
+            skipped={skipped}
+            onToggle={toggle}
+            onAll={setAll}
+          />
 
           <p className="text-sand-700">{t('admin.import.unchanged', { count: plan.unchanged })}</p>
 
@@ -146,8 +169,8 @@ export function ImportPage() {
           {apply.isSuccess ? (
             <p className="rounded-xl bg-brand-100 p-3 font-bold text-brand-700">{t('admin.import.done', apply.data)}</p>
           ) : hasChanges ? (
-            <Button onClick={() => apply.mutate({ plan, updates: chosenUpdates })} disabled={apply.isPending}>
-              {apply.isPending ? t('admin.import.applying') : t('admin.import.apply')}
+            <Button onClick={() => apply.mutate(chosen)} disabled={apply.isPending}>
+              {apply.isPending ? t('admin.import.applying') : t('admin.import.applyChosen', { count: chosen.renames.length + chosen.creates.length + chosen.updates.length })}
             </Button>
           ) : (
             <p className="font-bold text-brand-700">{t('admin.import.nothing')}</p>
@@ -155,8 +178,73 @@ export function ImportPage() {
           {apply.isError && <p className="text-red-700">{String(apply.error)}</p>}
         </div>
       )}
-
     </div>
+  )
+}
+
+/** «Було» (закреслене, або «порожньо») і «Стане» — двома рядками, щоб одразу видно, що змінюється. */
+function WasWill({ was, will }: { was: string; will: string }) {
+  const { t } = useTranslation()
+  return (
+    <span className="mt-0.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+      <span className="text-sand-700">{t('admin.import.was')}</span>
+      {was ? <span className="text-sand-700 line-through">{was}</span> : <span className="text-sand-700 italic">{t('admin.import.empty')}</span>}
+      <span className="font-bold text-brand-700">{t('admin.import.will')}</span>
+      <span className="font-bold text-brand-700">{will}</span>
+    </span>
+  )
+}
+
+/** Розділ зі списком змін, кожну можна застосувати (галочка) чи пропустити; «Вибрати всі / Зняти всі» — для розділу. */
+function ChoiceSection({
+  title,
+  hint,
+  items,
+  skipped,
+  onToggle,
+  onAll,
+}: {
+  title: string
+  hint?: string
+  items: { key: string; content: ReactNode }[]
+  skipped: Set<string>
+  onToggle: (key: string) => void
+  onAll: (keys: string[], on: boolean) => void
+}) {
+  const { t } = useTranslation()
+  if (!items.length) return null
+  const keys = items.map((i) => i.key)
+  const chosen = keys.filter((k) => !skipped.has(k)).length
+  return (
+    <details open className="rounded-xl bg-sand-100 p-3">
+      <summary className="cursor-pointer font-bold">
+        {title} <span className="font-normal text-sand-700">· {t('admin.import.chosen', { chosen, total: items.length })}</span>
+      </summary>
+      {hint && <p className="mt-1 text-sm text-sand-700">{hint}</p>}
+      <div className="mt-2 flex gap-3 text-sm font-bold">
+        <button type="button" className="text-brand-600 underline" onClick={() => onAll(keys, true)}>
+          {t('admin.formFixes.selectAll')}
+        </button>
+        <button type="button" className="text-brand-600 underline" onClick={() => onAll(keys, false)}>
+          {t('admin.formFixes.selectNone')}
+        </button>
+      </div>
+      <ul className="mt-2 max-h-[32rem] space-y-2 overflow-y-auto">
+        {items.map(({ key, content }) => {
+          const on = !skipped.has(key)
+          return (
+            <li key={key}>
+              <label
+                className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 bg-sand-50 p-3 transition-colors ${on ? 'border-brand-500/50' : 'border-sand-200 opacity-60'}`}
+              >
+                <input type="checkbox" checked={on} onChange={() => onToggle(key)} className="mt-1 h-5 w-5 shrink-0 accent-brand-600" />
+                <span className="min-w-0 flex-1 text-sm">{content}</span>
+              </label>
+            </li>
+          )
+        })}
+      </ul>
+    </details>
   )
 }
 
