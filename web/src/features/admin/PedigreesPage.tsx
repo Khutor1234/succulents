@@ -1,4 +1,4 @@
-import { ArrowRight, Layers, Users, UsersRound, X, type LucideIcon } from 'lucide-react'
+import { ArrowDown, ArrowRight, Layers, Network, Users, UsersRound, X, type LucideIcon } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
@@ -7,13 +7,13 @@ import { nameKey } from '../../lib/plantName'
 import { useAllProducts } from './api'
 import { buildPedigrees } from './pedigrees'
 
-const TABS = ['trios', 'pairs', 'forms'] as const
+const TABS = ['trios', 'pairs', 'families', 'forms'] as const
 type Tab = (typeof TABS)[number]
-const TAB_ICONS: Record<Tab, LucideIcon> = { trios: UsersRound, pairs: Users, forms: Layers }
+const TAB_ICONS: Record<Tab, LucideIcon> = { trios: UsersRound, pairs: Users, families: Network, forms: Layers }
 
 /**
  * «Родоводи» (лише продавець): підбірки з колекції — мама × тато → дитина, один із батьків → дитина,
- * та сама рослина в різних формах. Вкладка — в адресі (?tab=pairs).
+ * рослина-батько → усі її діти, та сама рослина в різних формах. Вкладка — в адресі (?tab=pairs).
  */
 export function PedigreesPage() {
   const { t } = useTranslation()
@@ -28,7 +28,8 @@ export function PedigreesPage() {
   const trios = all.trios.filter((x) => has(x.child, ...x.parents))
   const pairs = all.pairs.filter((x) => has(x.child, x.parent))
   const forms = all.formGroups.filter((g) => has(...g.items))
-  const counts: Record<Tab, number> = { trios: trios.length, pairs: pairs.length, forms: forms.length }
+  const families = all.families.filter((f) => has(f.parent, ...f.children.map((c) => c.child)))
+  const counts: Record<Tab, number> = { trios: trios.length, pairs: pairs.length, families: families.length, forms: forms.length }
 
   return (
     <div className="space-y-5">
@@ -70,7 +71,10 @@ export function PedigreesPage() {
         />
       </div>
 
-      <p className="text-sm text-sand-700">{t(`admin.pedigrees.hints.${tab}`)}</p>
+      <p className="text-sm text-sand-700">
+        {t(`admin.pedigrees.hints.${tab}`)}
+        {tab !== 'forms' && <span className="mt-1 block">{t('admin.pedigrees.sameFormHint')}</span>}
+      </p>
 
       {isLoading && <p className="text-sand-700">{t('loading')}</p>}
       {isError && <p className="text-red-700">{t('errors.loading')}</p>}
@@ -108,6 +112,35 @@ export function PedigreesPage() {
               <p className="mt-2 text-sm text-sand-700">
                 {other ? t('admin.pedigrees.otherParent', { name: other }) : t('admin.pedigrees.oneParent')}
               </p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Нащадки: зліва (на телефоні — зверху) рослина-батько, стрілка до її дітей */}
+      {tab === 'families' && (
+        <ul className="space-y-4">
+          {families.map(({ parent, children }) => (
+            <li key={parent.id} className="rounded-3xl border-2 border-sand-200 bg-sand-50 p-3 sm:p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                <div className="w-32 shrink-0 self-center sm:w-36 sm:self-start">
+                  <Mini p={parent} highlight />
+                  <p className="mt-1 text-xs font-bold text-sand-700">{t('admin.pedigrees.childrenCount', { count: children.length })}</p>
+                </div>
+                <span className="flex justify-center text-sand-700 sm:mt-16">
+                  <ArrowDown size={22} strokeWidth={2.6} className="sm:hidden" aria-hidden />
+                  <ArrowRight size={22} strokeWidth={2.6} className="hidden sm:block" aria-hidden />
+                </span>
+                <div className="grid min-w-0 flex-1 grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
+                  {children.map(({ child, role, other }) => (
+                    <div key={child.id} className="min-w-0">
+                      <span className="mb-1 block truncate text-[11px] font-bold text-brand-700">{t(`admin.pedigrees.roles.${role}`)}</span>
+                      <Mini p={child} />
+                      {other && <span className="mt-0.5 block text-[11px] leading-snug break-words text-sand-700">{t('admin.pedigrees.withOther', { name: other })}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </li>
           ))}
         </ul>

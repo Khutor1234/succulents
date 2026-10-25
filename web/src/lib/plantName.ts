@@ -163,7 +163,8 @@ export function editDistance(a: string, b: string): number {
 
 /**
  * Батька записали з опискою («Graptoveria 'Debbi'», а рослина — «Graptoveria 'Debbie'»)? Якщо точної назви серед товарів
- * немає, беремо товар того самого роду, що відрізняється щонайбільше на 2 букви. Інакше лишаємо як записано.
+ * немає, беремо товар того самого роду, що відрізняється щонайбільше на 2 букви (у короткої назви сорту, до 5 букв, —
+ * лише на 1: інакше «Lola» ставала б «Sol»). Інакше лишаємо як записано.
  */
 export function makeNameResolver(keys: string[]) {
   const known = new Set(keys)
@@ -174,8 +175,9 @@ export function makeNameResolver(keys: string[]) {
     const hit = cache.get(key)
     if (hit !== undefined) return hit
     const genus = key.split(' ')[0]
+    const rest = key.slice(genus.length).trim()
     let best = key
-    let bestDist = 3
+    let bestDist = rest.length <= 5 ? 2 : 3
     for (const k of keys) {
       if (k.split(' ')[0] !== genus || k.length < 6) continue
       const dist = editDistance(key, k)

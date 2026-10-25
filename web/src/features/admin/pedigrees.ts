@@ -6,7 +6,8 @@ import type { Product } from '../../lib/types'
  * Підбірки для сторінки «Родоводи» (лише для продавця): що з колекції пов'язане між собою.
  * - трійки: є і дитина, і обидва батьки;
  * - пари: є дитина й лише один із батьків;
- * - форми: та сама рослина в кількох формах (звичайна, variegata, cristata…).
+ * - форми: та сама рослина в кількох формах (звичайна, variegata, cristata…);
+ * - нащадки: рослина-батько й усі її діти з колекції.
  * Назви батьків зіставляються з товарами без огляду на лапки, регістр і дрібні описки (lib/plantName).
  */
 export interface Trio {
@@ -22,6 +23,17 @@ export interface Pair {
 export interface FormGroup {
   name: string
   items: Product[]
+}
+/** Рослина-батько й усі її відомі діти з колекції. */
+export interface Family {
+  parent: Product
+  children: {
+    child: Product
+    /** Ким батько є для дитини: мама (перший у записі), тато (другий) чи єдиний відомий батько */
+    role: 'mother' | 'father' | 'parent'
+    /** Як записаний другий батько (або порожньо) */
+    other: string
+  }[]
 }
 
 const forms = (p: Product) => STATE_TAGS.filter((t) => p.tags?.includes(t))
@@ -43,11 +55,14 @@ export function buildPedigrees(products: Product[]) {
     byBase.set(k, [...(byBase.get(k) ?? []), p])
   }
   for (const list of byBase.values()) list.sort(better)
-  // Батько записаний без форми, а в колекції є лише його variegata/cristata — теж рахуємо
-  const find = (name: string) => byKey.get(resolve(name))?.[0] ?? byBase.get(baseKey(name))?.[0]
+  // Батько — лише в тій самій формі, що й дитина (точний збіг фенотипу): звичайна дитина — від звичайних батьків.
+  // Записано «Lola», а в колекції лише «Lola variegata» — такого батька в колекції немає.
+  const sameForms = (a: Product, b: Product) => forms(a).join('+') === forms(b).join('+')
+  const find = (name: string, child: Product) => byKey.get(resolve(name))?.find((p) => sameForms(p, child))
 
   const trios: Trio[] = []
   const pairs: Pair[] = []
+  const families = new Map<string, Family>()
   // Та сама трійка/пара для різних форм дитини (Lola й Lola variegata з тими самими батьками) — показуємо раз
   const seen = new Set<string>()
   for (const child of [...plants].sort(better)) {
@@ -55,9 +70,16 @@ export function buildPedigrees(products: Product[]) {
     if (child.origin === 'cultivar') continue
     const names = (child.parents ?? []).map((x) => x.trim()).filter(Boolean)
     if (names.length === 0) continue
-    const found = names.map((n) => find(n))
+    const found = names.map((n) => find(n, child))
     const sig = `${baseKey(child.name.uk)}|${names.map((n) => resolve(n)).sort().join('|')}`
     if (seen.has(sig)) continue
+    // «Нащадки»: дитина — до кожного батька, який є в колекції
+    found.forEach((parent, i) => {
+      if (!parent || parent.id === child.id) return
+      const family = families.get(parent.id) ?? { parent, children: [] }
+      family.children.push({ child, role: names.length === 2 ? (i === 0 ? 'mother' : 'father') : 'parent', other: names.length === 2 ? names[1 - i] : '' })
+      families.set(parent.id, family)
+    })
     if (found.length === 2 && found[0] && found[1] && found[0].id !== child.id && found[1].id !== child.id) {
       seen.add(sig)
       trios.push({ child, parents: [found[0], found[1]] })
@@ -79,5 +101,9 @@ export function buildPedigrees(products: Product[]) {
 
   const byName = (a: { child: Product } | FormGroup, b: { child: Product } | FormGroup) =>
     ('child' in a ? a.child.name.uk : a.name).localeCompare('child' in b ? b.child.name.uk : b.name)
-  return { trios: trios.sort(byName), pairs: pairs.sort(byName), formGroups: formGroups.sort(byName) }
+  // Спершу ті, в кого найбільше дітей; діти — за абеткою
+  const familyList = [...families.values()]
+    .map((f) => ({ ...f, children: f.children.sort((a, b) => a.child.name.uk.localeCompare(b.child.name.uk)) }))
+    .sort((a, b) => b.children.length - a.children.length || a.parent.name.uk.localeCompare(b.parent.name.uk))
+  return { trios: trios.sort(byName), pairs: pairs.sort(byName), formGroups: formGroups.sort(byName), families: familyList }
 }

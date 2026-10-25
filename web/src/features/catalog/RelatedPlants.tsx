@@ -1,15 +1,21 @@
 import { useTranslation } from 'react-i18next'
 import { baseKey, makeNameResolver, nameKey } from '../../lib/plantName'
+import { PLANT_CATEGORY } from '../../lib/plants'
 import type { Product } from '../../lib/types'
 import { useAuth } from '../auth/authStore'
 import { useAllProducts } from './api'
 import { useCategories } from './categories'
 import { ProductCard } from './ProductCard'
 
-type Relation = 'form' | 'parent' | 'child' | 'sibling'
+type Relation = 'form' | 'parent' | 'child' | 'sibling' | 'genus'
 
-const ORDER: Relation[] = ['form', 'parent', 'child', 'sibling']
+const ORDER: Relation[] = ['form', 'parent', 'child', 'sibling', 'genus']
 const MAX = 8
+// Рідкісний рід — коли рослин цього роду на сайті не більше стількох (Aeonium, Cotyledon, Greenovia…):
+// тоді внизу показуємо й решту рослин цього роду. Ехеверій і граптоверій багато — їм це не треба.
+const RARE_GENUS = 10
+
+const genusOf = (p: Product) => p.genus || p.name.uk.split(/\s+/)[0] || ''
 
 /**
  * Як інші рослини пов’язані з цією:
@@ -40,6 +46,7 @@ const BADGE: Record<Relation, string> = {
   parent: 'bg-brand-600 text-sand-50',
   child: 'bg-brand-100 text-brand-700',
   sibling: 'bg-sand-200 text-sand-700',
+  genus: 'bg-sand-200 text-sand-700',
 }
 
 // Для продавця всередині кожного виду зв’язку: спершу в наявності, далі немає, у кінці приховані
@@ -58,9 +65,17 @@ export function RelatedPlants({ product }: { product: Product }) {
   // Описки в назвах батьків виправляємо за назвами товарів, які бачить цей відвідувач
   const resolve = makeNameResolver(data.map((p) => nameKey(p.name.uk)))
 
-  const related = data
-    .filter((p) => p.id !== product.id && (isSeller || (p.isActive && p.stock > 0 && isVisible(p.category))))
-    .map((p) => ({ p, rel: relationOf(product, p, resolve) }))
+  const shown = data.filter((p) => p.id !== product.id && (isSeller || (p.isActive && p.stock > 0 && isVisible(p.category))))
+  // Скільки рослин цього роду на сайті (разом із поточною) — рідкісний рід чи ні
+  const genus = product.category === PLANT_CATEGORY ? genusOf(product) : ''
+  const genusSize = genus ? data.filter((p) => p.category === PLANT_CATEGORY && genusOf(p) === genus).length : 0
+  const rareGenus = genus && genusSize <= RARE_GENUS
+  const related = shown
+    .map((p) => ({
+      p,
+      // Немає прямого зв’язку, але рід рідкісний і той самий — «Інші рослини роду …»
+      rel: relationOf(product, p, resolve) ?? (rareGenus && p.category === PLANT_CATEGORY && genusOf(p) === genus ? 'genus' : null),
+    }))
     .filter((x): x is { p: Product; rel: Relation } => !!x.rel)
     .sort((a, b) => (isSeller ? rank(a.p) - rank(b.p) : 0))
   // Групи за видом зв’язку — у кожній не більше MAX карток
@@ -79,7 +94,7 @@ export function RelatedPlants({ product }: { product: Product }) {
         <div key={rel} className="mt-6">
           {/* Підпис групи: як саме ці рослини пов’язані з поточною */}
           <h3 className="mb-3 flex items-center gap-2">
-            <span className={`rounded-full px-3 py-1 text-sm font-bold ${BADGE[rel]}`}>{t(`related.groups.${rel}`)}</span>
+            <span className={`rounded-full px-3 py-1 text-sm font-bold ${BADGE[rel]}`}>{t(`related.groups.${rel}`, { genus })}</span>
             <span className="text-sm font-bold text-sand-700 tabular-nums">{items.length}</span>
           </h3>
           {/* Дрібніші картки: на комп’ютері по 4 в ряд */}

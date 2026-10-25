@@ -129,7 +129,11 @@ export function PlantAnalytics() {
       .filter((f) => f.names.size >= 2)
       .map((f) => ({ word: f.word, names: [...f.names.values()].sort((a, b) => a.localeCompare(b)) }))
       .sort((a, b) => b.names.length - a.names.length || a.word.localeCompare(b.word))
-    const colors = COLORS.map((c) => ({ ...c, count: colorBases.get(c.id)?.size ?? 0 }))
+    // Разом із кількістю — і самі рослини, щоб було видно, які саме
+    const colors = COLORS.map((c) => {
+      const names = [...(colorBases.get(c.id) ?? [])].sort((a, b) => a.localeCompare(b))
+      return { ...c, count: names.length, names }
+    })
       .filter((c) => c.count > 0)
       .sort((a, b) => b.count - a.count)
 
@@ -392,12 +396,16 @@ export function PlantAnalytics() {
             {/* Кольори в назвах */}
             {stats.colors.length > 0 && (
               <Card title={t('plantStats.colors')} icon={Palette}>
-                <ul className="grid grid-cols-2 gap-2">
+                <ul className="grid gap-2 sm:grid-cols-2">
                   {stats.colors.map((c) => (
-                    <li key={c.id} className="flex items-center gap-2.5 rounded-2xl bg-sand-100 p-2.5">
-                      <span className="h-7 w-7 shrink-0 rounded-full border-2 border-sand-50 shadow-sm" style={{ background: c.swatch }} aria-hidden />
-                      <span className="min-w-0 flex-1 text-sm font-bold">{t(`plantStats.colorNames.${c.id}`)}</span>
-                      <span className="font-display font-extrabold text-brand-600 tabular-nums">{c.count}</span>
+                    <li key={c.id} className="rounded-2xl bg-sand-100 p-2.5">
+                      <span className="flex items-center gap-2.5">
+                        <span className="h-7 w-7 shrink-0 rounded-full border-2 border-sand-50 shadow-sm" style={{ background: c.swatch }} aria-hidden />
+                        <span className="min-w-0 flex-1 text-sm font-bold">{t(`plantStats.colorNames.${c.id}`)}</span>
+                        <span className="font-display font-extrabold text-brand-600 tabular-nums">{c.count}</span>
+                      </span>
+                      {/* Які саме рослини — дрібно під кольором */}
+                      <span className="mt-1.5 block text-xs leading-relaxed text-sand-700">{c.names.join(' · ')}</span>
                     </li>
                   ))}
                 </ul>
