@@ -101,6 +101,7 @@ export function FormFixesPage() {
                           <ArrowRight size={14} strokeWidth={2.5} className="shrink-0 text-sand-700" aria-hidden />
                           <span className="font-bold text-brand-700">{t('admin.formFixes.after', { name: f.source })}</span>
                         </span>
+                        {!f.sourceInShop && <span className="mt-1 block text-xs text-sand-700">{t('admin.formFixes.notInShop')}</span>}
                       </span>
                     </label>
                   </li>
@@ -116,17 +117,6 @@ export function FormFixesPage() {
           {apply.isError && <p className="text-red-700">{t('admin.saveError')}</p>}
 
           {plan.ok > 0 && <p className="text-sm text-sand-700">{t('admin.formFixes.ok', { count: plan.ok })}</p>}
-          {plan.noSource.length > 0 && (
-            <details className="rounded-xl bg-sand-100 p-3">
-              <summary className="cursor-pointer font-bold">{t('admin.formFixes.noSource', { count: plan.noSource.length })}</summary>
-              <p className="mt-1 text-sm text-sand-700">{t('admin.formFixes.noSourceHint')}</p>
-              <ul className="mt-2 max-h-96 space-y-1 overflow-y-auto text-sm">
-                {plan.noSource.map((name, i) => (
-                  <li key={`${name}-${i}`}>{name}</li>
-                ))}
-              </ul>
-            </details>
-          )}
         </div>
       )}
     </div>

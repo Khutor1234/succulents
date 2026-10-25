@@ -11,8 +11,10 @@ import type { PlantOrigin, Product } from '../../lib/types'
 export interface FormFix {
   id: string
   name: string
-  /** Від якої рослини мутація — повна назва, як у товарі. */
+  /** Від якої рослини мутація — повна назва, як у товарі (або назва без форм, якщо звичайної версії в магазині немає). */
   source: string
+  /** Чи є звичайна версія в магазині. Немає — все одно записуємо «мутація від …», на сайті назва буде без посилання. */
+  sourceInShop: boolean
   before: { origin?: PlantOrigin; parents: string[] }
 }
 
@@ -20,8 +22,6 @@ export interface FormFixPlan {
   fixes: FormFix[]
   /** Уже правильно: мутація саме від цієї рослини. */
   ok: number
-  /** Рослини з формою, для яких у магазині немає звичайної версії (без форм). */
-  noSource: string[]
 }
 
 type Plant = Pick<Product, 'id' | 'name' | 'category' | 'tags' | 'origin' | 'parents' | 'isActive'>
@@ -42,7 +42,7 @@ export function planFormFixes(products: Plant[]): FormFixPlan {
     byKey.set(key, [...(byKey.get(key) ?? []), p])
   }
 
-  const plan: FormFixPlan = { fixes: [], ok: 0, noSource: [] }
+  const plan: FormFixPlan = { fixes: [], ok: 0 }
   for (const p of plants) {
     const forms = formsOf(p)
     if (forms.length === 0) continue
@@ -51,20 +51,20 @@ export function planFormFixes(products: Plant[]): FormFixPlan {
     const candidates = (byKey.get(keyOf(p)) ?? [])
       .filter((q) => q.id !== p.id && formsOf(q).length === 0)
       .sort((a, b) => Number(b.isActive) - Number(a.isActive))
-    const source = candidates[0]?.name.uk.trim()
-    if (!source) {
-      plan.noSource.push(p.name.uk)
-      continue
-    }
+    // Звичайної версії в магазині немає («Lola variegata», а просто «Lola» немає) — джерело все одно «Lola»:
+    // так у походженні видно, від чого мутація, хоч посилання на сайті й не буде
+    const inShop = candidates[0]?.name.uk.trim()
+    const source = inShop ?? parseForms(p.name.uk).base.trim()
+    // Без форм лишився сам рід («Greenovia variegata» → «Greenovia») — від чого мутація, невідомо
+    if (!source || source.split(/\s+/).length < 2) continue
     const parents = (p.parents ?? []).filter(Boolean)
     // Уже правильно, навіть якщо джерело записане трохи інакше (без лапок, іншими літерами регістру)
     if (p.origin === 'cultivar' && parents.length === 1 && nameKey(parents[0]) === nameKey(source)) {
       plan.ok++
       continue
     }
-    plan.fixes.push({ id: p.id, name: p.name.uk, source, before: { origin: p.origin, parents } })
+    plan.fixes.push({ id: p.id, name: p.name.uk, source, sourceInShop: !!inShop, before: { origin: p.origin, parents } })
   }
   plan.fixes.sort((a, b) => a.name.localeCompare(b.name))
-  plan.noSource.sort((a, b) => a.localeCompare(b))
   return plan
 }

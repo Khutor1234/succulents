@@ -58,6 +58,21 @@ export function useProduct(slug: string, withHidden = false) {
 }
 
 /**
+ * Чи є в магазині товар саме з такою назвою — напр., звичайна версія, від якої варієгата «мутація від …».
+ * Немає — назву показуємо без посилання. Один дешевий запит за точною назвою (а не весь каталог).
+ */
+export function useNameInShop(name: string | undefined, withHidden = false) {
+  return useQuery({
+    queryKey: ['product-name', name, withHidden],
+    enabled: !!name,
+    queryFn: async () => {
+      const constraints = [where('name.uk', '==', name!), ...(withHidden ? [] : [where('isActive', '==', true)]), limit(1)]
+      return !(await getDocs(query(collection(db, 'products'), ...constraints))).empty
+    },
+  })
+}
+
+/**
  * Увесь видимий каталог — для пошуку (товарів сотні, тож простіше шукати прямо в браузері).
  * `withHidden` — для продавця: разом із прихованими товарами.
  */

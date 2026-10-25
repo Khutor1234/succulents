@@ -1,22 +1,63 @@
 import { GitFork, Leaf, MapPin, Sprout, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
+import { useAuth } from '../auth/authStore'
+import { useNameInShop } from './api'
 import type { PlantOrigin } from '../../lib/types'
 
-/** Ім'я рослини чи країни — «чип», що веде в пошук (одразу видно, чи є в магазині сам батько або його інші «діти»). */
-function Chip({ to, title, big, grow, full, icon, children }: { to: string; title: string; big?: boolean; grow?: boolean; full?: boolean; icon?: React.ReactNode; children: string }) {
+/**
+ * Ім'я рослини чи країни — «чип», що веде в пошук (одразу видно, чи є в магазині сам батько або його інші «діти»).
+ * `plain` — просто назва без посилання (такої рослини в магазині немає).
+ */
+function Chip({
+  to,
+  title,
+  big,
+  grow,
+  full,
+  plain,
+  icon,
+  children,
+}: {
+  to: string
+  title: string
+  big?: boolean
+  grow?: boolean
+  full?: boolean
+  plain?: boolean
+  icon?: React.ReactNode
+  children: string
+}) {
+  const className = `inline-flex max-w-full items-center gap-1 border ${big ? 'rounded-2xl' : 'rounded-lg'} font-semibold ${
+    plain ? 'border-sand-300 bg-sand-100 text-sand-700' : 'border-brand-500/25 bg-brand-100/70 text-brand-700 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-sand-50'
+  } ${big ? 'justify-center px-3.5 py-1.5 text-center text-sm leading-snug' : 'min-w-0 px-1.5 py-0.5 text-[11px] leading-tight'} ${grow ? 'flex-1 basis-0 justify-center text-center' : ''}`
+  // На картці довга назва переноситься щонайбільше на два рядки; `full` — повністю, скільки б рядків не зайняла
+  const label = <span className={big || full ? 'break-words' : 'line-clamp-2 break-words'}>{children}</span>
+  if (plain)
+    return (
+      <span title={title} className={className}>
+        {icon}
+        {label}
+      </span>
+    )
   return (
-    <Link
-      to={`/search?q=${encodeURIComponent(to)}`}
-      title={title}
-      className={`inline-flex max-w-full items-center gap-1 border border-brand-500/25 ${big ? 'rounded-2xl' : 'rounded-lg'} bg-brand-100/70 font-semibold text-brand-700 transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-sand-50 ${
-        big ? 'justify-center px-3.5 py-1.5 text-center text-sm leading-snug' : 'min-w-0 px-1.5 py-0.5 text-[11px] leading-tight'
-      } ${grow ? 'flex-1 basis-0 justify-center text-center' : ''}`}
-    >
+    <Link to={`/search?q=${encodeURIComponent(to)}`} title={title} className={className}>
       {icon}
-      {/* На картці довга назва переноситься щонайбільше на два рядки; `full` — повністю, скільки б рядків не зайняла */}
-      <span className={big || full ? 'break-words' : 'line-clamp-2 break-words'}>{children}</span>
+      {label}
     </Link>
+  )
+}
+
+/** «Мутація від …»: назва-посилання, а якщо такої рослини в магазині немає — просто назва. */
+function SourceChip({ name, big, full }: { name: string; big?: boolean; full?: boolean }) {
+  const { t } = useTranslation()
+  const isSeller = useAuth((s) => s.role === 'seller')
+  const { data: inShop } = useNameInShop(name, isSeller)
+  const missing = inShop === false
+  return (
+    <Chip to={name} title={missing ? t('search.notInShop', { name }) : t('search.findParent', { name })} big={big} full={full} plain={missing}>
+      {name}
+    </Chip>
   )
 }
 
@@ -116,7 +157,7 @@ export function ParentsLinks({
           {cultivar && names[0] && (
             <>
               <span className="shrink-0 self-center text-xs text-sand-700">{t('search.from')}</span>
-              <Chip full={fullNames} to={names[0]} title={find(names[0])}>{names[0]}</Chip>
+              <SourceChip full={fullNames} name={names[0]} />
             </>
           )}
           {!natural && !cultivar && (
@@ -156,7 +197,7 @@ export function ParentsLinks({
       {cultivar && names[0] && (
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-sand-700">
           <span>{t('search.cultivarHint')}</span>
-          <Chip to={names[0]} title={find(names[0])} big>{names[0]}</Chip>
+          <SourceChip name={names[0]} big />
         </div>
       )}
       {!natural && !cultivar && names.length > 0 && (
