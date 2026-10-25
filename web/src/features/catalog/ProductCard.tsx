@@ -1,4 +1,4 @@
-import { Ban, Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Plus, Tag, Trash2 } from 'lucide-react'
+import { Ban, Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Plus, Tag, Trash2, TriangleAlert } from 'lucide-react'
 import { useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -149,10 +149,6 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
       {/* Покупцю — «У кошик»; продавцю кошик не потрібен — замість нього редагування, копія й видалення */}
       {isSeller && <SellerStock product={product} />}
       {isSeller && <SellerForSale product={product} name={name} />}
-      {/* Остання рослина лишається продавцю (KEEP_LAST) — покупці бачать «немає в наявності» */}
-      {isSeller && product.category === PLANT_CATEGORY && product.stock > 0 && product.stock <= KEEP_LAST && product.forSale !== false && (
-        <p className="mx-1.5 mt-1.5 text-center text-xs font-bold text-[#5c4a00]">{t('admin.lastKept')}</p>
-      )}
       <div className="mt-2.5 flex gap-2">
         {isSeller ? (
           <SellerActions product={product} name={name} />
@@ -367,23 +363,53 @@ function SellerForSale({ product, name }: { product: Product; name: string }) {
   const { t } = useTranslation()
   const toggle = useToggleForSale()
   const forSale = product.forSale !== false
+  // Остання рослина лишається продавцю (KEEP_LAST): покупці її не бачать у продажу, тож і кнопка — «Не продається»,
+  // з попередженням поруч. Сама кнопка й далі вмикає/вимикає «Готова до продажу».
+  const lastKept = forSale && product.category === PLANT_CATEGORY && product.stock > 0 && product.stock <= KEEP_LAST
+  const sellable = forSale && !lastKept
+  const [hint, setHint] = useState(false)
   return (
-    <button
-      type="button"
-      onClick={() => toggle.mutate({ id: product.id, forSale: !forSale })}
-      disabled={toggle.isPending}
-      aria-pressed={forSale}
-      aria-label={t(forSale ? 'admin.unsellNamed' : 'admin.sellNamed', { name })}
-      title={t(forSale ? 'admin.unsell' : 'admin.sell')}
-      className={`mx-1.5 mt-2 flex min-h-9 items-center justify-center gap-1.5 rounded-xl border-2 px-2 text-sm font-bold transition-colors disabled:opacity-50 ${
-        forSale
-          ? 'border-brand-600 text-brand-600 hover:bg-brand-600 hover:text-sand-50'
-          : 'border-[#8a5a00] bg-[#f3e7a8] text-[#5c4a00] hover:bg-[#ead98a]'
-      }`}
-    >
-      {forSale ? <Tag size={16} strokeWidth={2.4} aria-hidden /> : <Ban size={16} strokeWidth={2.4} aria-hidden />}
-      {forSale ? t('admin.forSaleOn') : t('admin.notForSaleBadge')}
-    </button>
+    <div className="relative mx-1.5 mt-2 flex gap-1.5">
+      <button
+        type="button"
+        onClick={() => toggle.mutate({ id: product.id, forSale: !forSale })}
+        disabled={toggle.isPending}
+        aria-pressed={forSale}
+        aria-label={t(forSale ? 'admin.unsellNamed' : 'admin.sellNamed', { name })}
+        title={t(forSale ? 'admin.unsell' : 'admin.sell')}
+        className={`flex min-h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl border-2 px-2 text-sm font-bold transition-colors disabled:opacity-50 ${
+          sellable
+            ? 'border-brand-600 text-brand-600 hover:bg-brand-600 hover:text-sand-50'
+            : 'border-[#8a5a00] bg-[#f3e7a8] text-[#5c4a00] hover:bg-[#ead98a]'
+        }`}
+      >
+        {sellable ? <Tag size={16} strokeWidth={2.4} aria-hidden /> : <Ban size={16} strokeWidth={2.4} aria-hidden />}
+        {sellable ? t('admin.forSaleOn') : t('admin.notForSaleBadge')}
+      </button>
+      {lastKept && (
+        // Пояснення — підказкою: при наведенні курсора, а на телефоні — натисканням на значок
+        <span className="group/hint relative flex">
+          <button
+            type="button"
+            onClick={() => setHint((v) => !v)}
+            onBlur={() => setHint(false)}
+            aria-label={t('admin.lastKept')}
+            aria-expanded={hint}
+            className="flex min-h-9 w-9 items-center justify-center rounded-xl border-2 border-[#8a5a00] bg-[#f3e7a8] text-[#8a5a00] hover:bg-[#ead98a]"
+          >
+            <TriangleAlert size={17} strokeWidth={2.4} aria-hidden />
+          </button>
+          <span
+            role="tooltip"
+            className={`absolute right-0 bottom-full z-20 mb-2 w-56 rounded-xl bg-ink px-3 py-2 text-xs leading-snug font-bold text-sand-50 shadow-lg ${
+              hint ? 'block' : 'hidden group-hover/hint:block'
+            }`}
+          >
+            {t('admin.lastKept')}
+          </span>
+        </span>
+      )}
+    </div>
   )
 }
 
