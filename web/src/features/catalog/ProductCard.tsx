@@ -380,7 +380,7 @@ function SellerForSale({ product, name }: { product: Product; name: string }) {
         className={`flex min-h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl border-2 px-2 text-sm font-bold transition-colors disabled:opacity-50 ${
           sellable
             ? 'border-brand-600 text-brand-600 hover:bg-brand-600 hover:text-sand-50'
-            : 'border-[#8a5a00] bg-[#f3e7a8] text-[#5c4a00] hover:bg-[#ead98a]'
+            : 'border-sand-400 bg-sand-200 text-sand-700 hover:bg-sand-300'
         }`}
       >
         {sellable ? <Tag size={16} strokeWidth={2.4} aria-hidden /> : <Ban size={16} strokeWidth={2.4} aria-hidden />}
@@ -395,7 +395,7 @@ function SellerForSale({ product, name }: { product: Product; name: string }) {
             onBlur={() => setHint(false)}
             aria-label={t('admin.lastKept')}
             aria-expanded={hint}
-            className="flex min-h-9 w-9 items-center justify-center rounded-xl border-2 border-[#8a5a00] bg-[#f3e7a8] text-[#8a5a00] hover:bg-[#ead98a]"
+            className="flex min-h-9 w-9 items-center justify-center rounded-xl border-2 border-sand-400 bg-sand-200 text-sunset-600 hover:bg-sand-300"
           >
             <TriangleAlert size={17} strokeWidth={2.4} aria-hidden />
           </button>
