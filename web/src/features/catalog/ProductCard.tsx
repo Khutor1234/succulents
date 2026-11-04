@@ -90,7 +90,7 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
             origin={product.origin}
             habitat={product.habitat}
             fullNames={fullNames}
-            className="absolute inset-x-2 bottom-2 rounded-2xl bg-sand-50/90 p-1.5 shadow-sm backdrop-blur"
+            className="absolute inset-x-2 bottom-2 rounded-2xl bg-sand-50/95 p-1.5 shadow-sm"
           />
         )}
         {/* Стрілки — для миші (на телефоні гортають пальцем), з’являються при наведенні */}
@@ -352,8 +352,8 @@ function CopyName({ name, className = '' }: { name: string; className?: string }
       aria-label={t(copied ? 'admin.nameCopied' : 'admin.copyName', { name })}
       title={t(copied ? 'admin.nameCopied' : 'admin.copyName', { name })}
       // Кругла, як сердечко над нею
-      className={`flex h-10 w-10 items-center justify-center rounded-full shadow-sm backdrop-blur transition-transform hover:scale-110 active:scale-95 ${
-        copied ? 'bg-brand-100 text-brand-700' : 'bg-sand-50/90 text-ink'
+      className={`flex h-10 w-10 items-center justify-center rounded-full shadow-sm transition-transform hover:scale-110 active:scale-95 ${
+        copied ? 'bg-brand-100 text-brand-700' : 'bg-sand-50/95 text-ink'
       } ${className}`}
     >
       {copied ? <Check size={18} strokeWidth={2.75} aria-hidden /> : <Copy size={18} strokeWidth={2.25} aria-hidden />}

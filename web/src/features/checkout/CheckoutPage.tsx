@@ -26,6 +26,7 @@ interface CreateOrderRequest {
   customer: CheckoutData
   lang: string
   useBonuses: boolean
+  requestId: string
 }
 interface CreateOrderResponse {
   orderId: string
@@ -77,6 +78,9 @@ export function CheckoutPage() {
   // Перед оформленням звіряємо кошик (ціни й наявність могли змінитися, поки людина вибирала)
   const { sync: syncCart } = useCartSync()
   const [lastDelivery] = useState(loadLastDelivery)
+  // Одна мітка на це оформлення: якщо відповідь сервера загубилась і покупець натисне ще раз,
+  // сервер поверне вже створене замовлення замість другого (createOrder, requestId). Так само — і швидкий подвійний клік
+  const [requestId] = useState(() => crypto.randomUUID())
   const filledFromDevice = !!lastDelivery
 
   // Лише попередній розрахунок для показу — точну суму рахує сервер.
@@ -133,6 +137,7 @@ export function CheckoutPage() {
         customer,
         lang,
         useBonuses: bonusUsed > 0,
+        requestId,
       })
       saveLastDelivery(customer)
       if (user && rememberProfile) {

@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight, X, ZoomIn } from 'lucide-react'
 import { useEffect, useRef, useState, type MouseEvent, type TouchEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { imageUrl } from '../../firebase/config'
-import { ProductImage } from '../../shared/ui'
+import { ProductImage, SmallImage } from '../../shared/ui'
 
 /** На скільки наближати фото під курсором і в перегляді. */
 const ZOOM = 2.2
@@ -78,7 +78,7 @@ export function ProductGallery({ images, alt }: { images: string[]; alt: string 
                 i === current ? 'border-brand-500' : 'border-transparent opacity-60 hover:opacity-100'
               }`}
             >
-              <img src={imageUrl(url)} alt="" className="h-full w-full object-cover" loading="lazy" />
+              <SmallImage src={url} alt="" className="h-full w-full object-cover" />
             </button>
           ))}
         </div>
@@ -214,7 +214,7 @@ function Lightbox({
                 aria-current={i === index}
                 className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 ${i === index ? 'border-sunset-500' : 'border-transparent opacity-60 hover:opacity-100'}`}
               >
-                <img src={imageUrl(url)} alt="" className="h-full w-full object-cover" />
+                <SmallImage src={url} alt="" className="h-full w-full object-cover" />
               </button>
             ))}
           </div>

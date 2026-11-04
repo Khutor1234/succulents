@@ -13,6 +13,13 @@ export const MIN_ORDER = 1000_00
 export const KEEP_LAST = 1
 const PLANT_CATEGORY = 'plants'
 
+interface OrderResult {
+  number: string
+  total: number
+  bonusUsed: number
+  bonusEarned: number
+}
+
 interface ProductDoc {
   category: string
   name: Localized
@@ -47,10 +54,21 @@ export const createOrder = onCall(withLogging('createOrder', async (request) => 
   const db = getFirestore()
   const orderRef = db.collection('orders').doc()
   const counterRef = db.collection('counters').doc('orders')
+  // Захист від подвійного замовлення (див. requestId у schema.ts). Ці документи читає й пише лише сервер
+  const requestRef = parsed.data.requestId ? db.collection('orderRequests').doc(parsed.data.requestId) : null
 
-  const result = await db.runTransaction(async (tx) => {
+  const outcome = await db.runTransaction(async (tx) => {
     const productRefs = [...qtyById.keys()].map((id) => db.collection('products').doc(id))
     const settingsRef = db.collection('settings').doc('categories')
+    if (requestRef) {
+      const previous = await tx.get(requestRef)
+      if (previous.exists) {
+        const saved = previous.data() as { uid: string | null; orderId: string; result: OrderResult }
+        // Чужа мітка (вгадати її неможливо, але про всяк випадок) — не показуємо чуже замовлення
+        if (saved.uid !== uid) throw new HttpsError('already-exists', 'Duplicate request')
+        return { orderId: saved.orderId, ...saved.result, repeated: true }
+      }
+    }
     const [counterSnap, settingsSnap, ...productSnaps] = await tx.getAll(counterRef, settingsRef, ...productRefs)
     // Баланс читаємо в тій самій транзакції — тоді два одночасні замовлення не спишуть ті самі бонуси двічі.
     const bonusSnap = useBonuses && uid ? await tx.get(bonusAccountRef(db, uid)) : null
@@ -126,9 +144,13 @@ export const createOrder = onCall(withLogging('createOrder', async (request) => 
       lang,
     }
     tx.create(orderRef, { ...order, createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() })
-    return { number, total, bonusUsed, bonusEarned: order.bonusEarned }
+    const result: OrderResult = { number, total, bonusUsed, bonusEarned: order.bonusEarned }
+    if (requestRef) tx.create(requestRef, { uid, orderId: orderRef.id, result, createdAt: FieldValue.serverTimestamp() })
+    return { orderId: orderRef.id, ...result, repeated: false }
   })
 
-  logger.info('Order created', { orderId: orderRef.id, uid, items: qtyById.size, ...result })
-  return { orderId: orderRef.id, ...result }
+  const { repeated, ...response } = outcome
+  if (repeated) logger.info('Order request repeated', { orderId: response.orderId, uid })
+  else logger.info('Order created', { uid, items: qtyById.size, ...response })
+  return response
 }))

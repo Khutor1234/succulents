@@ -36,10 +36,10 @@ export function useCartSync() {
   const synced = useRef(false)
 
   const sync = useCallback(async () => {
-    const items = useCart.getState().items
-    if (items.length === 0) return []
-    const fresh = await Promise.all(
-      items.map(async (item) => {
+    const asked = useCart.getState().items
+    if (asked.length === 0) return []
+    const fetched = await Promise.all(
+      asked.map(async (item) => {
         try {
           const snap = await getDoc(doc(db, 'products', item.productId))
           // Залишок — той, що доступний покупцю (без рослин «не на продаж» і без останньої рослини)
@@ -49,9 +49,14 @@ export function useCartSync() {
         }
       }),
     )
+    const fresh = new Map(asked.map((item, i) => [item.productId, fetched[i]]))
+    // Поки чекали на базу, покупець міг змінити кількість чи додати товар — тож беремо кошик, який є зараз,
+    // а не той, що був на початку звірки. Товари, додані під час звірки, лишаємо як є
+    const items = useCart.getState().items
     const found: CartChange[] = []
-    const next = items.flatMap((item, i) => {
-      const p = fresh[i]
+    const next = items.flatMap((item) => {
+      if (!fresh.has(item.productId)) return [item]
+      const p = fresh.get(item.productId)
       const name = item.name.uk
       if (!p || !p.isActive || !visibleKey.split(',').includes(p.category) || p.stock <= 0) {
         found.push({ kind: 'gone', name })

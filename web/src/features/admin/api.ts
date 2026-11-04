@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import {
   addDoc,
   deleteDoc,
@@ -49,8 +49,26 @@ export async function isSlugTaken(slug: string, exceptId?: string): Promise<bool
 }
 
 /** Запити, що показують товари: вітрина (['products'…], ['product'…]) і списки адмінки (['admin', 'products' | 'product'…]). */
-const isProductQuery = (key: readonly unknown[]) =>
+export const isProductQuery = (key: readonly unknown[]) =>
   key[0] === 'products' || key[0] === 'product' || (key[0] === 'admin' && (key[1] === 'products' || key[1] === 'product'))
+
+/**
+ * Швидкі дії продавця на картці (кількість, показати, у продаж, видалити) змінюють один товар — тож не перечитуємо
+ * з бази весь сайт, а правимо цей товар прямо в уже завантажених списках. Списки товарів позначаємо застарілими:
+ * перечитаються самі, коли їх відкриють наступного разу (і тоді, напр., прихований зникне з вітрини покупця).
+ */
+function patchProduct(queryClient: QueryClient, id: string, patch: Partial<Product> | null) {
+  const apply = (p: Product) => (patch ? { ...p, ...patch } : null)
+  queryClient.setQueriesData({ predicate: (q) => isProductQuery(q.queryKey) }, (data: unknown) => {
+    if (Array.isArray(data)) {
+      if (!data.some((p: Product) => p?.id === id)) return data
+      return data.flatMap((p: Product) => (p?.id === id ? (apply(p) ?? []) : [p]))
+    }
+    if (data && typeof data === 'object' && (data as Product).id === id) return apply(data as Product)
+    return data
+  })
+  return queryClient.invalidateQueries({ predicate: (q) => isProductQuery(q.queryKey), refetchType: 'none' })
+}
 
 export function useSaveProduct() {
   const queryClient = useQueryClient()
@@ -83,7 +101,7 @@ export function useSetStock() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, stock }: { id: string; stock: number }) => updateDoc(doc(db, 'products', id), { stock: Math.max(0, stock), updatedAt: serverTimestamp() }),
-    onSuccess: () => queryClient.invalidateQueries(),
+    onSuccess: (_, { id, stock }) => patchProduct(queryClient, id, { stock: Math.max(0, stock) }),
   })
 }
 
@@ -93,7 +111,7 @@ export function useToggleProductActive() {
   return useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       updateDoc(doc(db, 'products', id), { isActive, updatedAt: serverTimestamp() }),
-    onSuccess: () => queryClient.invalidateQueries(),
+    onSuccess: (_, { id, isActive }) => patchProduct(queryClient, id, { isActive }),
   })
 }
 
@@ -103,7 +121,7 @@ export function useToggleForSale() {
   return useMutation({
     mutationFn: ({ id, forSale }: { id: string; forSale: boolean }) =>
       updateDoc(doc(db, 'products', id), { forSale, updatedAt: serverTimestamp() }),
-    onSuccess: () => queryClient.invalidateQueries(),
+    onSuccess: (_, { id, forSale }) => patchProduct(queryClient, id, { forSale }),
   })
 }
 
@@ -115,7 +133,7 @@ export function useDeleteProduct() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => deleteDoc(doc(db, 'products', id)),
-    onSuccess: () => queryClient.invalidateQueries(),
+    onSuccess: (_, id) => patchProduct(queryClient, id, null),
   })
 }
 

@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react'
 import { imageUrl } from '../firebase/config'
+import { thumbUrl } from '../lib/thumbs'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'accent' }
 
@@ -336,7 +337,26 @@ export function ProductImage({ src, alt, tint = 'bg-sand-200' }: { src?: string;
       </div>
     )
   }
-  return <img src={imageUrl(src)} alt={alt} className="aspect-square w-full rounded-2xl object-cover" loading="lazy" />
+  return <SmallImage key={src} src={src} alt={alt} className="aspect-square w-full rounded-2xl object-cover" />
+}
+
+/**
+ * Фото товару в маленькому розмірі (картки, списки, стрічки мініатюр) — показує легку мініатюру (lib/thumbs).
+ * Якщо мініатюри ще немає (старе фото), тихо показує саме фото.
+ */
+export function SmallImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [failed, setFailed] = useState(false)
+  const thumb = thumbUrl(src)
+  return (
+    <img
+      src={imageUrl(failed ? src : thumb)}
+      alt={alt}
+      className={className}
+      loading="lazy"
+      decoding="async"
+      onError={() => thumb !== src && setFailed(true)}
+    />
+  )
 }
 
 export function Section({ title, icon, children }: { title: string; icon?: ReactNode; children: ReactNode }) {

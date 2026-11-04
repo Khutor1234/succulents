@@ -7,6 +7,7 @@ import { db } from '../../firebase/config'
 import { parseForms, withForms } from '../../lib/plantName'
 import { PLANT_CATEGORY, PLANT_TAGS, STATE_TAGS, type PlantTag } from '../../lib/plants'
 import type { Product } from '../../lib/types'
+import { isProductQuery } from './api'
 
 /** Firestore приймає до 500 записів за раз — ділимо з запасом. */
 const CHUNK = 400
@@ -65,7 +66,8 @@ function useBulk() {
       }
       return done
     },
-    onSuccess: () => queryClient.invalidateQueries(),
+    // Змінились лише товари — перечитуємо тільки їх (а не замовлення, покупців, аналітику…)
+    onSuccess: () => queryClient.invalidateQueries({ predicate: (q) => isProductQuery(q.queryKey) }),
   })
 }
 

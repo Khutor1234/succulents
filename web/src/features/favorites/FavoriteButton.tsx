@@ -65,7 +65,7 @@ export function FavoriteButton({ product, variant = 'overlay', className = '' }:
       aria-pressed={on}
       aria-label={t(on ? 'favorites.removeNamed' : 'favorites.addNamed', { name })}
       title={t(on ? 'favorites.inFavorites' : 'favorites.add')}
-      className={`flex h-10 min-w-10 items-center justify-center gap-1 rounded-full bg-sand-50/90 shadow-sm backdrop-blur transition-transform hover:scale-110 active:scale-95 ${likes > 0 ? 'px-2.5' : ''} ${
+      className={`flex h-10 min-w-10 items-center justify-center gap-1 rounded-full bg-sand-50/95 shadow-sm transition-transform hover:scale-110 active:scale-95 ${likes > 0 ? 'px-2.5' : ''} ${
         on ? 'text-sunset-600' : 'text-ink'
       } ${className}`}
     >

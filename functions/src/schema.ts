@@ -25,6 +25,11 @@ export const createOrderSchema = z.object({
   lang: z.enum(['uk', 'en']).default('uk'),
   /** Списати бонуси з рахунку (тільки для залогінених). */
   useBonuses: z.boolean().default(false),
+  /**
+   * Мітка спроби оформлення від сайту: та сама мітка — те саме замовлення. Якщо відповідь сервера загубилась
+   * (зник інтернет) і покупець натиснув ще раз, повертаємо вже створене замовлення, а не робимо друге.
+   */
+  requestId: z.string().regex(/^[A-Za-z0-9-]{8,64}$/).optional(),
 })
 
 export type CreateOrderInput = z.output<typeof createOrderSchema>

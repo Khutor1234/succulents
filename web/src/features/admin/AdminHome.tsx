@@ -1,7 +1,10 @@
-import { BarChart3, ChevronRight, ClipboardList, FileSpreadsheet, GitFork, LayoutGrid, Plus, Sparkles, Tags, Users, type LucideIcon } from 'lucide-react'
+import { useMutation } from '@tanstack/react-query'
+import { httpsCallable } from 'firebase/functions'
+import { BarChart3, ChevronRight, ClipboardList, FileSpreadsheet, GitFork, Images, LayoutGrid, Plus, Sparkles, Tags, Users, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
+import { functions } from '../../firebase/config'
 import { PLANT_CATEGORY } from '../../lib/plants'
 import { useOrders } from './api'
 
@@ -52,8 +55,43 @@ export function AdminHome() {
       <Group title={t('admin.home.tools')} hint={t('admin.home.toolsHint')}>
         <Tile to="/admin/import" icon={FileSpreadsheet} title={t('admin.importFromSheet')} text={t('admin.home.importText')} />
         <Tile to="/admin/forms" icon={Sparkles} title={t('admin.formFixes.title')} text={t('admin.home.formsText')} />
+        <ThumbsTile />
       </Group>
     </div>
+  )
+}
+
+const makeThumbs = httpsCallable<void, { made: number; failed: number; photos: number }>(functions, 'makeThumbs', { timeout: 540_000 })
+
+/** Мініатюри для старих фото товарів (функція makeThumbs): натиснули — і чекаємо, поки сервер усе зробить. */
+function ThumbsTile() {
+  const { t } = useTranslation()
+  const run = useMutation({ mutationFn: async () => (await makeThumbs()).data })
+  return (
+    <button
+      type="button"
+      onClick={() => run.mutate()}
+      disabled={run.isPending}
+      className="group flex items-start gap-3 rounded-3xl border-2 border-sand-200 bg-sand-50 p-4 text-left transition-colors hover:border-brand-500 disabled:cursor-wait"
+    >
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-100 text-brand-600">
+        <Images size={22} strokeWidth={2.2} aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1" aria-live="polite">
+        <span className="block font-bold">{t('admin.home.thumbs')}</span>
+        <span className="mt-0.5 block text-sm leading-snug text-sand-700">
+          {run.isPending
+            ? t('admin.home.thumbsWorking')
+            : run.data
+              ? t('admin.home.thumbsDone', { made: run.data.made, photos: run.data.photos })
+              : t('admin.home.thumbsText')}
+        </span>
+        {run.data && run.data.failed > 0 && (
+          <span className="mt-1 block text-sm font-bold text-sunset-600">{t('admin.home.thumbsFailed', { count: run.data.failed })}</span>
+        )}
+        {run.isError && <span className="mt-1 block text-sm font-bold text-red-700">{t('admin.home.thumbsError')}</span>}
+      </span>
+    </button>
   )
 }
 

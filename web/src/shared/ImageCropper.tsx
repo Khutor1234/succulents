@@ -1,10 +1,32 @@
 import { Check, Minus, Plus, RotateCcw, RotateCw, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent, type WheelEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const MAX_ZOOM = 4
-// Найбільша сторона готового фото (далі його ще й стискає завантаження)
-const OUT_MAX = 1600
+// Найбільша сторона готового фото — як і на сайті (imageUpload), щоб не зменшувати двічі
+const OUT_MAX = 1200
+// Найбільша сторона копії, з якою працює редактор: вистачає й для наближення, а пам’яті треба в рази менше
+const WORK_MAX = 2400
+
+/** Робоча копія фото: малюнок для вирізання й тимчасова адреса, щоб показати його на екрані. */
+interface Source {
+  canvas: HTMLCanvasElement
+  url: string
+  width: number
+  height: number
+}
+
+async function toSource(canvas: HTMLCanvasElement): Promise<Source | null> {
+  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/webp', 0.95))
+  return blob ? { canvas, url: URL.createObjectURL(blob), width: canvas.width, height: canvas.height } : null
+}
+
+/** Звільняє пам’ять копії: тимчасову адресу й сам малюнок (браузер сам робить це не одразу). */
+function release(src: Source | null) {
+  if (!src) return
+  URL.revokeObjectURL(src.url)
+  src.canvas.width = src.canvas.height = 0
+}
 
 /**
  * Обрізання фото перед завантаженням: рамка потрібної форми (квадрат для товару, 16:9 для заставки статті),
@@ -28,9 +50,9 @@ export function ImageCropper({
   const { t } = useTranslation()
   const dialog = useRef<HTMLDialogElement>(null)
   const frame = useRef<HTMLDivElement>(null)
-  const [img, setImg] = useState<HTMLImageElement | null>(null)
-  // Тимчасова адреса вибраного файлу — щоб показати його без завантаження
-  const url = useMemo(() => URL.createObjectURL(file), [file])
+  const [img, setImg] = useState<Source | null>(null)
+  // Поточна робоча копія — щоб звільнити її пам’ять після повороту й коли редактор закривають
+  const owned = useRef<Source | null>(null)
   const [frameW, setFrameW] = useState(320)
   const [zoom, setZoom] = useState(1)
   // Зсув центру фото відносно центру рамки, у пікселях рамки
@@ -42,12 +64,31 @@ export function ImageCropper({
   useEffect(() => {
     dialog.current?.showModal()
   }, [])
+  // Фото з телефона буває 4000×3000 і більше — у повному розмірі воно займає сотні мегабайт пам’яті.
+  // Тож одразу зменшуємо його до WORK_MAX і далі працюємо лише з цією меншою копією
   useEffect(() => {
-    const image = new Image()
-    image.onload = () => setImg(image)
-    image.src = url
-    // Адресу не звільняємо: у режимі розробки React запускає ефект двічі, і фото зникло б. Пам’ять звільниться з перезавантаженням сторінки
-  }, [url])
+    let cancelled = false
+    void createImageBitmap(file)
+      .then((bitmap) => {
+        const scale = Math.min(1, WORK_MAX / Math.max(bitmap.width, bitmap.height))
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(bitmap.width * scale)
+        canvas.height = Math.round(bitmap.height * scale)
+        canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+        bitmap.close()
+        return toSource(canvas)
+      })
+      .then((src) => {
+        if (cancelled) return release(src)
+        owned.current = src
+        setImg(src)
+      })
+    return () => {
+      cancelled = true
+      release(owned.current)
+      owned.current = null
+    }
+  }, [file])
 
   // Ширина рамки — за шириною вікна (телефон) і не більше 520px
   useEffect(() => {
@@ -62,10 +103,10 @@ export function ImageCropper({
 
   const frameH = frameW / aspect
   // Масштаб, за якого фото якраз закриває рамку (як object-cover), помножений на наближення
-  const base = img ? Math.max(frameW / img.naturalWidth, frameH / img.naturalHeight) : 1
+  const base = img ? Math.max(frameW / img.width, frameH / img.height) : 1
   const scale = base * zoom
-  const shownW = img ? img.naturalWidth * scale : frameW
-  const shownH = img ? img.naturalHeight * scale : frameH
+  const shownW = img ? img.width * scale : frameW
+  const shownH = img ? img.height * scale : frameH
 
   // Фото не можна відсунути так, щоб у рамці з’явилась порожнеча
   const clamp = (o: { x: number; y: number }, w = shownW, h = shownH) => ({
@@ -79,7 +120,7 @@ export function ImageCropper({
     // Під час наближення тримаємо той самий центр кадру
     const k = z / zoom
     setZoom(z)
-    setOffset((o) => clamp({ x: o.x * k, y: o.y * k }, img.naturalWidth * base * z, img.naturalHeight * base * z))
+    setOffset((o) => clamp({ x: o.x * k, y: o.y * k }, img.width * base * z, img.height * base * z))
   }
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
@@ -114,14 +155,15 @@ export function ImageCropper({
     // Яка частина оригіналу видна в рамці (у пікселях оригіналу)
     const sw = frameW / scale
     const sh = frameH / scale
-    const sx = img.naturalWidth / 2 - (frameW / 2 + offset.x) / scale
-    const sy = img.naturalHeight / 2 - (frameH / 2 + offset.y) / scale
+    const sx = img.width / 2 - (frameW / 2 + offset.x) / scale
+    const sy = img.height / 2 - (frameH / 2 + offset.y) / scale
     const outScale = Math.min(1, OUT_MAX / Math.max(sw, sh))
     const canvas = document.createElement('canvas')
     canvas.width = Math.round(sw * outScale)
     canvas.height = Math.round(sh * outScale)
-    canvas.getContext('2d')!.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
+    canvas.getContext('2d')!.drawImage(img.canvas, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
     const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/webp', 0.9))
+    canvas.width = canvas.height = 0
     setSaving(false)
     if (blob) onDone(new File([blob], file.name.replace(/\.[^.]+$/, '') + '.webp', { type: 'image/webp' }))
   }
@@ -130,21 +172,20 @@ export function ImageCropper({
   async function rotate(dir: 1 | -1) {
     if (!img) return
     const canvas = document.createElement('canvas')
-    canvas.width = img.naturalHeight
-    canvas.height = img.naturalWidth
+    canvas.width = img.height
+    canvas.height = img.width
     const ctx = canvas.getContext('2d')!
     ctx.translate(canvas.width / 2, canvas.height / 2)
     ctx.rotate((dir * Math.PI) / 2)
-    ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2)
-    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/webp', 0.95))
-    if (!blob) return
-    const turned = new Image()
-    turned.onload = () => {
-      setImg(turned)
-      setZoom(1)
-      setOffset({ x: 0, y: 0 })
-    }
-    turned.src = URL.createObjectURL(blob)
+    ctx.drawImage(img.canvas, -img.width / 2, -img.height / 2)
+    const turned = await toSource(canvas)
+    if (!turned) return
+    const prev = owned.current
+    owned.current = turned
+    setImg(turned)
+    setZoom(1)
+    setOffset({ x: 0, y: 0 })
+    release(prev)
   }
 
   const btn = 'flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sand-200 text-ink hover:bg-sand-300 disabled:opacity-40'
@@ -173,7 +214,7 @@ export function ImageCropper({
         >
           {img && (
             <img
-              src={img.src}
+              src={img.url}
               alt=""
               draggable={false}
               className="pointer-events-none absolute top-1/2 left-1/2 max-w-none"

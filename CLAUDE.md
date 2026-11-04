@@ -36,6 +36,11 @@ firestore.rules, storage.rules, firestore.indexes.json
 - Назви рослин і теги-форми: `web/src/lib/plants.ts`, `web/src/lib/plantName.ts`.
   Повна назва = рід + сорт + форми з галочок, напр. «Echeveria Lola variegata».
 - Ціни зберігаються в **копійках** (`price: 28000` = 280 грн).
+- Фото товарів: `products/<id>.webp` (1200 px) + мініатюра `products/thumbs/<id>.webp` (480 px, `web/src/lib/thumbs.ts`).
+  Картки й списки показують мініатюру через `SmallImage` (`shared/ui.tsx`), без неї — саме фото. Нові мініатюри робить
+  сайт при завантаженні; для старих — плитка «Мініатюри фото» в адмінці (функція `makeThumbs`, sharp).
+- Швидкі дії продавця на картці (`useSetStock` тощо в `admin/api.ts`) правлять товар у кеші, а не перечитують сайт.
+- Подвійне замовлення: сайт шле `requestId`, `createOrder` пам'ятає його в `orderRequests/{id}` і на повтор віддає те саме замовлення.
 
 ## Ролі й видимість
 

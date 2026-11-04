@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { imageUrl } from '../../firebase/config'
 import { ImageCropper } from '../../shared/ImageCropper'
+import { SmallImage } from '../../shared/ui'
 import { uploadProductImage } from './imageUpload'
 
 /** Кругла кнопка-іконка в куті фото. */
@@ -81,7 +82,7 @@ export function ImagesEditor({ images, onChange, onUploadingChange }: Props) {
               aria-label={t('admin.fields.viewPhoto', { n: i + 1 })}
               className="block w-full overflow-hidden rounded-lg focus-visible:ring-4 focus-visible:ring-brand-500"
             >
-              <img src={imageUrl(url)} alt="" className="aspect-square w-full object-cover transition-transform group-hover:scale-105" />
+              <SmallImage src={url} alt="" className="aspect-square w-full object-cover transition-transform group-hover:scale-105" />
               {/* Лупа при наведенні — підказка, що фото можна відкрити */}
               <span className="absolute inset-0 flex items-center justify-center bg-ink/0 text-sand-50 opacity-0 transition group-hover:bg-ink/30 group-hover:opacity-100" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -234,7 +235,7 @@ function PhotoViewer({ images, index, onIndex, onClose, onMakeMain, onRemove }: 
                 aria-current={i === index}
                 className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 ${i === index ? 'border-sunset-500' : 'border-transparent opacity-60 hover:opacity-100'}`}
               >
-                <img src={imageUrl(u)} alt="" className="h-full w-full object-cover" />
+                <SmallImage src={u} alt="" className="h-full w-full object-cover" />
               </button>
             ))}
           </div>
