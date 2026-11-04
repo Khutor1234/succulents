@@ -248,7 +248,7 @@ export function CategoryPage() {
   const { isVisible, nameOf, isLoading: settingsLoading } = useCategories()
   const isSeller = useAuth((s) => s.role === 'seller')
   const products = useProducts(category ?? '', isSeller)
-  const filters = usePlantFilters()
+  const filters = usePlantFilters(isSeller)
 
   if (!category || (!settingsLoading && !isVisible(category))) return <Navigate to="/" replace />
 
@@ -272,15 +272,19 @@ export function CategoryPage() {
               {t('catalog.resetFilters')}
             </button>
           )}
-          {/* «Лише в наявності» — сховати рослини, яких зараз немає (за замовчуванням вони просто йдуть у кінці) */}
-          <label className="ml-auto inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl px-2 text-sm font-bold text-sand-700 hover:bg-sand-200">
+          {/* «Лише в наявності» — сховати рослини, яких зараз немає (за замовчуванням вони просто йдуть у кінці).
+              Продавцю — «Як бачить покупець»: лише те, що покупець зараз може замовити */}
+          <label
+            title={isSeller ? t('catalog.buyerViewHint') : undefined}
+            className="ml-auto inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl px-2 text-sm font-bold text-sand-700 hover:bg-sand-200"
+          >
             <input
               type="checkbox"
               checked={filters.inStock}
               onChange={(e) => filters.setInStock(e.target.checked)}
               className="h-5 w-5 accent-brand-600"
             />
-            {t('catalog.inStockOnly')}
+            {t(isSeller ? 'catalog.buyerView' : 'catalog.inStockOnly')}
           </label>
           <label className="flex items-center gap-2 text-sm font-bold text-sand-700">
             {t('catalog.sort')}

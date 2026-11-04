@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router'
 import { ALL_TAGS, type PlantTag } from '../../lib/plants'
 import type { PlantOrigin, Product } from '../../lib/types'
+import { buyerStock } from './api'
 
 // За замовчуванням — за абеткою (у ProductGrid спершу ті, що в наявності, потім решта — кожна група за абеткою)
 export const SORTS = ['name', 'new', 'price-asc', 'price-desc', 'no-photo-first', 'photo-first'] as const
@@ -31,8 +32,10 @@ type Key = 'genus' | 'tag' | 'origin' | 'breeder'
 /**
  * Фільтри й сортування зберігаються в адресі (?genus=Echeveria&tag=variegata&origin=natural&breeder=Dick%20Wright&sort=price-asc) —
  * відфільтрованим списком можна поділитись. У кожному фільтрі вибирається одне значення.
+ * `seller` — товари продавця зі справжніми залишками: тоді «в наявності» (?stock=1) рахуємо так, як побачить покупець —
+ * лише показані, готові до продажу й без останньої рослини (buyerStock). У покупця залишки вже такі.
  */
-export function usePlantFilters() {
+export function usePlantFilters(seller = false) {
   const [params, setParams] = useSearchParams()
   const genus = params.get('genus') ?? ''
   const tagParam = params.get('tag') ?? ''
@@ -63,7 +66,7 @@ export function usePlantFilters() {
     (except === 'tag' || !tag || !!p.tags?.includes(tag)) &&
     (except === 'origin' || !origin || originOf(p) === origin) &&
     (except === 'breeder' || !breeder || p.breeder === breeder) &&
-    (!inStock || p.stock > 0)
+    (!inStock || (seller ? p.isActive && buyerStock(p) > 0 : p.stock > 0))
 
   const activeCount = Number(!!genus) + Number(!!tag) + Number(!!origin) + Number(!!breeder) + Number(inStock)
 
