@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowRight, Layers, Network, Users, UsersRound, X, type LucideIcon } from 'lucide-react'
+import { ArrowDown, ArrowRight, Layers, Network, UsersRound, X, type LucideIcon } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
@@ -7,15 +7,16 @@ import { nameKey } from '../../lib/plantName'
 import { useAllProducts } from './api'
 import { buildPedigrees } from './pedigrees'
 
-const TABS = ['trios', 'pairs', 'families', 'forms'] as const
+// «Батько й дитина» прибрано: ті самі пари вже є в «Нащадках» (батько і всі його діти)
+const TABS = ['trios', 'families', 'forms'] as const
 type Tab = (typeof TABS)[number]
-const TAB_ICONS: Record<Tab, LucideIcon> = { trios: UsersRound, pairs: Users, families: Network, forms: Layers }
+const TAB_ICONS: Record<Tab, LucideIcon> = { trios: UsersRound, families: Network, forms: Layers }
 // «Нащадки»: ширина картки — однакова для рослини-батька і кожної дитини
 const FAMILY_CARD = 'w-28 shrink-0 sm:w-32'
 
 /**
- * «Родоводи» (лише продавець): підбірки з колекції — мама × тато → дитина, один із батьків → дитина,
- * рослина-батько → усі її діти, та сама рослина в різних формах. Вкладка — в адресі (?tab=pairs).
+ * «Родоводи» (лише продавець): підбірки з колекції — мама × тато → дитина,
+ * рослина-батько → усі її діти, та сама рослина в різних формах. Вкладка — в адресі (?tab=families).
  */
 export function PedigreesPage() {
   const { t } = useTranslation()
@@ -28,10 +29,9 @@ export function PedigreesPage() {
   const q = nameKey(search.trim())
   const has = (...ps: Product[]) => !q || ps.some((p) => nameKey(p.name.uk).includes(q))
   const trios = all.trios.filter((x) => has(x.child, ...x.parents))
-  const pairs = all.pairs.filter((x) => has(x.child, x.parent))
   const forms = all.formGroups.filter((g) => has(...g.items))
   const families = all.families.filter((f) => has(f.parent, ...f.children.map((c) => c.child)))
-  const counts: Record<Tab, number> = { trios: trios.length, pairs: pairs.length, families: families.length, forms: forms.length }
+  const counts: Record<Tab, number> = { trios: trios.length, families: families.length, forms: forms.length }
 
   return (
     <div className="space-y-5">
@@ -97,23 +97,6 @@ export function PedigreesPage() {
                 <Sign><ArrowRight size={18} strokeWidth={2.6} aria-hidden /></Sign>
                 <Mini p={child} highlight />
               </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {tab === 'pairs' && (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {pairs.map(({ child, parent, other }) => (
-            <li key={child.id} className="rounded-3xl border-2 border-sand-200 bg-sand-50 p-3 sm:p-4">
-              <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2">
-                <Mini p={parent} />
-                <Sign><ArrowRight size={18} strokeWidth={2.6} aria-hidden /></Sign>
-                <Mini p={child} highlight />
-              </div>
-              <p className="mt-2 text-sm text-sand-700">
-                {other ? t('admin.pedigrees.otherParent', { name: other }) : t('admin.pedigrees.oneParent')}
-              </p>
             </li>
           ))}
         </ul>

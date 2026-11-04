@@ -1,6 +1,7 @@
 import { ArrowRight, ChevronLeft, ChevronRight, EyeOff, Leaf } from 'lucide-react'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { withCuttingMark } from '../../lib/plantName'
 import { Link } from 'react-router'
 import { useLang } from '../../i18n'
 import { formatPrice, pick } from '../../lib/format'
@@ -77,7 +78,9 @@ export function ArticleExamples({ filter, compact = false }: { filter: ExampleFi
           <ProductImage src={p.images[0]} alt={pick(p.name, lang)} tint={i % 2 ? 'bg-brand-100' : 'bg-sand-300/60'} />
         </div>
       </div>
-      <p className="mt-2 line-clamp-2 px-0.5 text-sm leading-snug font-bold group-hover:text-brand-600">{pick(p.name, lang)}</p>
+      <p className="mt-2 line-clamp-2 px-0.5 text-sm leading-snug font-bold group-hover:text-brand-600">
+        {withCuttingMark(pick(p.name, lang), p.tags?.includes('cutting'), t('product.cuttingMark'))}
+      </p>
       <p className="px-0.5 text-sm font-extrabold text-sunset-600">{formatPrice(p.price, lang)}</p>
     </Link>
   )

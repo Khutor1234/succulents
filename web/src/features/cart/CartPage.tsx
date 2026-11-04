@@ -1,5 +1,6 @@
 import { ArrowRight, Gift, Info } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { withCuttingMark } from '../../lib/plantName'
 import { ICON } from '../../shared/icon'
 import { BONUS_RATE } from '../account/api'
 import { useAuth } from '../auth/authStore'
@@ -55,7 +56,7 @@ export function CartPage() {
               <div className="flex min-w-0 items-start justify-between gap-2">
                 <div className="min-w-0">
                   <Link to={`/product/${item.slug}`} className="line-clamp-2 leading-snug font-bold hover:text-brand-600">
-                    {name}
+                    {withCuttingMark(name, item.cutting, t('product.cuttingMark'))}
                   </Link>
                   <p className="mt-0.5 text-sm text-sand-700">{t('cart.perItem', { price: formatPrice(item.price, lang) })}</p>
                 </div>

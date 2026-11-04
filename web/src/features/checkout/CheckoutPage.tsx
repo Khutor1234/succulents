@@ -4,6 +4,7 @@ import { httpsCallable } from 'firebase/functions'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { withCuttingMark } from '../../lib/plantName'
 import { Link, Navigate } from 'react-router'
 import { CreditCard, Truck, User } from 'lucide-react'
 import { reportError, track } from '../../lib/monitoring'
@@ -253,7 +254,7 @@ export function CheckoutPage() {
           {items.map((i) => (
             <li key={i.productId} className="flex justify-between gap-2">
               <span>
-                {pick(i.name, lang)} × {i.qty}
+                {withCuttingMark(pick(i.name, lang), i.cutting, t('product.cuttingMark'))} × {i.qty}
               </span>
               <span className="shrink-0">{formatPrice(i.price * i.qty, lang)}</span>
             </li>

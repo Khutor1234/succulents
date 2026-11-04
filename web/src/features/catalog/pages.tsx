@@ -12,9 +12,10 @@ import { SellerOrdersPanel } from '../admin/SellerOrdersPanel'
 import { useAuth } from '../auth/authStore'
 import { AddToCart } from '../cart/AddToCart'
 import { FavoriteButton } from '../favorites/FavoriteButton'
-import { useHomePicks, useProduct, useProducts } from './api'
+import { forBuyer, useHomePicks, useProduct, useProducts } from './api'
 import { PLANT_CATEGORY } from '../../lib/plants'
 import type { Product } from '../../lib/types'
+import { withCuttingMark } from '../../lib/plantName'
 import { useCategories } from './categories'
 import { ParentsLinks } from './ParentsLinks'
 import { PlantFilters, TagBadges } from './PlantFilters'
@@ -246,8 +247,8 @@ export function CategoryPage() {
   const { category } = useParams()
   const { isVisible, nameOf, isLoading: settingsLoading } = useCategories()
   const realSeller = useAuth((s) => s.role === 'seller')
-  // Продавцю — перемикач «Як бачить покупець» (?view=buyer): ті самі дані, що й у покупця (залишки без останньої рослини,
-  // лише показані й готові до продажу), звичайні картки й фільтри — сторінка точно така, як у відвідувача
+  // Продавцю — перемикач «Як бачить покупець» (?view=buyer): які рослини й у якому порядку бачить покупець (лише показані,
+  // наявність — без тих, що не продаються, і без останньої рослини). Картки ж лишаються продавця, зі справжніми залишками
   const [params, setParams] = useSearchParams()
   const buyerView = realSeller && params.get('view') === 'buyer'
   const isSeller = realSeller && !buyerView
@@ -257,12 +258,19 @@ export function CategoryPage() {
     else p.delete('view')
     setParams(p, { replace: true, preventScrollReset: true })
   }
-  const products = useProducts(category ?? '', isSeller)
+  const products = useProducts(category ?? '', realSeller)
   const filters = usePlantFilters()
 
   if (!category || (!settingsLoading && !isVisible(category))) return <Navigate to="/" replace />
 
-  const shown = products.data ? filters.apply(products.data) : undefined
+  // У режимі «як бачить покупець» фільтруємо й сортуємо покупцеву версію товарів (як у ProductGrid: спершу ті,
+  // що є в наявності), а показуємо ті самі товари зі справжніми даними — щоб «±» та інші кнопки працювали як завжди
+  const list = buyerView ? products.data?.filter((p) => p.isActive).map(forBuyer) : products.data
+  let shown = list ? filters.apply(list) : undefined
+  if (buyerView && shown && products.data) {
+    const real = new Map(products.data.map((p) => [p.id, p]))
+    shown = [...shown].sort((a, b) => Number(a.stock === 0) - Number(b.stock === 0)).map((p) => real.get(p.id)!)
+  }
 
   return (
     <div className="space-y-6">
@@ -299,8 +307,8 @@ export function CategoryPage() {
       <BonusPromo compact />
       <Status isLoading={products.isLoading} isError={products.isError} />
       {products.data?.length === 0 && <p className="text-sand-700">{t('catalog.empty')}</p>}
-      {products.data && products.data.length > 0 && <PlantFilters products={products.data} filters={filters} category={category} />}
-      {shown && products.data!.length > 0 && (
+      {list && list.length > 0 && <PlantFilters products={list} filters={filters} category={category} />}
+      {shown && list!.length > 0 && (
         <div className="flex flex-wrap items-center gap-3">
           <p className="font-bold">
             {t(category === PLANT_CATEGORY ? 'catalog.found' : 'catalog.foundProducts', { count: shown.length })}
@@ -337,10 +345,8 @@ export function CategoryPage() {
       {shown && (
         <ProductGrid
           products={shown}
-          sellerTools={buyerView ? undefined : { category }}
-          keepOrder={isSeller && SELLER_SORTS.includes(filters.sort)}
-          asBuyer={buyerView}
-          homePin={!buyerView}
+          sellerTools={{ category }}
+          keepOrder={buyerView || (isSeller && SELLER_SORTS.includes(filters.sort))}
         />
       )}
     </div>
@@ -429,7 +435,9 @@ export function ProductPage() {
               </Link>
             )}
           </div>
-          <h1 className="mt-4 font-display text-4xl leading-tight font-extrabold text-brand-600 sm:text-5xl">{name}</h1>
+          <h1 className="mt-4 font-display text-4xl leading-tight font-extrabold text-brand-600 sm:text-5xl">
+            {withCuttingMark(name, product.tags?.includes('cutting'), t('product.cuttingMark'))}
+          </h1>
           <TagBadges tags={product.tags} className="mt-3" />
           {product.aliases && product.aliases.length > 0 && (
             <p className="mt-3 text-sand-700">

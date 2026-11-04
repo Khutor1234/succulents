@@ -5,7 +5,6 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { functions } from '../../firebase/config'
-import { PLANT_CATEGORY } from '../../lib/plants'
 import { useOrders } from './api'
 
 /**
@@ -41,7 +40,7 @@ export function AdminHome() {
       </Link>
 
       <Group title={t('admin.home.products')} hint={t('admin.home.productsHint')}>
-        <Tile to={`/c/${PLANT_CATEGORY}`} icon={LayoutGrid} title={t('admin.home.catalog')} text={t('admin.home.catalogText')} />
+        <Tile to="/admin/products" icon={LayoutGrid} title={t('admin.home.catalog')} text={t('admin.home.catalogText')} />
         <Tile to="/admin/products/new" icon={Plus} title={t('admin.addProduct')} text={t('admin.home.addText')} accent />
       </Group>
 

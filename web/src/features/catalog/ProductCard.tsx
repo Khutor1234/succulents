@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useLang } from '../../i18n'
 import { formatPrice, pick } from '../../lib/format'
+import { withCuttingMark } from '../../lib/plantName'
 import { PLANT_CATEGORY } from '../../lib/plants'
 import { KEEP_LAST } from '../../lib/shop'
 import type { Product } from '../../lib/types'
@@ -36,14 +37,11 @@ export function ProductCard({
   index = 0,
   fullNames = false,
   asBuyer = false,
-  homePin = true,
 }: {
   product: Product
   index?: number
   fullNames?: boolean
   asBuyer?: boolean
-  /** Шпилька «на головну» продавцю (false — у перегляді каталогу «як бачить покупець» картка зовсім як у покупця). */
-  homePin?: boolean
 }) {
   const { t } = useTranslation()
   const lang = useLang()
@@ -98,10 +96,8 @@ export function ProductCard({
         </TagBadges>
         {/* Сердечко й кількість лайків поруч — для всіх */}
         <FavoriteButton product={product} className="absolute top-2 right-2" />
-        {/* Продавцю — скопіювати назву одним натисканням (напр., щоб вставити в таблицю чи переписку): під сердечком */}
-        {isSeller && <CopyName name={name} className="absolute top-14 right-2" />}
         {/* Продавцю — шпилька «на головну»: позначені рослини першими в «Нових надходженнях» */}
-        {realSeller && homePin && <HomePin product={product} name={name} className={`absolute right-2 ${asBuyer ? 'top-14' : 'top-26'}`} />}
+        {realSeller && <HomePin product={product} name={name} className="absolute top-14 right-2" />}
         {/* Походження — плашкою внизу фото: під назвою не займає місця, тож картки з батьками й без однакові.
             Кожен батько — окреме посилання в пошук. */}
         {product.category === PLANT_CATEGORY && (
@@ -153,11 +149,15 @@ export function ProductCard({
       {/* flex-1: кнопки «У кошик» стоять на одній лінії, навіть якщо назви різної довжини.
           Вид окремо не пишемо — він і так перше слово назви («Echeveria Lola») */}
       <div className="group mx-1.5 mt-2.5 flex flex-1 justify-between gap-3">
-        <h3 className="leading-snug font-bold">
-          <Link to={`/product/${product.slug}`} className="hover:text-brand-600">
-            {name}
-          </Link>
-        </h3>
+        {/* Продавцю — одразу за назвою «скопіювати назву» (напр., щоб вставити в таблицю чи переписку) */}
+        <div className="flex min-w-0 items-start gap-1">
+          <h3 className="leading-snug font-bold">
+            <Link to={`/product/${product.slug}`} className="hover:text-brand-600">
+              {withCuttingMark(name, product.tags?.includes('cutting'), t('product.cuttingMark'))}
+            </Link>
+          </h3>
+          {isSeller && <CopyName name={name} />}
+        </div>
         <Link
           to={`/product/${product.slug}`}
           tabIndex={-1}
@@ -168,7 +168,6 @@ export function ProductCard({
       </div>
       {/* Покупцю — «У кошик»; продавцю кошик не потрібен — замість нього редагування, копія й видалення */}
       {isSeller && <SellerStock product={product} />}
-      {isSeller && <SellerForSale product={product} name={name} />}
       <div className="mt-2.5 flex gap-2">
         {isSeller ? (
           <SellerActions product={product} name={name} />
@@ -193,13 +192,11 @@ export function ProductGrid({
   sellerTools,
   keepOrder = false,
   asBuyer = false,
-  homePin = true,
 }: {
   products: Product[]
   sellerTools?: { category?: string }
   keepOrder?: boolean
   asBuyer?: boolean
-  homePin?: boolean
 }) {
   const { t } = useTranslation()
   const lang = useLang()
@@ -254,7 +251,7 @@ export function ProductGrid({
           const on = selected.has(p.id)
           return (
             <div key={p.id} className="relative flex flex-col [&>article]:flex-1">
-              <ProductCard product={p} index={i} asBuyer={asBuyer} homePin={homePin} />
+              <ProductCard product={p} index={i} asBuyer={asBuyer} />
               {/* Режим вибору: картка — одна велика кнопка-галочка (кнопки картки й посилання не спрацьовують) */}
               {tools && selecting && (
                 <button
@@ -296,15 +293,17 @@ export function ProductGrid({
 
 const rank = (p: Product) => (!p.isActive ? 2 : p.stock === 0 ? 1 : 0)
 
-const ICON_LINK =
-  'flex min-h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 transition-colors disabled:opacity-50'
+const ICON_BASE = 'flex shrink-0 items-center justify-center rounded-xl border-2 transition-colors disabled:opacity-50'
+const ICON_LINK = `${ICON_BASE} min-h-11 w-11`
+/** Квадратна кнопка-іконка продавця: на картці — 44 px; `compact` — менша, для рядків списку товарів в адмінці. */
+const iconBtn = (compact = false) => (compact ? `${ICON_BASE} h-9 w-9` : ICON_LINK)
 
-/** Кнопки продавця на картці: редагувати, показати/приховати, створити копію, видалити (з підтвердженням). */
+/** Кнопки продавця на картці: редагувати, показати/приховати, у продажу / не продається, видалити (з підтвердженням). */
 /**
  * Продавцю на картці: «На складі − N +» — змінити залишок одразу, без форми редагування.
  * Число змінюється миттєво; у базу зберігаємо, коли кнопки на мить перестали натискати (щоб не писати на кожен клік).
  */
-function SellerStock({ product }: { product: Product }) {
+export function SellerStock({ product, compact = false }: { product: Product; compact?: boolean }) {
   const { t } = useTranslation()
   const save = useSetStock()
   const [value, setValue] = useState(product.stock)
@@ -334,27 +333,31 @@ function SellerStock({ product }: { product: Product }) {
       if (next !== product.stock) save.mutate({ id: product.id, stock: next })
     }, 600)
   }
-  const btn = 'flex h-9 w-9 items-center justify-center rounded-lg text-lg font-bold leading-none hover:bg-sand-200 disabled:opacity-30'
+  const btn = `flex ${compact ? 'h-8 w-8' : 'h-9 w-9'} items-center justify-center rounded-lg text-lg font-bold leading-none hover:bg-sand-200 disabled:opacity-30`
+  const stepper = (
+    <div className="flex items-center rounded-xl border-2 border-sand-200 bg-sand-50" role="group" aria-label={t('admin.fields.stock')}>
+      <button type="button" className={btn} onClick={() => change(-1)} disabled={value === 0} aria-label={t('cart.decrease')}>
+        −
+      </button>
+      <span className={`${compact ? 'w-8' : 'w-9'} text-center font-extrabold tabular-nums ${value === 0 ? 'text-red-700' : ''}`} aria-live="polite">
+        {value}
+      </span>
+      <button type="button" className={btn} onClick={() => change(1)} aria-label={t('cart.increase')}>
+        +
+      </button>
+    </div>
+  )
+  if (compact) return stepper
   return (
     <div className="mx-1.5 mt-2 flex items-center justify-between gap-2 text-sm">
       <span className={`font-bold ${value === 0 ? 'text-red-700' : 'text-sand-700'}`}>{t('admin.fields.stock')}</span>
-      <div className="flex items-center rounded-xl border-2 border-sand-200 bg-sand-50" role="group" aria-label={t('admin.fields.stock')}>
-        <button type="button" className={btn} onClick={() => change(-1)} disabled={value === 0} aria-label={t('cart.decrease')}>
-          −
-        </button>
-        <span className="w-9 text-center font-extrabold tabular-nums" aria-live="polite">
-          {value}
-        </span>
-        <button type="button" className={btn} onClick={() => change(1)} aria-label={t('cart.increase')}>
-          +
-        </button>
-      </div>
+      {stepper}
     </div>
   )
 }
 
 /** Шпилька «на головну»: позначена — зелена й зафарбована. */
-function HomePin({ product, name, className = '' }: { product: Product; name: string; className?: string }) {
+export function HomePin({ product, name, className = '', compact = false }: { product: Product; name: string; className?: string; compact?: boolean }) {
   const { t } = useTranslation()
   const toggle = useToggleOnHome()
   const on = !!product.onHome
@@ -372,9 +375,13 @@ function HomePin({ product, name, className = '' }: { product: Product; name: st
       aria-pressed={on}
       aria-label={label}
       title={label}
-      className={`flex h-10 w-10 items-center justify-center rounded-full shadow-sm transition-transform hover:scale-110 active:scale-95 disabled:opacity-60 ${
-        on ? 'bg-brand-600 text-sand-50' : 'bg-sand-50/95 text-ink'
-      } ${className}`}
+      className={
+        compact
+          ? `${iconBtn(true)} ${on ? 'border-brand-600 bg-brand-600 text-sand-50 hover:bg-brand-700' : 'border-sand-300 text-sand-700 hover:border-brand-600'} ${className}`
+          : `flex h-10 w-10 items-center justify-center rounded-full shadow-sm transition-transform hover:scale-110 active:scale-95 disabled:opacity-60 ${
+              on ? 'bg-brand-600 text-sand-50' : 'bg-sand-50/95 text-ink'
+            } ${className}`
+      }
     >
       <Pin size={18} strokeWidth={2.25} fill={on ? 'currentColor' : 'none'} aria-hidden />
     </button>
@@ -382,7 +389,7 @@ function HomePin({ product, name, className = '' }: { product: Product; name: st
 }
 
 /** Копіює назву рослини в буфер обміну; на мить показує галочку «Скопійовано». */
-function CopyName({ name, className = '' }: { name: string; className?: string }) {
+export function CopyName({ name, className = '' }: { name: string; className?: string }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   async function copy() {
@@ -404,89 +411,75 @@ function CopyName({ name, className = '' }: { name: string; className?: string }
   return (
     <button
       type="button"
-      onClick={(e) => {
-        // Кнопка лежить на фото-посиланні — не відкриваємо товар
-        e.preventDefault()
-        e.stopPropagation()
-        void copy()
-      }}
+      onClick={() => void copy()}
       aria-label={t(copied ? 'admin.nameCopied' : 'admin.copyName', { name })}
       title={t(copied ? 'admin.nameCopied' : 'admin.copyName', { name })}
-      // Кругла, як сердечко над нею
-      className={`flex h-10 w-10 items-center justify-center rounded-full shadow-sm transition-transform hover:scale-110 active:scale-95 ${
-        copied ? 'bg-brand-100 text-brand-700' : 'bg-sand-50/95 text-ink'
+      // Невелика, поруч із назвою (висотою з рядок назви)
+      className={`-my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors active:scale-95 ${
+        copied ? 'bg-brand-100 text-brand-700' : 'text-sand-700 hover:bg-sand-200 hover:text-ink'
       } ${className}`}
     >
-      {copied ? <Check size={18} strokeWidth={2.75} aria-hidden /> : <Copy size={18} strokeWidth={2.25} aria-hidden />}
+      {copied ? <Check size={16} strokeWidth={2.75} aria-hidden /> : <Copy size={16} strokeWidth={2.25} aria-hidden />}
     </button>
   )
 }
 
 /**
- * Продавцю: «У продажу» / «Не продається» — одним натисканням. Не на продаж — покупці бачать «немає в наявності»,
- * а продавець і далі бачить справжній залишок (рослина є в колекції, але її не продають).
+ * Продавцю: «У продажу» / «Не продається» — квадратна кнопка-іконка в ряду кнопок картки. Не на продаж — покупці бачать
+ * «немає в наявності», а продавець і далі бачить справжній залишок (рослина є в колекції, але її не продають).
+ * Остання рослина лишається продавцю (KEEP_LAST): кнопка сіра й нічого не перемикає (лише плутало б), а натискання
+ * чи наведення показує пояснення; ⚠ у куті — що це саме той випадок.
  */
-function SellerForSale({ product, name }: { product: Product; name: string }) {
+export function ForSaleButton({ product, name, compact = false }: { product: Product; name: string; compact?: boolean }) {
   const { t } = useTranslation()
   const toggle = useToggleForSale()
   const forSale = product.forSale !== false
-  // Остання рослина лишається продавцю (KEEP_LAST): покупці її не бачать у продажу, тож і кнопка — «Не продається»,
-  // з попередженням поруч. Сама кнопка й далі вмикає/вимикає «Готова до продажу».
-  const lastKept = forSale && product.category === PLANT_CATEGORY && product.stock > 0 && product.stock <= KEEP_LAST
+  const lastKept = product.category === PLANT_CATEGORY && product.stock > 0 && product.stock <= KEEP_LAST
   const sellable = forSale && !lastKept
   const [hint, setHint] = useState(false)
+  const Icon = sellable ? Tag : Ban
   return (
-    <div className="relative mx-1.5 mt-2 flex gap-1.5">
+    <span className="group/hint relative flex">
       <button
         type="button"
-        onClick={() => toggle.mutate({ id: product.id, forSale: !forSale })}
+        onClick={() => (lastKept ? setHint((v) => !v) : toggle.mutate({ id: product.id, forSale: !forSale }))}
+        onBlur={() => setHint(false)}
         disabled={toggle.isPending}
-        aria-pressed={forSale}
-        aria-label={t(forSale ? 'admin.unsellNamed' : 'admin.sellNamed', { name })}
-        title={t(forSale ? 'admin.unsell' : 'admin.sell')}
-        className={`flex min-h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl border-2 px-2 text-sm font-bold transition-colors disabled:opacity-50 ${
-          sellable
-            ? 'border-brand-600 text-brand-600 hover:bg-brand-600 hover:text-sand-50'
-            : 'border-sand-400 bg-sand-200 text-sand-700 hover:bg-sand-300'
+        aria-disabled={lastKept}
+        aria-pressed={lastKept ? undefined : forSale}
+        aria-label={lastKept ? t('admin.lastKept') : t(forSale ? 'admin.unsellNamed' : 'admin.sellNamed', { name })}
+        title={lastKept ? undefined : t(forSale ? 'admin.unsell' : 'admin.sell')}
+        className={`${iconBtn(compact)} relative ${
+          lastKept
+            ? 'cursor-not-allowed border-sand-300 bg-sand-200 text-sand-500'
+            : sellable
+              ? 'border-brand-600 text-brand-600 hover:bg-brand-600 hover:text-sand-50'
+              : 'border-sand-400 bg-sand-200 text-sand-700 hover:bg-sand-300'
         }`}
       >
-        {sellable ? <Tag size={16} strokeWidth={2.4} aria-hidden /> : <Ban size={16} strokeWidth={2.4} aria-hidden />}
-        {sellable ? t('admin.forSaleOn') : t('admin.notForSaleBadge')}
+        <Icon size={18} strokeWidth={2.25} aria-hidden />
+        {lastKept && (
+          <TriangleAlert size={14} strokeWidth={2.6} className="absolute -top-1.5 -right-1.5 rounded-full bg-sand-50 text-sunset-600" aria-hidden />
+        )}
       </button>
       {lastKept && (
-        // Пояснення — підказкою: при наведенні курсора, а на телефоні — натисканням на значок
-        <span className="group/hint relative flex">
-          <button
-            type="button"
-            onClick={() => setHint((v) => !v)}
-            onBlur={() => setHint(false)}
-            aria-label={t('admin.lastKept')}
-            aria-expanded={hint}
-            className="flex min-h-9 w-9 items-center justify-center rounded-xl border-2 border-sand-400 bg-sand-200 text-sunset-600 hover:bg-sand-300"
-          >
-            <TriangleAlert size={17} strokeWidth={2.4} aria-hidden />
-          </button>
-          <span
-            role="tooltip"
-            className={`absolute right-0 bottom-full z-20 mb-2 w-56 rounded-xl bg-ink px-3 py-2 text-xs leading-snug font-bold text-sand-50 shadow-lg ${
-              hint ? 'block' : 'hidden group-hover/hint:block'
-            }`}
-          >
-            {t('admin.lastKept')}
-          </span>
+        <span
+          role="tooltip"
+          className={`absolute right-0 bottom-full z-20 mb-2 w-56 rounded-xl bg-ink px-3 py-2 text-xs leading-snug font-bold text-sand-50 shadow-lg ${
+            hint ? 'block' : 'hidden group-hover/hint:block'
+          }`}
+        >
+          {t('admin.lastKept')}
         </span>
       )}
-    </div>
+    </span>
   )
 }
 
 function SellerActions({ product, name }: { product: Product; name: string }) {
   const { t } = useTranslation()
-  const remove = useDeleteProduct()
-  const toggle = useToggleProductActive()
   // Після збереження форма повернеться на цю сторінку (каталог, пошук, головна…)
   const here = useHere()
-  const VisIcon = product.isActive ? EyeOff : Eye
   return (
     <>
       <Link
@@ -499,41 +492,52 @@ function SellerActions({ product, name }: { product: Product; name: string }) {
         {/* На вузькій картці (дві в ряд на телефоні) — лише олівець, щоб влізли всі кнопки */}
         <span className="hidden @[18rem]:inline">{t('admin.edit')}</span>
       </Link>
-      {/* Око: прихований товар — показати покупцям, видимий — сховати */}
-      <button
-        type="button"
-        onClick={() => toggle.mutate({ id: product.id, isActive: !product.isActive })}
-        disabled={toggle.isPending}
-        aria-label={t(product.isActive ? 'admin.hideNamed' : 'admin.showNamed', { name })}
-        title={t(product.isActive ? 'admin.hide' : 'admin.show')}
-        className={`${ICON_LINK} ${
-          product.isActive
-            ? 'border-sand-700 text-sand-700 hover:bg-sand-700 hover:text-sand-50'
-            : 'border-brand-600 bg-brand-600 text-sand-50 hover:bg-brand-700'
-        }`}
-      >
-        <VisIcon size={18} strokeWidth={2.25} aria-hidden />
-      </button>
-      <Link
-        to={`/admin/products/new?copy=${product.id}`}
-        state={{ from: here }}
-        aria-label={t('admin.copyNamed', { name })}
-        title={t('admin.copy')}
-        className={`${ICON_LINK} border-brand-600 text-brand-600 hover:bg-brand-600 hover:text-sand-50`}
-      >
-        <Copy size={18} strokeWidth={2.25} aria-hidden />
-      </Link>
-      <button
-        type="button"
-        onClick={() => window.confirm(t('admin.deleteProductConfirm', { name })) && remove.mutate(product.id)}
-        disabled={remove.isPending}
-        aria-label={t('admin.deleteNamed', { name })}
-        title={t('admin.deleteProduct')}
-        className={`${ICON_LINK} border-red-700 text-red-700 hover:bg-red-700 hover:text-white`}
-      >
-        <Trash2 size={18} strokeWidth={2.25} aria-hidden />
-      </button>
+      <VisibilityButton product={product} name={name} />
+      {/* У продажу / не продається */}
+      <ForSaleButton product={product} name={name} />
+      <DeleteButton product={product} name={name} />
     </>
+  )
+}
+
+/** Око: прихований товар — показати покупцям, видимий — сховати. */
+export function VisibilityButton({ product, name, compact = false }: { product: Product; name: string; compact?: boolean }) {
+  const { t } = useTranslation()
+  const toggle = useToggleProductActive()
+  const VisIcon = product.isActive ? EyeOff : Eye
+  return (
+    <button
+      type="button"
+      onClick={() => toggle.mutate({ id: product.id, isActive: !product.isActive })}
+      disabled={toggle.isPending}
+      aria-label={t(product.isActive ? 'admin.hideNamed' : 'admin.showNamed', { name })}
+      title={t(product.isActive ? 'admin.hide' : 'admin.show')}
+      className={`${iconBtn(compact)} ${
+        product.isActive
+          ? 'border-sand-700 text-sand-700 hover:bg-sand-700 hover:text-sand-50'
+          : 'border-brand-600 bg-brand-600 text-sand-50 hover:bg-brand-700'
+      }`}
+    >
+      <VisIcon size={18} strokeWidth={2.25} aria-hidden />
+    </button>
+  )
+}
+
+/** Видалити товар (з підтвердженням). */
+export function DeleteButton({ product, name, compact = false }: { product: Product; name: string; compact?: boolean }) {
+  const { t } = useTranslation()
+  const remove = useDeleteProduct()
+  return (
+    <button
+      type="button"
+      onClick={() => window.confirm(t('admin.deleteProductConfirm', { name })) && remove.mutate(product.id)}
+      disabled={remove.isPending}
+      aria-label={t('admin.deleteNamed', { name })}
+      title={t('admin.deleteProduct')}
+      className={`${iconBtn(compact)} border-red-700 text-red-700 hover:bg-red-700 hover:text-white`}
+    >
+      <Trash2 size={18} strokeWidth={2.25} aria-hidden />
+    </button>
   )
 }
 

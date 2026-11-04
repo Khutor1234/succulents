@@ -1,6 +1,12 @@
 import { GENERA, STATE_TAGS, type PlantTag } from './plants'
 
 /**
+ * Назва для показу покупцю: живцям (тег «Живець») — ще «(живець)» у дужках, щоб ще раз нагадати.
+ * Лише на екрані: у базі назва та сама (за правилами таблиці), і «скопіювати назву» копіює її без дужок.
+ */
+export const withCuttingMark = (name: string, cutting: boolean | undefined, mark: string) => (cutting ? `${name} (${mark})` : name)
+
+/**
  * Назва рослини будується як у таблиці продавця:
  *   «Echeveria 'Lola' variegata» = <вид> <сорт/назва> <форми>.
  * Форми пишуться латиною/англійською в кінці: variegata, cristata, monstrose.
