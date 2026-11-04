@@ -12,7 +12,7 @@ import { SellerOrdersPanel } from '../admin/SellerOrdersPanel'
 import { useAuth } from '../auth/authStore'
 import { AddToCart } from '../cart/AddToCart'
 import { FavoriteButton } from '../favorites/FavoriteButton'
-import { useHomePicks, useLatestProducts, useProduct, useProducts } from './api'
+import { useHomePicks, useProduct, useProducts } from './api'
 import { PLANT_CATEGORY } from '../../lib/plants'
 import type { Product } from '../../lib/types'
 import { useCategories } from './categories'
@@ -26,8 +26,6 @@ import { RelatedPlants } from './RelatedPlants'
 // Статті на головній довантажуються окремо — щоб тексти блогу не гальмували перше відкриття сайту
 const HomeArticles = lazy(() => import('../blog/HomeArticles'))
 // Скільки новинок показати на головній і зі скількох найновіших вибирати (покупцю частину відсіюємо: немає в наявності)
-const LATEST_COUNT = 8
-const LATEST_POOL = 40
 
 function Status({ isLoading, isError }: { isLoading: boolean; isError: boolean }) {
   const { t } = useTranslation()
@@ -156,20 +154,16 @@ const millis = (t?: { toMillis(): number }) => t?.toMillis() ?? Number.MAX_SAFE_
 
 export function HomePage() {
   const { t } = useTranslation()
-  // Новинки на головній — вітрина магазину: і продавець бачить її так само, як покупець (asBuyer) —
-  // лише те, що можна купити, і звичайні картки без кнопок продавця.
-  // Спершу — позначені продавцем «на головну», у тому порядку, як їх позначали; решту місць до LATEST_COUNT
-  // заповнюють найновіші. Найновіших беремо з запасом, бо частину відсіюємо.
-  const latest = useLatestProducts(LATEST_POOL)
+  // «Нові надходження» на головній — лише рослини, позначені продавцем шпилькою «на головну», скільки б їх не було,
+  // у тому порядку, як їх позначали. Вітрина: і продавець бачить її як покупець (asBuyer) — лише те, що можна купити.
+  const isSeller = useAuth((s) => s.role === 'seller')
   const picks = useHomePicks()
   const { visible, isVisible } = useCategories()
   const firstCategory = visible[0] ?? 'plants'
   const available = (p: Product) => isVisible(p.category) && p.stock > 0
   // onHome — щоб щойно відкріплена шпилькою рослина одразу зникла з початку списку
-  const pinned = (picks.data?.filter((p) => p.onHome && available(p)) ?? []).sort((a, b) => millis(a.onHomeAt) - millis(b.onHomeAt))
-  const pinnedIds = new Set(pinned.map((p) => p.id))
-  const fill = latest.data?.filter((p) => available(p) && !pinnedIds.has(p.id)) ?? []
-  const shown = latest.data && picks.data ? [...pinned, ...fill.slice(0, Math.max(0, LATEST_COUNT - pinned.length))] : undefined
+  const shown = picks.data?.filter((p) => p.onHome && available(p)).sort((a, b) => millis(a.onHomeAt) - millis(b.onHomeAt))
+  // Нічого не позначено (чи все позначене закінчилось) — покупцю блок не показуємо, продавцю — підказку
 
   return (
     <div className="space-y-12">
@@ -213,17 +207,22 @@ export function HomePage() {
 
       <CategoryPills />
 
-      <section>
-        <div className="mb-5 flex flex-wrap items-baseline gap-4">
-          <h2 className="font-display text-4xl font-extrabold text-brand-600">{t('home.newArrivals')}</h2>
-          <Link to={`/c/${firstCategory}`} className="group ml-auto inline-flex items-center gap-1.5 font-bold text-brand-600 hover:underline">
-            {t('home.allProductsShort')}
-            <ArrowRight {...ICON} className="transition-transform group-hover:translate-x-1" />
-          </Link>
-        </div>
-        <Status isLoading={latest.isLoading || picks.isLoading} isError={latest.isError || picks.isError} />
-        {shown && <ProductGrid products={shown} asBuyer keepOrder />}
-      </section>
+      {(isSeller || picks.isLoading || picks.isError || !!shown?.length) && (
+        <section>
+          <div className="mb-5 flex flex-wrap items-baseline gap-4">
+            <h2 className="font-display text-4xl font-extrabold text-brand-600">{t('home.newArrivals')}</h2>
+            <Link to={`/c/${firstCategory}`} className="group ml-auto inline-flex items-center gap-1.5 font-bold text-brand-600 hover:underline">
+              {t('home.allProductsShort')}
+              <ArrowRight {...ICON} className="transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
+          <Status isLoading={picks.isLoading} isError={picks.isError} />
+          {isSeller && shown?.length === 0 && (
+            <p className="rounded-2xl border-2 border-dashed border-sand-300 px-4 py-3 text-sand-700">{t('home.noPicks')}</p>
+          )}
+          {shown && <ProductGrid products={shown} asBuyer keepOrder />}
+        </section>
+      )}
 
       {/* Блог: три свіжі статті про догляд */}
       <section>

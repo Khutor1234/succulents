@@ -43,21 +43,6 @@ export function useProducts(category: Category, withHidden = false) {
 }
 
 /**
- * Найновіші показані товари (вітрина головної) — і продавцю лише показані: приховані відсіюємо в самому запиті,
- * інакше після імпорту (нові рослини приховані) з найновіших не лишилося б нічого.
- * `realStock` — для продавця: справжні залишки, щоб «±» на картці змінювали справжнє число.
- */
-export function useLatestProducts(count = 8, realStock = false) {
-  return useQuery({
-    queryKey: ['products', 'latest', count, realStock],
-    queryFn: () =>
-      realStock
-        ? fetchAny(where('isActive', '==', true), orderBy('createdAt', 'desc'), limit(count))
-        : fetchProducts(orderBy('createdAt', 'desc'), limit(count)),
-  })
-}
-
-/**
  * Позначені продавцем «на головну» (кнопка-шпилька на картці) — лише показані, як їх бачить покупець.
  * Два фільтри-рівності — Firestore обходиться без окремого індексу; порядок («як позначали») — на головній.
  */
