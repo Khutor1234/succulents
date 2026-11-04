@@ -433,34 +433,39 @@ export function CopyName({ name, className = '' }: { name: string; className?: s
 /**
  * Продавцю: «У продажу» / «Не продається» — квадратна кнопка-іконка в ряду кнопок картки. Не на продаж — покупці бачать
  * «немає в наявності», а продавець і далі бачить справжній залишок (рослина є в колекції, але її не продають).
- * Остання рослина лишається продавцю (KEEP_LAST): кнопка сіра й нічого не перемикає (лише плутало б), а натискання
- * чи наведення показує пояснення; ⚠ у куті — що це саме той випадок.
+ * Зафарбована — у продажу. Остання рослина лишається продавцю (KEEP_LAST), а коли на складі 0 — продавати нічого:
+ * тоді кнопка сіра й нічого не перемикає (лише плутало б), а натискання чи наведення показує пояснення;
+ * ⚠ у куті — що це остання рослина.
  */
 export function ForSaleButton({ product, name, compact = false }: { product: Product; name: string; compact?: boolean }) {
   const { t } = useTranslation()
   const toggle = useToggleForSale()
   const forSale = product.forSale !== false
   const lastKept = product.category === PLANT_CATEGORY && product.stock > 0 && product.stock <= KEEP_LAST
-  const sellable = forSale && !lastKept
+  // На складі нічого — теж не перемикається: продавати нічого, спершу додайте кількість
+  const empty = product.stock === 0
+  const locked = lastKept || empty
+  const lockedHint = t(empty ? 'admin.noStockForSale' : 'admin.lastKept')
+  const sellable = forSale && !locked
   const [hint, setHint] = useState(false)
   const Icon = sellable ? Tag : Ban
   return (
     <span className="group/hint relative flex">
       <button
         type="button"
-        onClick={() => (lastKept ? setHint((v) => !v) : toggle.mutate({ id: product.id, forSale: !forSale }))}
+        onClick={() => (locked ? setHint((v) => !v) : toggle.mutate({ id: product.id, forSale: !forSale }))}
         onBlur={() => setHint(false)}
         disabled={toggle.isPending}
-        aria-disabled={lastKept}
-        aria-pressed={lastKept ? undefined : forSale}
-        aria-label={lastKept ? t('admin.lastKept') : t(forSale ? 'admin.unsellNamed' : 'admin.sellNamed', { name })}
-        title={lastKept ? undefined : t(forSale ? 'admin.unsell' : 'admin.sell')}
+        aria-disabled={locked}
+        aria-pressed={locked ? undefined : forSale}
+        aria-label={locked ? lockedHint : t(forSale ? 'admin.unsellNamed' : 'admin.sellNamed', { name })}
+        title={locked ? undefined : t(forSale ? 'admin.unsell' : 'admin.sell')}
         className={`${iconBtn(compact)} relative ${
-          lastKept
+          locked
             ? 'cursor-not-allowed border-sand-300 bg-sand-200 text-sand-500'
             : sellable
-              ? 'border-brand-600 text-brand-600 hover:bg-brand-600 hover:text-sand-50'
-              : 'border-sand-400 bg-sand-200 text-sand-700 hover:bg-sand-300'
+              ? 'border-brand-600 bg-brand-600 text-sand-50 hover:bg-brand-700'
+              : 'border-sand-700 text-sand-700 hover:bg-sand-200'
         }`}
       >
         <Icon size={18} strokeWidth={2.25} aria-hidden />
@@ -468,14 +473,14 @@ export function ForSaleButton({ product, name, compact = false }: { product: Pro
           <TriangleAlert size={14} strokeWidth={2.6} className="absolute -top-1.5 -right-1.5 rounded-full bg-sand-50 text-sunset-600" aria-hidden />
         )}
       </button>
-      {lastKept && (
+      {locked && (
         <span
           role="tooltip"
           className={`absolute right-0 bottom-full z-20 mb-2 w-56 rounded-xl bg-ink px-3 py-2 text-xs leading-snug font-bold text-sand-50 shadow-lg ${
             hint ? 'block' : 'hidden group-hover/hint:block'
           }`}
         >
-          {t('admin.lastKept')}
+          {lockedHint}
         </span>
       )}
     </span>
@@ -506,11 +511,14 @@ function SellerActions({ product, name }: { product: Product; name: string }) {
   )
 }
 
-/** Око: прихований товар — показати покупцям, видимий — сховати. */
+/**
+ * Око показує стан: зафарбоване з відкритим оком — товар бачать покупці; порожнє з перекресленим — прихований.
+ * Натискання перемикає.
+ */
 export function VisibilityButton({ product, name, compact = false }: { product: Product; name: string; compact?: boolean }) {
   const { t } = useTranslation()
   const toggle = useToggleProductActive()
-  const VisIcon = product.isActive ? EyeOff : Eye
+  const VisIcon = product.isActive ? Eye : EyeOff
   return (
     <button
       type="button"
@@ -518,10 +526,11 @@ export function VisibilityButton({ product, name, compact = false }: { product: 
       disabled={toggle.isPending}
       aria-label={t(product.isActive ? 'admin.hideNamed' : 'admin.showNamed', { name })}
       title={t(product.isActive ? 'admin.hide' : 'admin.show')}
+      aria-pressed={product.isActive}
       className={`${iconBtn(compact)} ${
         product.isActive
-          ? 'border-sand-700 text-sand-700 hover:bg-sand-700 hover:text-sand-50'
-          : 'border-brand-600 bg-brand-600 text-sand-50 hover:bg-brand-700'
+          ? 'border-brand-600 bg-brand-600 text-sand-50 hover:bg-brand-700'
+          : 'border-sand-700 text-sand-700 hover:bg-sand-200'
       }`}
     >
       <VisIcon size={18} strokeWidth={2.25} aria-hidden />
