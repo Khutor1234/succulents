@@ -513,7 +513,7 @@ export const uk = {
       tabs: { trios: 'Трійки', families: 'Нащадки', forms: 'Форми' },
       hints: {
         trios: 'Зібрано всю родину: обидва батьки й гібрид від них.',
-        families: 'Рослина-батько й усі її діти з колекції — спершу ті, в кого дітей найбільше.',
+        families: 'Рослина-батько й усі її діти з колекції — спершу ті, в кого дітей найбільше. У рамці поруч — та сама рослина у формах variegata, cristata, monstrose.',
         forms: 'Та сама рослина в кількох формах: звичайна, variegata, cristata, monstrose.',
       },
       sameFormHint: 'Батьки й діти — лише в однаковій формі: звичайна дитина — від звичайних батьків. Variegata, cristata й monstrose — на вкладці «Форми».',
@@ -528,6 +528,11 @@ export const uk = {
       childrenCount_many: '{{count}} дітей',
       childrenCount_other: '{{count}} дитини',
       withOther: '× {{name}}',
+      // «Нащадки»: біля рослини — вона ж в інших формах
+      alsoForms_one: 'І ще {{count}} форма цієї рослини',
+      alsoForms_few: 'І ще {{count}} форми цієї рослини',
+      alsoForms_many: 'І ще {{count}} форм цієї рослини',
+      alsoForms_other: 'І ще {{count}} форми цієї рослини',
       formsCount_one: '{{count}} форма',
       formsCount_few: '{{count}} форми',
       formsCount_many: '{{count}} форм',

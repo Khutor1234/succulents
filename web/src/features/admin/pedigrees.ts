@@ -27,10 +27,14 @@ export interface FormGroup {
 /** Рослина-батько й усі її відомі діти з колекції. */
 export interface Family {
   parent: Product
+  /** Та сама рослина-батько в інших формах (variegata, cristata…) — мутації від неї, тож вона їм теж «батько» */
+  parentForms: Product[]
   children: {
     child: Product
     /** Як записаний другий батько (або порожньо). Хто з двох мама, а хто тато, — часто невідомо, тож не показуємо */
     other: string
+    /** Дитина в інших формах */
+    forms: Product[]
   }[]
 }
 
@@ -53,6 +57,17 @@ export function buildPedigrees(products: Product[]) {
     byBase.set(k, [...(byBase.get(k) ?? []), p])
   }
   for (const list of byBase.values()) list.sort(better)
+  // Інші форми тієї самої рослини (по одній на кожну форму): для «Lola» — «Lola variegata», «Lola cristata»
+  const formsOf = (p: Product) => {
+    const own = forms(p).join('+')
+    const taken = new Set([own])
+    return (byBase.get(baseKey(p.name.uk)) ?? []).filter((x) => {
+      const f = forms(x).join('+')
+      if (taken.has(f)) return false
+      taken.add(f)
+      return true
+    })
+  }
   // Батько — лише в тій самій формі, що й дитина (точний збіг фенотипу): звичайна дитина — від звичайних батьків.
   // Записано «Lola», а в колекції лише «Lola variegata» — такого батька в колекції немає.
   const sameForms = (a: Product, b: Product) => forms(a).join('+') === forms(b).join('+')
@@ -74,8 +89,8 @@ export function buildPedigrees(products: Product[]) {
     // «Нащадки»: дитина — до кожного батька, який є в колекції
     found.forEach((parent, i) => {
       if (!parent || parent.id === child.id) return
-      const family = families.get(parent.id) ?? { parent, children: [] }
-      family.children.push({ child, other: names.length === 2 ? names[1 - i] : '' })
+      const family = families.get(parent.id) ?? { parent, parentForms: formsOf(parent), children: [] }
+      family.children.push({ child, other: names.length === 2 ? names[1 - i] : '', forms: formsOf(child) })
       families.set(parent.id, family)
     })
     if (found.length === 2 && found[0] && found[1] && found[0].id !== child.id && found[1].id !== child.id) {

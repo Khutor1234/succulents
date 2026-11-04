@@ -30,7 +30,7 @@ export function PedigreesPage() {
   const has = (...ps: Product[]) => !q || ps.some((p) => nameKey(p.name.uk).includes(q))
   const trios = all.trios.filter((x) => has(x.child, ...x.parents))
   const forms = all.formGroups.filter((g) => has(...g.items))
-  const families = all.families.filter((f) => has(f.parent, ...f.children.map((c) => c.child)))
+  const families = all.families.filter((f) => has(f.parent, ...f.parentForms, ...f.children.flatMap((c) => [c.child, ...c.forms])))
   const counts: Record<Tab, number> = { trios: trios.length, families: families.length, forms: forms.length }
 
   return (
@@ -105,12 +105,12 @@ export function PedigreesPage() {
       {/* Нащадки: зліва (на телефоні — зверху) рослина-батько, стрілка до її дітей */}
       {tab === 'families' && (
         <ul className="space-y-4">
-          {families.map(({ parent, children }) => (
+          {families.map(({ parent, parentForms, children }) => (
             <li key={parent.id} className="rounded-3xl border-2 border-sand-200 bg-sand-50 p-3 sm:p-4">
               {/* Батько й діти — картки однакового розміру (FAMILY_CARD) */}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                <div className={`${FAMILY_CARD} self-center sm:self-start`}>
-                  <Mini p={parent} highlight />
+                <div className="self-center sm:self-start">
+                  <WithForms p={parent} forms={parentForms} highlight />
                   <p className="mt-1 text-xs font-bold text-sand-700">{t('admin.pedigrees.childrenCount', { count: children.length })}</p>
                 </div>
                 <span className="flex justify-center text-sand-700 sm:mt-12">
@@ -118,11 +118,10 @@ export function PedigreesPage() {
                   <ArrowRight size={22} strokeWidth={2.6} className="hidden sm:block" aria-hidden />
                 </span>
                 <div className="flex min-w-0 flex-1 flex-wrap justify-center gap-2 sm:justify-start">
-                  {children.map(({ child, other }) => (
-                    <div key={child.id} className={FAMILY_CARD}>
-                      <Mini p={child} />
+                  {children.map(({ child, other, forms }) => (
+                    <WithForms key={child.id} p={child} forms={forms}>
                       {other && <span className="mt-0.5 block text-[11px] leading-snug break-words text-sand-700">{t('admin.pedigrees.withOther', { name: other })}</span>}
-                    </div>
+                    </WithForms>
                   ))}
                 </div>
               </div>
@@ -147,6 +146,34 @@ export function PedigreesPage() {
           ))}
         </ul>
       )}
+    </div>
+  )
+}
+
+/**
+ * «Нащадки»: картка рослини, а поруч — та сама рослина в інших формах (variegata, cristata…), трохи менші,
+ * в одній рамці з нею. Форм немає — просто картка.
+ */
+function WithForms({ p, forms, highlight, children }: { p: Product; forms: Product[]; highlight?: boolean; children?: ReactNode }) {
+  const { t } = useTranslation()
+  const main = (
+    <div className={FAMILY_CARD}>
+      <Mini p={p} highlight={highlight} />
+      {children}
+    </div>
+  )
+  if (forms.length === 0) return main
+  return (
+    <div className="rounded-2xl border-2 border-dashed border-sand-300 p-1.5">
+      <div className="flex items-start gap-1.5">
+        {main}
+        {forms.map((f) => (
+          <div key={f.id} className="w-20 shrink-0 sm:w-24">
+            <Mini p={f} />
+          </div>
+        ))}
+      </div>
+      <p className="mt-1 px-0.5 text-[11px] font-bold text-sand-700">{t('admin.pedigrees.alsoForms', { count: forms.length })}</p>
     </div>
   )
 }
