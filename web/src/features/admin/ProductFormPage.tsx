@@ -4,7 +4,7 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { Check, ChevronDown, Copy, CopyPlus, Eye, EyeOff, Link2, Lock, X, Trash2 } from 'lucide-react'
-import { detectGenus, parseForms, withForms } from '../../lib/plantName'
+import { detectGenus, parseForms, withCuttingMark, withForms } from '../../lib/plantName'
 import { ICON } from '../../shared/icon'
 import { HABITATS, ORIGINS } from '../../lib/types'
 import { DEFAULT_GENUS, GENERA, PLANT_CATEGORY, TAG_STYLES, tagsFor, type PlantTag } from '../../lib/plants'
@@ -103,6 +103,9 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     syncPlantName()
   }
   const fullName = useWatch({ control, name: 'name.uk' })
+  // Галочка «Живець» — у підсумку назви, як і на сайті, ще «(живець)» у дужках (у саму назву не записується)
+  const watchedTags = useWatch({ control, name: 'tags' }) as unknown
+  const isCutting = (Array.isArray(watchedTags) ? watchedTags : watchedTags ? [watchedTags] : []).includes('cutting')
   const slugValue = useWatch({ control, name: 'slug' })
   const origin = useWatch({ control, name: 'origin' })
   const isPlant = category === PLANT_CATEGORY
@@ -496,7 +499,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
               className="flex min-h-12 items-center gap-2 rounded-xl border-2 border-dashed border-brand-500 bg-brand-50 px-4 py-2.5 font-display text-lg font-bold text-brand-700"
             >
               <Lock size={16} strokeWidth={2.25} className="shrink-0 text-brand-500" aria-hidden />
-              <span className="min-w-0 break-words">{fullName || '—'}</span>
+              <span className="min-w-0 break-words">{fullName ? withCuttingMark(fullName, isCutting, t('product.cuttingMark')) : '—'}</span>
             </output>
             <p className={`mt-1.5 text-sm ${errors.name?.uk ? 'text-red-700' : 'text-sand-700'}`}>
               {errors.name?.uk ? t(errors.name.uk.message ?? 'errors.required') : t('admin.fields.fullNameHint')}

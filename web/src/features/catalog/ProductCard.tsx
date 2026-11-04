@@ -538,14 +538,24 @@ export function VisibilityButton({ product, name, compact = false }: { product: 
   )
 }
 
-/** Видалити товар (з підтвердженням). */
-export function DeleteButton({ product, name, compact = false }: { product: Product; name: string; compact?: boolean }) {
+/** Видалити товар (з підтвердженням). `onDeleted` — що робити після (напр., піти зі сторінки товару). */
+export function DeleteButton({
+  product,
+  name,
+  compact = false,
+  onDeleted,
+}: {
+  product: Product
+  name: string
+  compact?: boolean
+  onDeleted?: () => void
+}) {
   const { t } = useTranslation()
   const remove = useDeleteProduct()
   return (
     <button
       type="button"
-      onClick={() => window.confirm(t('admin.deleteProductConfirm', { name })) && remove.mutate(product.id)}
+      onClick={() => window.confirm(t('admin.deleteProductConfirm', { name })) && remove.mutate(product.id, { onSuccess: onDeleted })}
       disabled={remove.isPending}
       aria-label={t('admin.deleteNamed', { name })}
       title={t('admin.deleteProduct')}

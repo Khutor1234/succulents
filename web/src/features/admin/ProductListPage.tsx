@@ -93,7 +93,8 @@ export function ProductListPage() {
       {isError && <p className="text-red-700">{t('errors.loading')}</p>}
       {data && <p className="text-sm font-bold text-sand-700">{t('admin.list.count', { count: shown.length })}</p>}
 
-      <ul className="divide-y-2 divide-sand-200 overflow-hidden rounded-2xl border-2 border-sand-200 bg-sand-50">
+      {/* Без overflow-hidden: збільшене фото при наведенні має виходити за межі списку */}
+      <ul className="divide-y-2 divide-sand-200 rounded-2xl border-2 border-sand-200 bg-sand-50">
         {visible.map((p) => (
           <Row key={p.id} product={p} />
         ))}
@@ -110,13 +111,19 @@ function Row({ product }: { product: Product }) {
   const here = useHere()
   return (
     // На широкому екрані — один рядок; на телефоні кнопки переносяться під назву. Прихований — лавандовим фоном
-    <li className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 px-2.5 py-1.5 ${product.isActive ? '' : 'bg-lavender-50'}`}>
+    <li className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 px-2.5 py-1.5 first:rounded-t-2xl last:rounded-b-2xl ${product.isActive ? '' : 'bg-lavender-50'}`}>
       <div className="flex min-w-0 flex-1 basis-60 items-center gap-1">
         {/* На початку рядка — щоб у всіх товарів була на одному місці */}
         <CopyName name={name} />
         <Link to={`/product/${product.slug}`} className="flex min-w-0 items-center gap-2.5">
           {product.images[0] ? (
-            <SmallImage src={product.images[0]} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+            // Навели мишку на фото — поруч воно ж, але велике (щоб роздивитися рослину)
+            <span className="group/photo relative shrink-0">
+              <SmallImage src={product.images[0]} alt="" className="h-10 w-10 rounded-lg object-cover" />
+              <span className="pointer-events-none absolute top-1/2 left-12 z-30 hidden w-72 -translate-y-1/2 overflow-hidden rounded-2xl border-4 border-sand-50 bg-sand-50 shadow-2xl group-hover/photo:block">
+                <SmallImage src={product.images[0]} alt="" className="block aspect-square w-full object-cover" />
+              </span>
+            </span>
           ) : (
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sand-200 text-brand-600">
               <SucculentIcon className="w-6" />

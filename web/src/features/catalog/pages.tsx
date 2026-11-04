@@ -20,7 +20,7 @@ import { useCategories } from './categories'
 import { ParentsLinks } from './ParentsLinks'
 import { PlantFilters, TagBadges } from './PlantFilters'
 import { SELLER_SORTS, SORTS, usePlantFilters, type SortOrder } from './usePlantFilters'
-import { ProductGrid } from './ProductCard'
+import { CopyName, DeleteButton, ForSaleButton, HomePin, ProductGrid, SellerStock, VisibilityButton } from './ProductCard'
 import { ProductGallery } from './ProductGallery'
 import { RelatedPlants } from './RelatedPlants'
 
@@ -435,6 +435,31 @@ export function ProductPage() {
           <h1 className="mt-4 font-display text-4xl leading-tight font-extrabold text-brand-600 sm:text-5xl">
             {withCuttingMark(name, product.tags?.includes('cutting'), t('product.cuttingMark'))}
           </h1>
+          {/* Продавцю — ті самі швидкі кнопки, що й на картці: кількість, редагувати, показати, у продажу, на головну, видалити */}
+          {isSeller && (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              <CopyName name={name} />
+              <SellerStock product={product} compact />
+              <Link
+                to={`/admin/products/${product.id}`}
+                state={{ from: here }}
+                aria-label={t('admin.editNamed', { name })}
+                title={t('admin.edit')}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-sand-50 transition-colors hover:bg-brand-700"
+              >
+                <Pencil size={18} strokeWidth={2.25} aria-hidden />
+              </Link>
+              <VisibilityButton product={product} name={name} compact />
+              <ForSaleButton product={product} name={name} compact />
+              <HomePin product={product} name={name} compact />
+              <DeleteButton
+                product={product}
+                name={name}
+                compact
+                onDeleted={() => (canGoBack() ? navigate(-1) : navigate(`/c/${product.category}`, { replace: true }))}
+              />
+            </div>
+          )}
           <TagBadges tags={product.tags} className="mt-3" />
           {product.aliases && product.aliases.length > 0 && (
             <p className="mt-3 text-sand-700">
