@@ -12,8 +12,9 @@ import { SellerOrdersPanel } from '../admin/SellerOrdersPanel'
 import { useAuth } from '../auth/authStore'
 import { AddToCart } from '../cart/AddToCart'
 import { FavoriteButton } from '../favorites/FavoriteButton'
-import { useLatestProducts, useProduct, useProducts } from './api'
+import { useHomePicks, useLatestProducts, useProduct, useProducts } from './api'
 import { PLANT_CATEGORY } from '../../lib/plants'
+import type { Product } from '../../lib/types'
 import { useCategories } from './categories'
 import { ParentsLinks } from './ParentsLinks'
 import { PlantFilters, TagBadges } from './PlantFilters'
@@ -151,16 +152,24 @@ function BonusPromo({ compact = false }: { compact?: boolean }) {
   )
 }
 
+const millis = (t?: { toMillis(): number }) => t?.toMillis() ?? Number.MAX_SAFE_INTEGER
+
 export function HomePage() {
   const { t } = useTranslation()
-  // Новинки на головній — і продавцю лише показані: це вітрина магазину, приховані (часто ще без фото) тут лише заважають.
-  // Покупцю — лише те, що можна купити (є в наявності). Продавцю — справжні залишки, щоб «±» на картці
-  // змінювали справжнє число, а не те, що бачить покупець. Беремо з запасом, бо частину відсіюємо.
-  const isSeller = useAuth((s) => s.role === 'seller')
-  const latest = useLatestProducts(LATEST_POOL, isSeller)
+  // Новинки на головній — вітрина магазину: і продавець бачить її так само, як покупець (asBuyer) —
+  // лише те, що можна купити, і звичайні картки без кнопок продавця.
+  // Спершу — позначені продавцем «на головну», у тому порядку, як їх позначали; решту місць до LATEST_COUNT
+  // заповнюють найновіші. Найновіших беремо з запасом, бо частину відсіюємо.
+  const latest = useLatestProducts(LATEST_POOL)
+  const picks = useHomePicks()
   const { visible, isVisible } = useCategories()
   const firstCategory = visible[0] ?? 'plants'
-  const shown = latest.data?.filter((p) => isVisible(p.category) && (isSeller || p.stock > 0)).slice(0, LATEST_COUNT)
+  const available = (p: Product) => isVisible(p.category) && p.stock > 0
+  // onHome — щоб щойно відкріплена шпилькою рослина одразу зникла з початку списку
+  const pinned = (picks.data?.filter((p) => p.onHome && available(p)) ?? []).sort((a, b) => millis(a.onHomeAt) - millis(b.onHomeAt))
+  const pinnedIds = new Set(pinned.map((p) => p.id))
+  const fill = latest.data?.filter((p) => available(p) && !pinnedIds.has(p.id)) ?? []
+  const shown = latest.data && picks.data ? [...pinned, ...fill.slice(0, Math.max(0, LATEST_COUNT - pinned.length))] : undefined
 
   return (
     <div className="space-y-12">
@@ -212,8 +221,8 @@ export function HomePage() {
             <ArrowRight {...ICON} className="transition-transform group-hover:translate-x-1" />
           </Link>
         </div>
-        <Status isLoading={latest.isLoading} isError={latest.isError} />
-        {shown && <ProductGrid products={shown} />}
+        <Status isLoading={latest.isLoading || picks.isLoading} isError={latest.isError || picks.isError} />
+        {shown && <ProductGrid products={shown} asBuyer keepOrder />}
       </section>
 
       {/* Блог: три свіжі статті про догляд */}

@@ -63,6 +63,10 @@ export interface Product {
   specs?: { label: Localized; value: Localized }[]
   /** Скільки покупців (з акаунтом) додали в улюблене — рахує сервер (functions/onFavoritesChanged). */
   likes?: number
+  /** Продавець позначив «на головну»: рослина показується в «Нових надходженнях» першою (поки є в наявності). */
+  onHome?: boolean
+  /** Коли позначили «на головну» — для порядку «як позначала». */
+  onHomeAt?: Timestamp
   createdAt?: Timestamp
 }
 

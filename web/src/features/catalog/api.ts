@@ -57,6 +57,17 @@ export function useLatestProducts(count = 8, realStock = false) {
   })
 }
 
+/**
+ * Позначені продавцем «на головну» (кнопка-шпилька на картці) — лише показані, як їх бачить покупець.
+ * Два фільтри-рівності — Firestore обходиться без окремого індексу; порядок («як позначали») — на головній.
+ */
+export function useHomePicks() {
+  return useQuery({
+    queryKey: ['products', 'home'],
+    queryFn: () => fetchProducts(where('onHome', '==', true)),
+  })
+}
+
 /** `withHidden` — для продавця: відкривається й прихований товар. */
 export function useProduct(slug: string, withHidden = false) {
   return useQuery({

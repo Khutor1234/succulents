@@ -11,8 +11,19 @@ import { useFavorites } from './favoritesStore'
  * Сердечко «в улюблене».
  * - `overlay` — кругла кнопка поверх фото на картці;
  * - `lg` — кнопка з підписом на сторінці товару.
+ * `hideLikes` — не показувати продавцю кількість лайків (картка «як у покупця»).
  */
-export function FavoriteButton({ product, variant = 'overlay', className = '' }: { product: Product; variant?: 'overlay' | 'lg'; className?: string }) {
+export function FavoriteButton({
+  product,
+  variant = 'overlay',
+  className = '',
+  hideLikes = false,
+}: {
+  product: Product
+  variant?: 'overlay' | 'lg'
+  className?: string
+  hideLikes?: boolean
+}) {
   const { t } = useTranslation()
   const lang = useLang()
   const on = useFavorites((s) => s.ids.includes(product.id))
@@ -21,7 +32,7 @@ export function FavoriteButton({ product, variant = 'overlay', className = '' }:
   // Скільки разів рослину лайкнули. Своє натискання враховуємо одразу (сервер оновить число трохи згодом)
   const [onAtLoad] = useState(on)
   // Кількість лайків — лише для продавця (покупцям — просто сердечко)
-  const isSeller = useAuth((s) => s.role === 'seller')
+  const isSeller = useAuth((s) => s.role === 'seller') && !hideLikes
   const likes = isSeller ? Math.max(0, (product.likes ?? 0) + Number(on) - Number(onAtLoad)) : 0
 
   const icon = (

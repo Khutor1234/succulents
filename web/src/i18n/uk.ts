@@ -562,6 +562,8 @@ export const uk = {
     copyNamed: 'Створити копію «{{name}}»',
     copyName: 'Скопіювати назву «{{name}}»',
     nameCopied: 'Назву скопійовано',
+    onHomeAdd: 'Показувати «{{name}}» на головній у «Нових надходженнях»',
+    onHomeRemove: 'Прибрати «{{name}}» з головної',
     priceMinus: 'Зменшити ціну на {{amount}} грн',
     pricePlus: 'Збільшити ціну на {{amount}} грн',
     copyHint: 'Копія «{{name}}». Змініть, що треба, і збережіть — буде новий товар.',

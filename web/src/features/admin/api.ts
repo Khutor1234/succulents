@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import {
   addDoc,
   deleteDoc,
+  deleteField,
   collection,
   doc,
   getDoc,
@@ -112,6 +113,24 @@ export function useToggleProductActive() {
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       updateDoc(doc(db, 'products', id), { isActive, updatedAt: serverTimestamp() }),
     onSuccess: (_, { id, isActive }) => patchProduct(queryClient, id, { isActive }),
+  })
+}
+
+/** Позначити «на головну» / зняти позначку (шпилька на картці продавця). */
+export function useToggleOnHome() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, onHome }: { id: string; onHome: boolean }) =>
+      updateDoc(doc(db, 'products', id), {
+        onHome,
+        onHomeAt: onHome ? serverTimestamp() : deleteField(),
+        updatedAt: serverTimestamp(),
+      }),
+    // Список позначених на головній перечитуємо одразу (він маленький) — щоб щойно позначена рослина стала першою
+    onSuccess: async (_, { id, onHome }) => {
+      await patchProduct(queryClient, id, { onHome })
+      await queryClient.refetchQueries({ queryKey: ['products', 'home'] })
+    },
   })
 }
 

@@ -1,4 +1,4 @@
-import { Ban, Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Plus, Tag, Trash2, TriangleAlert } from 'lucide-react'
+import { Ban, Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Pin, Plus, Tag, Trash2, TriangleAlert } from 'lucide-react'
 import { useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -11,7 +11,7 @@ import { ProductImage } from '../../shared/ui'
 import { useHere } from '../../shared/navigation'
 import { useProgressive } from '../../shared/useProgressive'
 import { useAuth } from '../auth/authStore'
-import { useDeleteProduct, useSetStock, useToggleForSale, useToggleProductActive } from '../admin/api'
+import { useDeleteProduct, useSetStock, useToggleForSale, useToggleOnHome, useToggleProductActive } from '../admin/api'
 import { BulkBar } from '../admin/BulkBar'
 import { AddToCart } from '../cart/AddToCart'
 import { FavoriteButton } from '../favorites/FavoriteButton'
@@ -26,12 +26,17 @@ const SELLER_BADGE =
 // Скільки карток показуємо за раз (решта — коли догортали донизу)
 const PAGE = 24
 
-/** `fullNames` — не обрізати довгі назви батьків на фото (для дрібних карток «Пов’язані рослини»). */
-export function ProductCard({ product, index = 0, fullNames = false }: { product: Product; index?: number; fullNames?: boolean }) {
+/**
+ * `fullNames` — не обрізати довгі назви батьків на фото (для дрібних карток «Пов’язані рослини»);
+ * `asBuyer` — і продавцю показати картку так, як її бачить покупець (вітрина «Нові надходження» на головній);
+ *   лишається тільки шпилька «на головну» — щоб прибрати рослину з вітрини прямо там.
+ */
+export function ProductCard({ product, index = 0, fullNames = false, asBuyer = false }: { product: Product; index?: number; fullNames?: boolean; asBuyer?: boolean }) {
   const { t } = useTranslation()
   const lang = useLang()
   const name = pick(product.name, lang)
-  const isSeller = useAuth((s) => s.role === 'seller')
+  const realSeller = useAuth((s) => s.role === 'seller')
+  const isSeller = realSeller && !asBuyer
   // Кілька фото — гортаються пальцем (або стрілками на комп’ютері); крапки під фото показують, котре зараз
   const [photo, setPhoto] = useState(0)
   const photosRef = useRef<HTMLDivElement>(null)
@@ -79,9 +84,11 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
           {/* Продавцю — скільки покупців додали рослину в улюблене (у продавця немає сердечка-кнопки) */}
         </TagBadges>
         {/* Сердечко — для всіх; кількість лайків поруч бачить лише продавець */}
-        <FavoriteButton product={product} className="absolute top-2 right-2" />
+        <FavoriteButton product={product} hideLikes={asBuyer} className="absolute top-2 right-2" />
         {/* Продавцю — скопіювати назву одним натисканням (напр., щоб вставити в таблицю чи переписку): під сердечком */}
         {isSeller && <CopyName name={name} className="absolute top-14 right-2" />}
+        {/* Продавцю — шпилька «на головну»: позначені рослини першими в «Нових надходженнях» */}
+        {realSeller && <HomePin product={product} name={name} className={`absolute right-2 ${asBuyer ? 'top-14' : 'top-26'}`} />}
         {/* Походження — плашкою внизу фото: під назвою не займає місця, тож картки з батьками й без однакові.
             Кожен батько — окреме посилання в пошук. */}
         {product.category === PLANT_CATEGORY && (
@@ -165,9 +172,20 @@ export function ProductCard({ product, index = 0, fullNames = false }: { product
 /**
  * Сітка карток.
  * - `sellerTools` — продавцю над сіткою «Вибрати» (масові дії над кількома товарами) і «Додати» (новий товар у цю категорію);
- * - `keepOrder` — не групувати «в наявності / немає / приховані» (коли продавець вибрав своє сортування, напр. «Спершу без фото»).
+ * - `keepOrder` — не групувати «в наявності / немає / приховані» (коли продавець вибрав своє сортування, напр. «Спершу без фото»);
+ * - `asBuyer` — картки й продавцю як у покупця (див. ProductCard).
  */
-export function ProductGrid({ products, sellerTools, keepOrder = false }: { products: Product[]; sellerTools?: { category?: string }; keepOrder?: boolean }) {
+export function ProductGrid({
+  products,
+  sellerTools,
+  keepOrder = false,
+  asBuyer = false,
+}: {
+  products: Product[]
+  sellerTools?: { category?: string }
+  keepOrder?: boolean
+  asBuyer?: boolean
+}) {
   const { t } = useTranslation()
   const lang = useLang()
   const isSeller = useAuth((s) => s.role === 'seller')
@@ -221,7 +239,7 @@ export function ProductGrid({ products, sellerTools, keepOrder = false }: { prod
           const on = selected.has(p.id)
           return (
             <div key={p.id} className="relative flex flex-col [&>article]:flex-1">
-              <ProductCard product={p} index={i} />
+              <ProductCard product={p} index={i} asBuyer={asBuyer} />
               {/* Режим вибору: картка — одна велика кнопка-галочка (кнопки картки й посилання не спрацьовують) */}
               {tools && selecting && (
                 <button
@@ -317,6 +335,34 @@ function SellerStock({ product }: { product: Product }) {
         </button>
       </div>
     </div>
+  )
+}
+
+/** Шпилька «на головну»: позначена — зелена й зафарбована. */
+function HomePin({ product, name, className = '' }: { product: Product; name: string; className?: string }) {
+  const { t } = useTranslation()
+  const toggle = useToggleOnHome()
+  const on = !!product.onHome
+  const label = t(on ? 'admin.onHomeRemove' : 'admin.onHomeAdd', { name })
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        // Кнопка лежить на фото-посиланні — не відкриваємо товар
+        e.preventDefault()
+        e.stopPropagation()
+        toggle.mutate({ id: product.id, onHome: !on })
+      }}
+      disabled={toggle.isPending}
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
+      className={`flex h-10 w-10 items-center justify-center rounded-full shadow-sm transition-transform hover:scale-110 active:scale-95 disabled:opacity-60 ${
+        on ? 'bg-brand-600 text-sand-50' : 'bg-sand-50/95 text-ink'
+      } ${className}`}
+    >
+      <Pin size={18} strokeWidth={2.25} fill={on ? 'currentColor' : 'none'} aria-hidden />
+    </button>
   )
 }
 
