@@ -247,8 +247,8 @@ export function CategoryPage() {
   const { category } = useParams()
   const { isVisible, nameOf, isLoading: settingsLoading } = useCategories()
   const realSeller = useAuth((s) => s.role === 'seller')
-  // Продавцю — перемикач «Як бачить покупець» (?view=buyer): які рослини й у якому порядку бачить покупець (лише показані,
-  // наявність — без тих, що не продаються, і без останньої рослини). Картки ж лишаються продавця, зі справжніми залишками
+  // Продавцю — перемикач «Як бачить покупець» (?view=buyer): сторінка точно така, як у покупця — лише показані рослини,
+  // наявність без тих, що не продаються, і без останньої рослини, звичайні картки без кнопок продавця
   const [params, setParams] = useSearchParams()
   const buyerView = realSeller && params.get('view') === 'buyer'
   const isSeller = realSeller && !buyerView
@@ -263,14 +263,9 @@ export function CategoryPage() {
 
   if (!category || (!settingsLoading && !isVisible(category))) return <Navigate to="/" replace />
 
-  // У режимі «як бачить покупець» фільтруємо й сортуємо покупцеву версію товарів (як у ProductGrid: спершу ті,
-  // що є в наявності), а показуємо ті самі товари зі справжніми даними — щоб «±» та інші кнопки працювали як завжди
+  // «Як бачить покупець»: з даних продавця робимо покупцеву версію — те саме, що завантажив би покупець
   const list = buyerView ? products.data?.filter((p) => p.isActive).map(forBuyer) : products.data
-  let shown = list ? filters.apply(list) : undefined
-  if (buyerView && shown && products.data) {
-    const real = new Map(products.data.map((p) => [p.id, p]))
-    shown = [...shown].sort((a, b) => Number(a.stock === 0) - Number(b.stock === 0)).map((p) => real.get(p.id)!)
-  }
+  const shown = list ? filters.apply(list) : undefined
 
   return (
     <div className="space-y-6">
@@ -345,8 +340,10 @@ export function CategoryPage() {
       {shown && (
         <ProductGrid
           products={shown}
-          sellerTools={{ category }}
-          keepOrder={buyerView || (isSeller && SELLER_SORTS.includes(filters.sort))}
+          sellerTools={buyerView ? undefined : { category }}
+          keepOrder={isSeller && SELLER_SORTS.includes(filters.sort)}
+          asBuyer={buyerView}
+          homePin={!buyerView}
         />
       )}
     </div>
