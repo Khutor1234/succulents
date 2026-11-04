@@ -37,14 +37,11 @@ export function ProductCard({
   index = 0,
   fullNames = false,
   asBuyer = false,
-  homePin = true,
 }: {
   product: Product
   index?: number
   fullNames?: boolean
   asBuyer?: boolean
-  /** Шпилька «на головну» продавцю (false — у каталозі «як бачить покупець» картка зовсім як у покупця). */
-  homePin?: boolean
 }) {
   const { t } = useTranslation()
   const lang = useLang()
@@ -100,7 +97,7 @@ export function ProductCard({
         {/* Сердечко й кількість лайків поруч — для всіх */}
         <FavoriteButton product={product} className="absolute top-2 right-2" />
         {/* Продавцю — шпилька «на головну»: позначені рослини першими в «Нових надходженнях» */}
-        {realSeller && homePin && <HomePin product={product} name={name} className="absolute top-14 right-2" />}
+        {realSeller && <HomePin product={product} name={name} className="absolute top-14 right-2" />}
         {/* Походження — плашкою внизу фото: під назвою не займає місця, тож картки з батьками й без однакові.
             Кожен батько — окреме посилання в пошук. */}
         {product.category === PLANT_CATEGORY && (
@@ -196,13 +193,11 @@ export function ProductGrid({
   sellerTools,
   keepOrder = false,
   asBuyer = false,
-  homePin = true,
 }: {
   products: Product[]
   sellerTools?: { category?: string }
   keepOrder?: boolean
   asBuyer?: boolean
-  homePin?: boolean
 }) {
   const { t } = useTranslation()
   const lang = useLang()
@@ -257,7 +252,7 @@ export function ProductGrid({
           const on = selected.has(p.id)
           return (
             <div key={p.id} className="relative flex flex-col [&>article]:flex-1">
-              <ProductCard product={p} index={i} asBuyer={asBuyer} homePin={homePin} />
+              <ProductCard product={p} index={i} asBuyer={asBuyer} />
               {/* Режим вибору: картка — одна велика кнопка-галочка (кнопки картки й посилання не спрацьовують) */}
               {tools && selecting && (
                 <button
