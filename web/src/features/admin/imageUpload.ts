@@ -1,6 +1,6 @@
 import { connectStorageEmulator, getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage'
 import { app, emulatorHost, useEmulators } from '../../firebase/config'
-import { THUMB_SIDE, thumbPath } from '../../lib/thumbs'
+import { THUMB_QUALITY, THUMB_SIDE, thumbPath } from '../../lib/thumbs'
 
 // Сховище фото потрібне лише адмінці — тому створюємо його тут, а не в загальному коді сайту.
 const storage = getStorage(app)
@@ -38,7 +38,7 @@ async function uploadImage(file: File, folder: 'products' | 'blog'): Promise<str
     const fileRef = ref(storage, path)
     await uploadBytes(fileRef, await resizeToWebp(bitmap, MAX_SIDE, 0.85), UPLOAD_META)
     // Фото товару — ще й маленька копія для карток (картка не вантажить велике фото)
-    if (folder === 'products') await uploadBytes(ref(storage, thumbPath(path)), await resizeToWebp(bitmap, THUMB_SIDE, 0.8), UPLOAD_META)
+    if (folder === 'products') await uploadBytes(ref(storage, thumbPath(path)), await resizeToWebp(bitmap, THUMB_SIDE, THUMB_QUALITY), UPLOAD_META)
     return getDownloadURL(fileRef)
   } finally {
     bitmap.close()

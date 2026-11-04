@@ -3,15 +3,19 @@ import { HttpsError, onCall } from 'firebase-functions/https'
 import sharp from 'sharp'
 import { withLogging } from './observability.js'
 
-/** Має збігатися з THUMB_SIDE у web/src/lib/thumbs.ts. */
-const THUMB_SIDE = 480
+/** Мають збігатися з web/src/lib/thumbs.ts. */
+const THUMB_SIDE = 720
+const THUMB_QUALITY = 86
+const THUMB_DIR = 'products/small/'
+/** Тут лежали перші мініатюри (480 px, видно розмитими) — прибираємо, коли зроблено нові. */
+const OLD_DIR = 'products/thumbs/'
 /** Скільки фото обробляємо одночасно — щоб не забрати всю пам’ять функції. */
 const PARALLEL = 4
 
 /**
  * Мініатюри для фото товарів, завантажених раніше (нові сайт робить сам): для кожного `products/<id>.webp`
- * без пари створює `products/thumbs/<id>.webp`. Можна запускати скільки завгодно разів — готові пропускає.
- * Лише для продавця (кнопка «Мініатюри фото» в адмінці).
+ * без пари створює `products/small/<id>.webp`. Можна запускати скільки завгодно разів — готові пропускає.
+ * Самі фото не змінює. Лише для продавця (кнопка «Мініатюри фото» в адмінці).
  */
 export const makeThumbs = onCall(
   { timeoutSeconds: 540, memory: '1GiB' },
@@ -21,9 +25,10 @@ export const makeThumbs = onCall(
     const bucket = getStorage().bucket()
     const [files] = await bucket.getFiles({ prefix: 'products/' })
     const names = new Set(files.map((f) => f.name))
-    const todo = files.filter(
-      (f) => !f.name.startsWith('products/thumbs/') && !names.has(f.name.replace(/^products\//, 'products/thumbs/')),
-    )
+    // Самі фото — лише ті, що лежать прямо в products/ (не в теках мініатюр)
+    const originals = files.filter((f) => /^products\/[^/]+$/.test(f.name))
+    const thumbName = (name: string) => name.replace(/^products\//, THUMB_DIR)
+    const todo = originals.filter((f) => !names.has(thumbName(f.name)))
 
     let made = 0
     let failed = 0
@@ -35,9 +40,9 @@ export const makeThumbs = onCall(
             const thumb = await sharp(original)
               .rotate()
               .resize(THUMB_SIDE, THUMB_SIDE, { fit: 'inside', withoutEnlargement: true })
-              .webp({ quality: 80 })
+              .webp({ quality: THUMB_QUALITY })
               .toBuffer()
-            await bucket.file(file.name.replace(/^products\//, 'products/thumbs/')).save(thumb, {
+            await bucket.file(thumbName(file.name)).save(thumb, {
               contentType: 'image/webp',
               metadata: { cacheControl: 'public, max-age=31536000, immutable' },
             })
@@ -49,8 +54,9 @@ export const makeThumbs = onCall(
         }),
       )
     }
+    // Старі мініатюри 480 px більше ніхто не показує
+    await Promise.all(files.filter((f) => f.name.startsWith(OLD_DIR)).map((f) => f.delete().catch(() => undefined)))
     // Скільки всього фото товарів (без самих мініатюр) — щоб показати «готово для N фото»
-    const photos = files.filter((f) => !f.name.startsWith('products/thumbs/')).length
-    return { made, failed, photos }
+    return { made, failed, photos: originals.length }
   }, (r) => r),
 )

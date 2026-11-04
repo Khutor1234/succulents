@@ -5,6 +5,8 @@ import { Link } from 'react-router'
 import { useLang } from '../../i18n'
 import { formatPrice, pick } from '../../lib/format'
 import { withCuttingMark } from '../../lib/plantName'
+import { PLANT_CATEGORY } from '../../lib/plants'
+import { KEEP_LAST } from '../../lib/shop'
 import { searchProducts } from '../../lib/search'
 import type { Product } from '../../lib/types'
 import { useHere } from '../../shared/navigation'
@@ -13,6 +15,21 @@ import { useProgressive } from '../../shared/useProgressive'
 import { useCategories } from '../catalog/categories'
 import { CopyName, DeleteButton, ForSaleButton, HomePin, SellerStock, VisibilityButton } from '../catalog/ProductCard'
 import { useAllProducts } from './api'
+
+/** Фільтр «Показати»: усі, лише в наявності, у продажу, не продаються, видимі покупцям, приховані. */
+const SHOWS = ['all', 'inStock', 'forSale', 'notForSale', 'visible', 'hidden'] as const
+type Show = (typeof SHOWS)[number]
+// «У продажу» — як зафарбована іконка-цінник: позначено «у продажу» і покупцю справді є що купити (не 0 і не остання рослина)
+const sellable = (p: Product) =>
+  p.forSale !== false && p.stock > 0 && !(p.category === PLANT_CATEGORY && p.stock <= KEEP_LAST)
+const SHOW_TEST: Record<Show, (p: Product) => boolean> = {
+  all: () => true,
+  inStock: (p) => p.stock > 0,
+  forSale: sellable,
+  notForSale: (p) => !sellable(p),
+  visible: (p) => p.isActive,
+  hidden: (p) => !p.isActive,
+}
 
 type Sort = 'name' | 'new' | 'stock'
 const SORTS: Sort[] = ['name', 'new', 'stock']
@@ -33,15 +50,15 @@ export function ProductListPage() {
   const { all: categories, nameOf } = useCategories()
   const [category, setCategory] = useState('')
   const [query, setQuery] = useState('')
-  const [inStock, setInStock] = useState(false)
+  const [show, setShow] = useState<Show>('all')
   const [sort, setSort] = useState<Sort>('name')
 
   const shown = useMemo(() => {
-    const list = (data ?? []).filter((p) => (!category || p.category === category) && (!inStock || p.stock > 0))
+    const list = (data ?? []).filter((p) => (!category || p.category === category) && SHOW_TEST[show](p))
     if (query.trim()) return searchProducts(list, query, { categoryName: nameOf, tagLabel: (tag) => t(`tags.${tag}`) })
     return list.sort(COMPARE[sort])
-  }, [data, category, inStock, query, sort, nameOf, t])
-  const { visible, sentinel } = useProgressive(shown, 60, `${category}|${inStock}|${query}|${sort}`)
+  }, [data, category, show, query, sort, nameOf, t])
+  const { visible, sentinel } = useProgressive(shown, 60, `${category}|${show}|${query}|${sort}`)
 
   return (
     <div className="space-y-4">
@@ -83,10 +100,13 @@ export function ProductListPage() {
             </option>
           ))}
         </Select>
-        <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl px-2 text-sm font-bold text-sand-700 hover:bg-sand-200">
-          <input type="checkbox" checked={inStock} onChange={(e) => setInStock(e.target.checked)} className="h-5 w-5 accent-brand-600" />
-          {t('catalog.inStockOnly')}
-        </label>
+        <Select compact value={show} onChange={(e) => setShow(e.target.value as Show)} aria-label={t('admin.list.show')}>
+          {SHOWS.map((s) => (
+            <option key={s} value={s}>
+              {t(`admin.list.shows.${s}`)}
+            </option>
+          ))}
+        </Select>
       </div>
 
       {isLoading && <p className="text-sand-700">{t('loading')}</p>}

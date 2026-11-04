@@ -38,7 +38,7 @@ firestore.rules, storage.rules, firestore.indexes.json
   Повна назва = рід + сорт + форми з галочок, напр. «Echeveria Lola variegata». Живцям на екрані дописується «(живець)»
   (`withCuttingMark`), у базі назва без цього.
 - Ціни зберігаються в **копійках** (`price: 28000` = 280 грн).
-- Фото товарів: `products/<id>.webp` (1200 px) + мініатюра `products/thumbs/<id>.webp` (480 px, `web/src/lib/thumbs.ts`).
+- Фото товарів: `products/<id>.webp` (1200 px) + мініатюра `products/small/<id>.webp` (720 px, `web/src/lib/thumbs.ts`; 480 px було видно розмитим).
   Картки й списки показують мініатюру через `SmallImage` (`shared/ui.tsx`), без неї — саме фото. Нові мініатюри робить
   сайт при завантаженні; для старих — плитка «Мініатюри фото» в адмінці (функція `makeThumbs`, sharp).
 - Швидкі дії продавця на картці (`useSetStock` тощо в `admin/api.ts`) правлять товар у кеші, а не перечитують сайт.
