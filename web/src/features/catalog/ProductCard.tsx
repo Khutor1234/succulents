@@ -149,14 +149,15 @@ export function ProductCard({
       {/* flex-1: кнопки «У кошик» стоять на одній лінії, навіть якщо назви різної довжини.
           Вид окремо не пишемо — він і так перше слово назви («Echeveria Lola») */}
       <div className="group mx-1.5 mt-2.5 flex flex-1 justify-between gap-3">
-        {/* Продавцю — одразу за назвою «скопіювати назву» (напр., щоб вставити в таблицю чи переписку) */}
+        {/* Продавцю — перед назвою «скопіювати назву» (напр., щоб вставити в таблицю чи переписку):
+            на початку рядка вона на всіх картках на одному місці, хоч які довгі назви */}
         <div className="flex min-w-0 items-start gap-1">
+          {isSeller && <CopyName name={name} className="-ml-1.5" />}
           <h3 className="leading-snug font-bold">
             <Link to={`/product/${product.slug}`} className="hover:text-brand-600">
               {withCuttingMark(name, product.tags?.includes('cutting'), t('product.cuttingMark'))}
             </Link>
           </h3>
-          {isSeller && <CopyName name={name} />}
         </div>
         <Link
           to={`/product/${product.slug}`}
@@ -414,7 +415,7 @@ export function CopyName({ name, className = '' }: { name: string; className?: s
       onClick={() => void copy()}
       aria-label={t(copied ? 'admin.nameCopied' : 'admin.copyName', { name })}
       title={t(copied ? 'admin.nameCopied' : 'admin.copyName', { name })}
-      // Невелика, поруч із назвою (висотою з рядок назви)
+      // Невелика, перед назвою (висотою з рядок назви)
       className={`-my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors active:scale-95 ${
         copied ? 'bg-brand-100 text-brand-700' : 'text-sand-700 hover:bg-sand-200 hover:text-ink'
       } ${className}`}

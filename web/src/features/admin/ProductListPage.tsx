@@ -112,6 +112,8 @@ function Row({ product }: { product: Product }) {
     // На широкому екрані — один рядок; на телефоні кнопки переносяться під назву. Прихований — лавандовим фоном
     <li className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 px-2.5 py-1.5 ${product.isActive ? '' : 'bg-lavender-50'}`}>
       <div className="flex min-w-0 flex-1 basis-60 items-center gap-1">
+        {/* На початку рядка — щоб у всіх товарів була на одному місці */}
+        <CopyName name={name} />
         <Link to={`/product/${product.slug}`} className="flex min-w-0 items-center gap-2.5">
           {product.images[0] ? (
             <SmallImage src={product.images[0]} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
@@ -135,7 +137,6 @@ function Row({ product }: { product: Product }) {
             </span>
           </span>
         </Link>
-        <CopyName name={name} />
       </div>
       <div className="flex items-center gap-1">
         <SellerStock product={product} compact />
