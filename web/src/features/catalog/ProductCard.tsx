@@ -31,7 +31,20 @@ const PAGE = 24
  * `asBuyer` — і продавцю показати картку так, як її бачить покупець (вітрина «Нові надходження» на головній);
  *   лишається тільки шпилька «на головну» — щоб прибрати рослину з вітрини прямо там.
  */
-export function ProductCard({ product, index = 0, fullNames = false, asBuyer = false }: { product: Product; index?: number; fullNames?: boolean; asBuyer?: boolean }) {
+export function ProductCard({
+  product,
+  index = 0,
+  fullNames = false,
+  asBuyer = false,
+  homePin = true,
+}: {
+  product: Product
+  index?: number
+  fullNames?: boolean
+  asBuyer?: boolean
+  /** Шпилька «на головну» продавцю (false — у перегляді каталогу «як бачить покупець» картка зовсім як у покупця). */
+  homePin?: boolean
+}) {
   const { t } = useTranslation()
   const lang = useLang()
   const name = pick(product.name, lang)
@@ -88,7 +101,7 @@ export function ProductCard({ product, index = 0, fullNames = false, asBuyer = f
         {/* Продавцю — скопіювати назву одним натисканням (напр., щоб вставити в таблицю чи переписку): під сердечком */}
         {isSeller && <CopyName name={name} className="absolute top-14 right-2" />}
         {/* Продавцю — шпилька «на головну»: позначені рослини першими в «Нових надходженнях» */}
-        {realSeller && <HomePin product={product} name={name} className={`absolute right-2 ${asBuyer ? 'top-14' : 'top-26'}`} />}
+        {realSeller && homePin && <HomePin product={product} name={name} className={`absolute right-2 ${asBuyer ? 'top-14' : 'top-26'}`} />}
         {/* Походження — плашкою внизу фото: під назвою не займає місця, тож картки з батьками й без однакові.
             Кожен батько — окреме посилання в пошук. */}
         {product.category === PLANT_CATEGORY && (
@@ -180,11 +193,13 @@ export function ProductGrid({
   sellerTools,
   keepOrder = false,
   asBuyer = false,
+  homePin = true,
 }: {
   products: Product[]
   sellerTools?: { category?: string }
   keepOrder?: boolean
   asBuyer?: boolean
+  homePin?: boolean
 }) {
   const { t } = useTranslation()
   const lang = useLang()
@@ -239,7 +254,7 @@ export function ProductGrid({
           const on = selected.has(p.id)
           return (
             <div key={p.id} className="relative flex flex-col [&>article]:flex-1">
-              <ProductCard product={p} index={i} asBuyer={asBuyer} />
+              <ProductCard product={p} index={i} asBuyer={asBuyer} homePin={homePin} />
               {/* Режим вибору: картка — одна велика кнопка-галочка (кнопки картки й посилання не спрацьовують) */}
               {tools && selecting && (
                 <button

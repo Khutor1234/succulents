@@ -1,7 +1,7 @@
-import { ArrowLeft, ArrowRight, BookOpen, EyeOff, Gift, Info, Pencil, Truck } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Eye, EyeOff, Gift, Info, Pencil, Truck, X } from 'lucide-react'
 import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, Navigate, NavLink, useNavigate, useParams } from 'react-router'
+import { Link, Navigate, NavLink, useNavigate, useParams, useSearchParams } from 'react-router'
 import { canGoBack, useHere } from '../../shared/navigation'
 import { ICON } from '../../shared/icon'
 import { useLang } from '../../i18n'
@@ -246,9 +246,20 @@ export function CategoryPage() {
   const { t } = useTranslation()
   const { category } = useParams()
   const { isVisible, nameOf, isLoading: settingsLoading } = useCategories()
-  const isSeller = useAuth((s) => s.role === 'seller')
+  const realSeller = useAuth((s) => s.role === 'seller')
+  // Продавцю — перемикач «Як бачить покупець» (?view=buyer): ті самі дані, що й у покупця (залишки без останньої рослини,
+  // лише показані й готові до продажу), звичайні картки й фільтри — сторінка точно така, як у відвідувача
+  const [params, setParams] = useSearchParams()
+  const buyerView = realSeller && params.get('view') === 'buyer'
+  const isSeller = realSeller && !buyerView
+  const setBuyerView = (on: boolean) => {
+    const p = new URLSearchParams(params)
+    if (on) p.set('view', 'buyer')
+    else p.delete('view')
+    setParams(p, { replace: true, preventScrollReset: true })
+  }
   const products = useProducts(category ?? '', isSeller)
-  const filters = usePlantFilters(isSeller)
+  const filters = usePlantFilters()
 
   if (!category || (!settingsLoading && !isVisible(category))) return <Navigate to="/" replace />
 
@@ -256,7 +267,35 @@ export function CategoryPage() {
 
   return (
     <div className="space-y-6">
-      <PageTitle>{nameOf(category)}</PageTitle>
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="mr-auto">
+          <PageTitle>{nameOf(category)}</PageTitle>
+        </div>
+        {realSeller && !buyerView && (
+          <button
+            type="button"
+            onClick={() => setBuyerView(true)}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-sand-300 bg-sand-50 px-4 font-bold text-ink transition-colors hover:border-brand-600"
+          >
+            <Eye size={18} strokeWidth={2.25} aria-hidden />
+            {t('catalog.buyerView')}
+          </button>
+        )}
+      </div>
+      {buyerView && (
+        <div className="-mt-4 flex flex-wrap items-center gap-3 rounded-2xl border-2 border-lavender-400 bg-lavender-50 px-4 py-3">
+          <Eye size={20} strokeWidth={2.25} className="shrink-0 text-lavender-700" aria-hidden />
+          <p className="min-w-0 flex-1 text-sm font-bold text-ink">{t('catalog.buyerViewOn')}</p>
+          <button
+            type="button"
+            onClick={() => setBuyerView(false)}
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-lavender-700 px-3 text-sm font-bold text-sand-50 hover:bg-ink"
+          >
+            <X size={16} strokeWidth={2.5} aria-hidden />
+            {t('catalog.buyerViewOff')}
+          </button>
+        </div>
+      )}
       <CategoryPills />
       <BonusPromo compact />
       <Status isLoading={products.isLoading} isError={products.isError} />
@@ -272,19 +311,15 @@ export function CategoryPage() {
               {t('catalog.resetFilters')}
             </button>
           )}
-          {/* «Лише в наявності» — сховати рослини, яких зараз немає (за замовчуванням вони просто йдуть у кінці).
-              Продавцю — «Як бачить покупець»: лише те, що покупець зараз може замовити */}
-          <label
-            title={isSeller ? t('catalog.buyerViewHint') : undefined}
-            className="ml-auto inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl px-2 text-sm font-bold text-sand-700 hover:bg-sand-200"
-          >
+          {/* «Лише в наявності» — сховати рослини, яких зараз немає (за замовчуванням вони просто йдуть у кінці) */}
+          <label className="ml-auto inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl px-2 text-sm font-bold text-sand-700 hover:bg-sand-200">
             <input
               type="checkbox"
               checked={filters.inStock}
               onChange={(e) => filters.setInStock(e.target.checked)}
               className="h-5 w-5 accent-brand-600"
             />
-            {t(isSeller ? 'catalog.buyerView' : 'catalog.inStockOnly')}
+            {t('catalog.inStockOnly')}
           </label>
           <label className="flex items-center gap-2 text-sm font-bold text-sand-700">
             {t('catalog.sort')}
@@ -300,7 +335,15 @@ export function CategoryPage() {
       )}
       {shown && shown.length === 0 && products.data!.length > 0 && <p className="text-sand-700">{t('catalog.noMatches')}</p>}
       {/* Продавцю — «Вибрати» (масові дії) і «Додати»; своє сортування (за фото) — без поділу на групи */}
-      {shown && <ProductGrid products={shown} sellerTools={{ category }} keepOrder={SELLER_SORTS.includes(filters.sort)} />}
+      {shown && (
+        <ProductGrid
+          products={shown}
+          sellerTools={buyerView ? undefined : { category }}
+          keepOrder={isSeller && SELLER_SORTS.includes(filters.sort)}
+          asBuyer={buyerView}
+          homePin={!buyerView}
+        />
+      )}
     </div>
   )
 }
