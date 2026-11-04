@@ -83,8 +83,8 @@ export function ProductCard({ product, index = 0, fullNames = false, asBuyer = f
           )}
           {/* Продавцю — скільки покупців додали рослину в улюблене (у продавця немає сердечка-кнопки) */}
         </TagBadges>
-        {/* Сердечко — для всіх; кількість лайків поруч бачить лише продавець */}
-        <FavoriteButton product={product} hideLikes={asBuyer} className="absolute top-2 right-2" />
+        {/* Сердечко й кількість лайків поруч — для всіх */}
+        <FavoriteButton product={product} className="absolute top-2 right-2" />
         {/* Продавцю — скопіювати назву одним натисканням (напр., щоб вставити в таблицю чи переписку): під сердечком */}
         {isSeller && <CopyName name={name} className="absolute top-14 right-2" />}
         {/* Продавцю — шпилька «на головну»: позначені рослини першими в «Нових надходженнях» */}
