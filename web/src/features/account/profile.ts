@@ -3,14 +3,24 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { z } from 'zod'
 import { db } from '../../firebase/config'
 import { useAuth } from '../auth/authStore'
-import { checkoutSchema } from '../checkout/schema'
+import { checkoutFields } from '../checkout/schema'
 
-/** Дані доставки, які покупець зберігає в кабінеті й які підставляються в оформлення. */
-export const deliveryProfileSchema = checkoutSchema.pick({ fullName: true, phone: true, city: true, warehouse: true })
+/**
+ * Дані доставки, які покупець зберігає в кабінеті й які підставляються в оформлення.
+ * `address` і `taxi` — для таксі по Львову (відділення й адреса зберігаються обидва, бо покупець може чергувати).
+ */
+export const deliveryProfileSchema = checkoutFields.pick({
+  fullName: true,
+  phone: true,
+  city: true,
+  warehouse: true,
+  address: true,
+  taxi: true,
+})
 export type DeliveryProfileInput = z.input<typeof deliveryProfileSchema>
 export type DeliveryProfile = z.output<typeof deliveryProfileSchema>
 
-const EMPTY: DeliveryProfile = { fullName: '', phone: '', city: '', warehouse: '' }
+const EMPTY: DeliveryProfile = { fullName: '', phone: '', city: '', warehouse: '', address: '', taxi: false }
 
 /** users/{uid}.delivery — читати й писати може лише сам покупець (див. firestore.rules). */
 export function useDeliveryProfile() {

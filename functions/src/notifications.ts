@@ -38,7 +38,7 @@ export function formatOrderMessage(order: Order): string {
     `👤 ${escapeHtml(d.fullName)}`,
     `📞 ${escapeHtml(d.phone)}`,
     `✉️ ${escapeHtml(order.email)}`,
-    `📦 ${escapeHtml(d.city)}, ${escapeHtml(d.warehouse)}`,
+    d.taxi ? `🚕 Таксі: ${escapeHtml(d.city)}, ${escapeHtml(d.address ?? '')}` : `📦 ${escapeHtml(d.city)}, ${escapeHtml(d.warehouse)}`,
   ]
   if (d.comment) lines.push(`💬 ${escapeHtml(d.comment)}`)
   if (!order.userId) lines.push('', '<i>Гостьове замовлення</i>')

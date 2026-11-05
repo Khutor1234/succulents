@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, BookOpen, Eye, EyeOff, Gift, Info, Pencil, Truck, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, CarTaxiFront, Eye, EyeOff, Gift, Info, Pencil, Truck, X } from 'lucide-react'
 import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, NavLink, useNavigate, useParams, useSearchParams } from 'react-router'
@@ -194,12 +194,19 @@ export function HomePage() {
           <div className="flex min-h-[260px] items-end justify-center overflow-hidden rounded-[32px] bg-sand-300 text-brand-600">
             <DesertIllustration />
           </div>
-          <div className="flex items-start gap-4 rounded-3xl bg-brand-600 px-6 py-5 text-sand-100">
-            <Truck size={32} strokeWidth={2} aria-hidden className="mt-1 shrink-0 text-sand-300" />
-            <div>
-              <p className="font-display text-2xl font-extrabold">{t('home.deliveryTitle')}</p>
-              <p className="mt-1">{t('home.deliveryText')}</p>
-            </div>
+          {/* Два способи доставки — однакові рядки (вантажівка / таксі), між ними тонка лінія; умови — під ними */}
+          <div className="rounded-3xl bg-brand-600 px-6 py-5 text-sand-100">
+            <ul className="divide-y divide-sand-100/25 font-display text-xl leading-tight font-extrabold">
+              <li className="flex items-center gap-3 pb-2.5">
+                <Truck size={26} strokeWidth={2} aria-hidden className="shrink-0 text-sand-300" />
+                {t('home.deliveryTitle')}
+              </li>
+              <li className="flex items-center gap-3 pt-2.5">
+                <CarTaxiFront size={26} strokeWidth={2} aria-hidden className="shrink-0 text-sand-300" />
+                {t('home.taxiTitle')}
+              </li>
+            </ul>
+            <p className="mt-3">{t('home.deliveryText')}</p>
           </div>
         </div>
       </section>

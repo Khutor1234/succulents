@@ -2,7 +2,11 @@ import { z } from 'zod'
 
 // Ті самі правила, що й у формі на сайті (web/src/features/checkout/schema.ts).
 // Сервер перевіряє все ще раз: даним з браузера довіряти не можна.
-export const customerSchema = z.object({
+/** Чи місто — Львів (доставка таксі). Має збігатися з isLviv у web/src/lib/shop.ts. */
+export const isLviv = (city: string) => /льв[іо]в|lviv|lvov|lwów/i.test(city)
+
+export const customerSchema = z
+  .object({
   fullName: z.string().trim().min(2).max(100),
   phone: z
     .string()
@@ -10,11 +14,17 @@ export const customerSchema = z.object({
     .pipe(z.string().regex(/^(\+?38)?0\d{9}$/)),
   email: z.email(),
   city: z.string().trim().min(2).max(100),
-  warehouse: z.string().trim().min(1).max(200),
+  warehouse: z.string().trim().max(200).default(''),
+  // Таксі — лише по Львову і з адресою; інакше Нова Пошта, і тоді потрібне відділення
+  taxi: z.boolean().default(false),
+  address: z.string().trim().max(300).default(''),
   comment: z.string().trim().max(1000).optional(),
   // Нові замовлення — лише передоплата на картку. 'cod' лишається в типі Order для старих замовлень.
   paymentMethod: z.literal('card_transfer'),
-})
+  })
+  .refine((c) => (c.taxi ? isLviv(c.city) && c.address.length >= 5 : c.warehouse.length > 0), {
+    message: 'Taxi needs a Lviv address; Nova Poshta needs a warehouse',
+  })
 
 export const createOrderSchema = z.object({
   items: z
@@ -95,7 +105,8 @@ export interface Order {
   bonusRefunded?: boolean
   stockRestored?: boolean
   status: 'new' | 'confirmed' | 'shipped' | 'done' | 'cancelled'
-  delivery: { fullName: string; phone: string; city: string; warehouse: string; comment: string }
+  /** `taxi` і `address` — доставка таксі по Львову (тоді `warehouse` порожнє). Старі замовлення — без них. */
+  delivery: { fullName: string; phone: string; city: string; warehouse: string; comment: string; taxi?: boolean; address?: string }
   payment: { method: 'cod' | 'card_transfer'; paid: boolean }
   lang: 'uk' | 'en'
 }

@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { MapPin } from 'lucide-react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
+import { isLviv } from '../../lib/shop'
 import { ICON } from '../../shared/icon'
 import { useTranslation } from 'react-i18next'
 import { Button, Input } from '../../shared/ui'
@@ -39,12 +40,15 @@ function ProfileForm({ initial }: { initial: DeliveryProfile }) {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isDirty, isSubmitting },
   } = useForm<DeliveryProfileInput, unknown, DeliveryProfile>({
     resolver: zodResolver(deliveryProfileSchema),
     defaultValues: initial,
   })
   const err = (key?: string) => (key ? t(key) : undefined)
+  // Львів — ще й адреса для таксі (необов'язково), щоб підставлялась в оформлення
+  const lviv = isLviv(useWatch({ control, name: 'city' }) ?? '')
 
   return (
     <form onSubmit={handleSubmit((d) => save.mutateAsync(d))} className="space-y-4">
@@ -60,6 +64,15 @@ function ProfileForm({ initial }: { initial: DeliveryProfile }) {
         />
         <Input label={t('checkout.city')} autoComplete="address-level2" {...register('city')} error={err(errors.city?.message)} />
         <Input label={t('checkout.warehouse')} placeholder="№ 12" {...register('warehouse')} error={err(errors.warehouse?.message)} />
+        {lviv && (
+          <Input
+            label={t('profile.taxiAddress')}
+            autoComplete="street-address"
+            placeholder="вул. Городоцька, 12, кв. 5"
+            {...register('address')}
+            error={err(errors.address?.message)}
+          />
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={!isDirty || isSubmitting}>

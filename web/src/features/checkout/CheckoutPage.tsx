@@ -2,11 +2,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { httpsCallable } from 'firebase/functions'
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { withCuttingMark } from '../../lib/plantName'
 import { Link, Navigate } from 'react-router'
-import { CreditCard, Truck, User } from 'lucide-react'
+import { CarTaxiFront, CreditCard, Truck, User } from 'lucide-react'
 import { reportError, track } from '../../lib/monitoring'
 import { ICON } from '../../shared/icon'
 import { BONUS_RATE, useBonusBalance } from '../account/api'
@@ -19,7 +19,7 @@ import { useAuth } from '../auth/authStore'
 import { CartChanges } from '../cart/CartChanges'
 import { selectTotal, useCart } from '../cart/cartStore'
 import { useCartChanges, useCartSync } from '../cart/useCartSync'
-import { MIN_ORDER } from '../../lib/shop'
+import { isLviv, MIN_ORDER } from '../../lib/shop'
 import { checkoutSchema, type CheckoutData, type CheckoutInput } from './schema'
 
 interface CreateOrderRequest {
@@ -42,8 +42,9 @@ interface CreateOrderResponse {
  * (особливо для гостей, у яких немає кабінету). Лише в браузері покупця; помилки сховища просто ігноруємо.
  */
 const LAST_DELIVERY_KEY = 'succulents.lastDelivery'
-const DELIVERY_KEYS = ['fullName', 'phone', 'email', 'city', 'warehouse'] as const
-type SavedDelivery = Partial<Record<(typeof DELIVERY_KEYS)[number], string>>
+const DELIVERY_KEYS = ['fullName', 'phone', 'email', 'city', 'warehouse', 'address'] as const
+/** `taxi` — минулого разу вибрали таксі по Львову: наступного разу галочка вже стоїть. */
+type SavedDelivery = Partial<Record<(typeof DELIVERY_KEYS)[number], string>> & { taxi?: boolean }
 
 function loadLastDelivery(): SavedDelivery | null {
   try {
@@ -56,7 +57,10 @@ function loadLastDelivery(): SavedDelivery | null {
 
 function saveLastDelivery(customer: CheckoutData) {
   try {
-    const data = Object.fromEntries(DELIVERY_KEYS.map((k) => [k, customer[k] ?? '']))
+    // Таксі — відділення не вводили, Нова Пошта — адресу: порожнє поле лишаємо таким, як було збережено раніше
+    const prev = loadLastDelivery()
+    const data: SavedDelivery = Object.fromEntries(DELIVERY_KEYS.map((k) => [k, customer[k] || prev?.[k] || '']))
+    data.taxi = customer.taxi
     localStorage.setItem(LAST_DELIVERY_KEY, JSON.stringify(data))
   } catch {
     // Приватний режим чи заблоковане сховище — нічого страшного.
@@ -94,12 +98,19 @@ export function CheckoutPage() {
     handleSubmit,
     getValues,
     setValue,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<CheckoutInput, unknown, CheckoutData>({
     resolver: zodResolver(checkoutSchema),
     // Дані з минулого замовлення на цьому пристрої; залогіненому email — завжди з акаунта.
-    defaultValues: { ...lastDelivery, email: user?.email ?? lastDelivery?.email ?? '', paymentMethod: 'card_transfer' },
+    defaultValues: { ...lastDelivery, email: user?.email ?? lastDelivery?.email ?? '', taxi: lastDelivery?.taxi ?? false, paymentMethod: 'card_transfer' },
   })
+
+  // Місто — Львів: можна таксі замість Нової Пошти (галочка). Поставили галочку — замість відділення адреса
+  const city = useWatch({ control, name: 'city' }) ?? ''
+  const taxi = useWatch({ control, name: 'taxi' }) ?? false
+  const lviv = isLviv(city)
+  const byTaxi = lviv && taxi
 
   // Firebase може повідомити про залогіненого користувача вже після першого рендера форми.
   useEffect(() => {
@@ -114,10 +125,12 @@ export function CheckoutPage() {
   const filledFromProfile = !!profile && Object.values(profile).some(Boolean)
   useEffect(() => {
     if (!profile) return
-    for (const key of ['fullName', 'phone', 'city', 'warehouse'] as const) {
+    for (const key of ['fullName', 'phone', 'city', 'warehouse', 'address'] as const) {
       if (profile[key] && !getValues(key)) setValue(key, profile[key])
     }
-  }, [profile, getValues, setValue])
+    // Вибір таксі — з кабінету, якщо на цьому пристрої ще не замовляли
+    if (!lastDelivery && profile.taxi) setValue('taxi', true)
+  }, [profile, lastDelivery, getValues, setValue])
 
   // Перевіряємо раніше за порожній кошик: після clear() кошик порожній, але треба йти на сторінку успіху.
   if (placed) {
@@ -129,7 +142,9 @@ export function CheckoutPage() {
 
   const err = (key?: string) => (key ? t(key) : undefined)
 
-  async function onSubmit(customer: CheckoutData) {
+  async function onSubmit(form: CheckoutData) {
+    // Галочка «таксі» лишилась, а місто змінили не на Львів — тоді це звичайна Нова Пошта
+    const customer: CheckoutData = form.taxi && !isLviv(form.city) ? { ...form, taxi: false } : form
     setSubmitError(null)
     track('checkout_submit', { items: items.length, subtotal, useBonuses: bonusUsed > 0 })
     try {
@@ -143,8 +158,16 @@ export function CheckoutPage() {
       saveLastDelivery(customer)
       if (user && rememberProfile) {
         // Не блокуємо успіх замовлення, якщо збереження профілю раптом не вдасться.
-        const { fullName, phone, city, warehouse } = customer
-        saveProfile.mutate({ fullName, phone, city, warehouse })
+        // Таксі — відділення не вводили, Нова Пошта — адресу: у кабінеті лишаємо збережене раніше
+        const { fullName, phone, city, warehouse, address, taxi } = customer
+        saveProfile.mutate({
+          fullName,
+          phone,
+          city,
+          warehouse: warehouse || profile?.warehouse || '',
+          address: address || profile?.address || '',
+          taxi,
+        })
       }
       track('order_placed', { orderId: data.orderId, number: data.number, total: data.total, bonusUsed: data.bonusUsed })
       setPlaced(data)
@@ -211,7 +234,27 @@ export function CheckoutPage() {
 
         <Section title={t('checkout.delivery')} icon={<Truck {...ICON} />}>
           <Input label={t('checkout.city')} autoComplete="address-level2" {...register('city')} error={err(errors.city?.message)} />
-          <Input label={t('checkout.warehouse')} placeholder="№ 12" {...register('warehouse')} error={err(errors.warehouse?.message)} />
+          {lviv && (
+            <label
+              className={`flex cursor-pointer items-start gap-3 rounded-xl border-2 px-4 py-3 transition-colors ${
+                byTaxi ? 'border-brand-500 bg-brand-50' : 'border-sand-200 hover:border-brand-500'
+              }`}
+            >
+              <input type="checkbox" {...register('taxi')} className="mt-0.5 h-5 w-5 shrink-0 accent-brand-600" />
+              <span>
+                <span className="flex items-center gap-2 font-bold">
+                  <CarTaxiFront size={20} strokeWidth={2.25} className="text-brand-600" aria-hidden />
+                  {t('checkout.taxi')}
+                </span>
+                <span className="mt-0.5 block text-sm text-sand-700">{t('checkout.taxiHint')}</span>
+              </span>
+            </label>
+          )}
+          {byTaxi ? (
+            <Input label={t('checkout.address')} autoComplete="street-address" placeholder="вул. Городоцька, 12, кв. 5" {...register('address')} error={err(errors.address?.message)} />
+          ) : (
+            <Input label={t('checkout.warehouse')} placeholder="№ 12" {...register('warehouse')} error={err(errors.warehouse?.message)} />
+          )}
           <Input label={t('checkout.comment')} {...register('comment')} />
           {user && (
             <label className="flex min-h-11 cursor-pointer items-center gap-3">

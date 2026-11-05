@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Ban,
+  CarTaxiFront,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -280,9 +281,15 @@ function OrderRow({ order, open, onToggle }: { order: Order; open: boolean; onTo
                   {order.email}
                 </a>
               </ContactLine>
-              <ContactLine icon={MapPin}>
-                {d.city}, {d.warehouse}
-              </ContactLine>
+              {d.taxi ? (
+                <ContactLine icon={CarTaxiFront}>
+                  <strong>{t('admin.order.taxi')}:</strong> {d.city}, {d.address}
+                </ContactLine>
+              ) : (
+                <ContactLine icon={MapPin}>
+                  {d.city}, {d.warehouse}
+                </ContactLine>
+              )}
               {d.comment && (
                 <ContactLine icon={MessageSquare}>
                   <span className="text-sand-700">{d.comment}</span>
