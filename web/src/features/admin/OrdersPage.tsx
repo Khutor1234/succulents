@@ -101,6 +101,11 @@ export function OrdersPage() {
             order={order}
             open={openId === order.id}
             onToggle={() => setOpenId(openId === order.id ? null : order.id)}
+            // Змінили статус — переходимо на вкладку цього статусу, замовлення лишається розгорнутим
+            onStatusChanged={(s) => {
+              setFilter(s)
+              setOpenId(order.id)
+            }}
           />
         ))}
       </ul>
@@ -119,7 +124,17 @@ function StatusBadge({ status }: { status: OrderStatus }) {
   )
 }
 
-function OrderRow({ order, open, onToggle }: { order: Order; open: boolean; onToggle: () => void }) {
+function OrderRow({
+  order,
+  open,
+  onToggle,
+  onStatusChanged,
+}: {
+  order: Order
+  open: boolean
+  onToggle: () => void
+  onStatusChanged: (status: OrderStatus) => void
+}) {
   const { t } = useTranslation()
   const lang = useLang()
   const update = useUpdateOrder()
@@ -136,7 +151,8 @@ function OrderRow({ order, open, onToggle }: { order: Order; open: boolean; onTo
 
   function changeStatus(status: OrderStatus) {
     if (status === 'cancelled' && !window.confirm(t('admin.order.cancelConfirm', { number: order.number }))) return
-    update.mutate({ id: order.id, status })
+    // Після того як список оновився — інакше на новій вкладці замовлення ще не було б
+    update.mutate({ id: order.id, status }, { onSuccess: () => onStatusChanged(status) })
   }
 
   return (
