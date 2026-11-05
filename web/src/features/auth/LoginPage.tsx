@@ -115,7 +115,7 @@ export function LoginPage() {
       <button
         type="button"
         onClick={() => void run(signInWithGoogle, 'google')}
-        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border-2 border-sand-200 bg-white px-4 font-bold text-ink hover:border-sand-300"
+        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border-2 border-sand-200 bg-sand-50 px-4 font-bold text-ink hover:border-sand-300"
       >
         <GoogleLogo />
         {t('auth.google')}

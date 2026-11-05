@@ -67,18 +67,18 @@ export function BonusesPage() {
 
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="col-span-2 rounded-3xl bg-sunset-600 p-5 text-sand-50 sm:col-span-1">
-          <p className="flex items-center gap-2 text-xs font-bold tracking-[0.12em] uppercase">
+          <p className="flex items-center gap-2 text-sm font-bold">
             <Wallet size={16} strokeWidth={2.5} aria-hidden />
             {t('account.bonuses.now')}
           </p>
           <p className="mt-2 font-display text-3xl font-extrabold">{formatPrice(balance, lang)}</p>
         </div>
         <div className="rounded-3xl border-2 border-sand-200 bg-sand-50 p-4 sm:p-5">
-          <p className="text-xs font-bold tracking-[0.12em] text-sand-700 uppercase">{t('account.bonuses.earned')}</p>
+          <p className="text-sm font-bold text-sand-700">{t('account.bonuses.earned')}</p>
           <p className="mt-2 font-display text-2xl font-extrabold text-brand-600 sm:text-3xl">+{formatPrice(earned, lang)}</p>
         </div>
         <div className="rounded-3xl border-2 border-sand-200 bg-sand-50 p-4 sm:p-5">
-          <p className="text-xs font-bold tracking-[0.12em] text-sand-700 uppercase">{t('account.bonuses.spent')}</p>
+          <p className="text-sm font-bold text-sand-700">{t('account.bonuses.spent')}</p>
           <p className="mt-2 font-display text-2xl font-extrabold text-sunset-600 sm:text-3xl">−{formatPrice(spent, lang)}</p>
         </div>
       </div>

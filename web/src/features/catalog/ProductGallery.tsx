@@ -160,7 +160,7 @@ function Lightbox({
       }}
       onClick={(e) => e.target === e.currentTarget && ref.current?.close()}
       aria-label={t('gallery.open', { n: index + 1, count })}
-      className="m-auto max-h-none max-w-none bg-transparent p-0 backdrop:bg-ink/90"
+      className="m-auto max-h-none max-w-none bg-transparent p-0 backdrop:bg-ink/90 dark:backdrop:bg-black/85"
     >
       <div className="flex h-[100dvh] w-screen flex-col items-center gap-3 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="flex w-full max-w-5xl items-center justify-between text-sand-50">

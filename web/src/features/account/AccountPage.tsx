@@ -76,7 +76,7 @@ export function AccountPage() {
 
       <section className="grid gap-5 md:grid-cols-[1fr_1.4fr]">
         <div className="flex flex-col justify-between gap-6 rounded-[32px] bg-sunset-600 p-8 text-sand-50">
-          <p className="flex items-center gap-2 text-[13px] font-bold tracking-[0.14em] uppercase">
+          <p className="flex items-center gap-2 text-[15px] font-bold">
             <Wallet {...ICON} />
             {t('account.balance')}
           </p>

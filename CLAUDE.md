@@ -39,6 +39,9 @@ firestore.rules, storage.rules, firestore.indexes.json
 - Назви рослин і теги-форми: `web/src/lib/plants.ts`, `web/src/lib/plantName.ts`.
   Повна назва = рід + сорт + форми з галочок, напр. «Echeveria Lola variegata». Живцям на екрані дописується «(живець)»
   (`withCuttingMark`), у базі назва без цього.
+- Світла й темна тема: перемикач у шапці (`app/theme.ts`, localStorage `theme`, за замовчуванням світла). Темна — ті самі
+  назви кольорів з іншими значеннями в `index.css` (`:root[data-theme=dark]`), тож нові сторінки темніють самі. Не писати
+  `text-white`/`bg-white` — лише кольори теми (`text-sand-50` тощо); для рідкісних винятків є `dark:`.
 - Ціни зберігаються в **копійках** (`price: 28000` = 280 грн).
 - Фото товарів: `products/<id>.webp` (1200 px) + мініатюра `products/small/<id>.webp` (720 px, `web/src/lib/thumbs.ts`; 480 px було видно розмитим).
   Картки й списки показують мініатюру через `SmallImage` (`shared/ui.tsx`), без неї — саме фото. Нові мініатюри робить

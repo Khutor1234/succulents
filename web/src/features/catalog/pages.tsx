@@ -35,7 +35,20 @@ function Status({ isLoading, isError }: { isLoading: boolean; isError: boolean }
   return null
 }
 
-/** Кактус на пагорбах під сонцем — ілюстрація для першого екрана. */
+/**
+ * Кактус на пагорбах — ілюстрація для першого екрана. Вдень (світла тема) — тепле сонце й пташки, що повільно ширяють;
+ * вночі (темна) — сонце стає місяцем і з'являються зорі. Небо (градієнт) — фон картки навколо, див. HomePage.
+ */
+/** Зорі на нічному небі: x, y, радіус. */
+const STARS = [
+  [28, 22, 1.6],
+  [62, 40, 1.1],
+  [96, 14, 1.4],
+  [128, 52, 1],
+  [186, 62, 1.3],
+  [40, 70, 0.9],
+] as const
+
 function DesertIllustration() {
   return (
     <svg
@@ -52,7 +65,20 @@ function DesertIllustration() {
       <path d="M112 82h10c6 0 8-4 8-10V58c0-8 10-8 10 0v16c0 12-8 20-18 20h-10" />
       <path d="M100 96H88c-10 0-16-8-16-18V66c0-8 10-8 10 0v10c0 6 2 9 8 9h10" />
       <path d="M0 132c40-14 70-14 100-4s70 8 100-6" />
-      <circle cx="160" cy="30" r="14" />
+      <circle cx="160" cy="30" r="14" className="fill-sunset-200 stroke-sunset-500 dark:fill-ink/90 dark:stroke-ink/90" />
+      {/* Пташки — лише вдень: три «галочки», що повільно пропливають небом */}
+      <g className="animate-glide stroke-ink/60 dark:hidden" strokeWidth="1.8">
+        <path d="M30 34q4-5 8 0q4-5 8 0" />
+        <path d="M52 22q3-4 6 0q3-4 6 0" />
+        <path d="M70 40q2.5-3 5 0q2.5-3 5 0" />
+      </g>
+      {/* Зорі — лише вночі (темна тема): тихо мерехтять, кожна у своєму ритмі; зрідка пролітає падаюча зірка */}
+      <g className="hidden fill-ink stroke-none dark:inline">
+        {STARS.map(([cx, cy, r], i) => (
+          <circle key={i} cx={cx} cy={cy} r={r} className="animate-twinkle" style={{ animationDelay: `${i * 0.7}s`, animationDuration: `${2.6 + (i % 3) * 0.9}s` }} />
+        ))}
+      </g>
+      <path d="M44 8l-16 9" className="hidden animate-shooting stroke-ink dark:inline" strokeWidth="1.5" />
     </svg>
   )
 }
@@ -62,12 +88,12 @@ export function CategoryPills() {
   return (
     // Телефон: один рядок, що гортається пальцем убік (не три рядки кнопок над товарами); ширше — переноситься
     <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:gap-2.5 sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
-      {visible.map((c, i) => (
+      {visible.map((c) => (
         <NavLink
           key={c}
           to={`/c/${c}`}
           className={({ isActive }) =>
-            `shrink-0 rounded-full px-4 py-2.5 font-bold whitespace-nowrap sm:px-5 sm:py-3 ${isActive ? 'bg-brand-600 text-sand-50' : i % 2 ? 'bg-sand-200 hover:bg-sand-300' : 'bg-sand-300 hover:bg-sand-400'}`
+            `shrink-0 rounded-full px-4 py-2.5 font-bold whitespace-nowrap sm:px-5 sm:py-3 ${isActive ? 'bg-brand-600 text-sand-50' : 'bg-sand-200 hover:bg-sand-300'}`
           }
         >
           {nameOf(c)}
@@ -171,7 +197,7 @@ export function HomePage() {
       <SellerOrdersPanel />
       <section className="grid gap-5 md:grid-cols-2">
         <div className="flex min-h-[420px] flex-col justify-between gap-8 rounded-[32px] bg-sunset-600 p-8 text-sand-50 sm:p-10">
-          <p className="text-[13px] font-bold tracking-[0.14em] uppercase">{t('home.eyebrow')}</p>
+          <p className="text-[15px] font-bold">{t('home.eyebrow')}</p>
           <h1 className="font-display text-5xl leading-[0.98] font-extrabold sm:text-6xl">{t('home.title')}</h1>
           <div className="flex flex-wrap gap-3">
             <Link
@@ -191,22 +217,23 @@ export function HomePage() {
           </div>
         </div>
         <div className="grid grid-rows-[1fr_auto] gap-5">
-          <div className="flex min-h-[260px] items-end justify-center overflow-hidden rounded-[32px] bg-sand-300 text-brand-600">
+          <div className="flex min-h-[260px] items-end justify-center overflow-hidden rounded-[32px] bg-[linear-gradient(to_bottom,#cfe4e4_0%,#ecdcbc_62%,#e6c590_100%)] text-brand-600 dark:bg-[linear-gradient(to_bottom,#1c1838_0%,#2e2650_55%,#6b3a4a_100%)]">
             <DesertIllustration />
           </div>
-          {/* Два способи доставки — однакові рядки (вантажівка / таксі), між ними тонка лінія; умови — під ними */}
-          <div className="rounded-3xl bg-brand-600 px-6 py-5 text-sand-100">
-            <ul className="divide-y divide-sand-100/25 font-display text-xl leading-tight font-extrabold">
+          {/* Два способи доставки — однакові рядки (вантажівка / таксі), між ними тонка лінія; умови — під ними.
+              У темній темі — графітовий блок із зеленими іконками: яскравим лишається лише банер поруч */}
+          <div className="rounded-3xl bg-brand-600 px-6 py-5 text-sand-100 dark:bg-sand-50 dark:text-ink">
+            <ul className="divide-y divide-sand-100/25 font-display dark:divide-sand-300 text-xl leading-tight font-extrabold">
               <li className="flex items-center gap-3 pb-2.5">
-                <Truck size={26} strokeWidth={2} aria-hidden className="shrink-0 text-sand-300" />
+                <Truck size={26} strokeWidth={2} aria-hidden className="shrink-0 text-sand-300 dark:text-brand-600" />
                 {t('home.deliveryTitle')}
               </li>
               <li className="flex items-center gap-3 pt-2.5">
-                <CarTaxiFront size={26} strokeWidth={2} aria-hidden className="shrink-0 text-sand-300" />
+                <CarTaxiFront size={26} strokeWidth={2} aria-hidden className="shrink-0 text-sand-300 dark:text-brand-600" />
                 {t('home.taxiTitle')}
               </li>
             </ul>
-            <p className="mt-3">{t('home.deliveryText')}</p>
+            <p className="mt-3 dark:text-sand-700">{t('home.deliveryText')}</p>
           </div>
         </div>
       </section>
@@ -467,20 +494,9 @@ export function ProductPage() {
             </div>
           )}
           <TagBadges tags={product.tags} className="mt-3" />
-          {product.aliases && product.aliases.length > 0 && (
-            <p className="mt-3 text-sand-700">
-              <span className="font-bold">{t('search.aliases')}:</span> {product.aliases.join(', ')}
-            </p>
-          )}
-          <ParentsLinks
-            parents={product.parents}
-            origin={product.origin}
-            habitat={product.habitat}
-            breeder={product.breeder}
-            label
-            className="mt-4"
-          />
-          <p className="mt-4 font-display text-3xl font-extrabold text-sunset-600">{formatPrice(product.price, lang)}</p>
+          {/* Спершу те, що потрібно для покупки (ціна, наявність, кошик) — на телефоні це видно одразу під фото;
+              інші назви й походження — нижче, разом з описом */}
+          <p className="mt-3 font-display text-3xl font-extrabold text-sunset-600">{formatPrice(product.price, lang)}</p>
           <p className="mt-1 text-sm text-sand-700">
             {product.stock > 0 ? t('product.inStock', { count: product.stock }) : t('product.outOfStock')}
           </p>
@@ -498,6 +514,19 @@ export function ProductPage() {
             {!isSeller && <AddToCart product={product} size="lg" />}
             <FavoriteButton product={product} variant="lg" />
           </div>
+          {product.aliases && product.aliases.length > 0 && (
+            <p className="mt-6 text-sand-700">
+              <span className="font-bold">{t('search.aliases')}:</span> {product.aliases.join(', ')}
+            </p>
+          )}
+          <ParentsLinks
+            parents={product.parents}
+            origin={product.origin}
+            habitat={product.habitat}
+            breeder={product.breeder}
+            label
+            className="mt-4"
+          />
           <p className="mt-8 leading-relaxed whitespace-pre-line">{pick(product.description, lang)}</p>
           {product.specs && product.specs.length > 0 && (
             <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border-2 border-sand-200 bg-sand-200 text-sm">

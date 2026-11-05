@@ -197,7 +197,7 @@ export function ImageCropper({
         e.preventDefault()
         onCancel()
       }}
-      className="m-auto w-[min(100vw-1.5rem,560px)] rounded-3xl bg-sand-50 p-4 text-ink shadow-2xl backdrop:bg-ink/60 sm:p-5"
+      className="m-auto w-[min(100vw-1.5rem,560px)] rounded-3xl bg-sand-50 p-4 text-ink shadow-2xl backdrop:bg-ink/60 dark:backdrop:bg-black/85 sm:p-5"
     >
       <p className="mb-1 font-display text-xl font-extrabold text-brand-600">{title ?? t('cropper.title')}</p>
       <p className="mb-3 text-sm text-sand-700">{t('cropper.hint')}</p>

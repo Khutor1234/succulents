@@ -58,12 +58,11 @@ export function ProductCard({
   }
 
   return (
-    // Картки з'являються одна за одною (затримка за індексом) і легко піднімаються при наведенні
+    // Картка легко піднімається при наведенні
     <article
-      style={{ animationDelay: `${Math.min(index % PAGE, 11) * 45}ms` }}
       // Продавцю картка одразу каже про стан (фото лишається яскравим):
       // прихований — лавандовий фон і пунктирна рамка; показаний, але закінчився — ніжний персиковий фон
-      className={`@container flex animate-rise flex-col rounded-3xl border-2 p-3 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:shadow-[0_12px_30px_-12px_rgba(43,33,24,0.25)] ${
+      className={`@container flex flex-col rounded-3xl border-2 p-3 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:shadow-[0_12px_30px_-12px_rgba(43,33,24,0.25)] ${
         !product.isActive
           ? 'border-dashed border-lavender-400 bg-lavender-50 hover:border-lavender-700'
           : isSeller && product.stock === 0
@@ -87,7 +86,7 @@ export function ProductCard({
             </span>
           )}
           {isSeller && (
-            <span className={`${SELLER_BADGE} text-white ${product.stock > 0 ? 'bg-brand-700/90' : 'bg-red-700/90'}`}>
+            <span className={`${SELLER_BADGE} text-sand-50 ${product.stock > 0 ? 'bg-brand-700/90' : 'bg-red-700/90'}`}>
               <Package size={12} strokeWidth={2.75} aria-hidden />
               {product.stock > 0 ? t('admin.stockBadge', { count: product.stock }) : t('admin.noStockBadge')}
             </span>
@@ -554,7 +553,7 @@ export function DeleteButton({
       disabled={remove.isPending}
       aria-label={t('admin.deleteNamed', { name })}
       title={t('admin.deleteProduct')}
-      className={`${iconBtn(compact)} border-red-700 text-red-700 hover:bg-red-700 hover:text-white`}
+      className={`${iconBtn(compact)} border-red-700 text-red-700 hover:bg-red-700 hover:text-sand-50`}
     >
       <Trash2 size={18} strokeWidth={2.25} aria-hidden />
     </button>

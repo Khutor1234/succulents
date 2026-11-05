@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* dark: — лише для кількох місць, яким замало самої заміни кольорів (темні вставки на кшталт підвалу й затемнення під фото) */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 /* Стиль «Пустеля»: пісок, захід сонця, кактус. */
 @theme {
   --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
@@ -9,8 +12,8 @@
 
   /* Пісок — фони, картки, рамки */
   --color-sand-50: #fff6e8;
-  --color-sand-100: #f6e9d2;
-  --color-sand-200: #efdcbb;
+  --color-sand-100: #f7eddb;
+  --color-sand-200: #efdfc3;
   --color-sand-300: #e9c99a;
   --color-sand-400: #d9b47e;
   --color-sand-700: #6e5a44;
@@ -44,6 +47,24 @@
   --animate-rise: rise 480ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   /* Легке погойдування іконки (кошик при наведенні) */
   --animate-wiggle: wiggle 500ms ease-in-out;
+  /* Пташки на головній ілюстрації — повільно ширяють туди й назад */
+  --animate-glide: glide 9s ease-in-out infinite alternate;
+  @keyframes glide {
+    from { transform: translate(-10px, 3px); }
+    to { transform: translate(16px, -4px); }
+  }
+  /* Нічне небо на головній: зорі мерехтять, раз на 9 с пролітає падаюча зірка (решту часу її не видно) */
+  --animate-twinkle: twinkle 3s ease-in-out infinite;
+  --animate-shooting: shooting 9s ease-out infinite;
+  @keyframes twinkle {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+  }
+  @keyframes shooting {
+    0%, 82% { opacity: 0; transform: translate(0, 0); }
+    85% { opacity: 1; }
+    94%, 100% { opacity: 0; transform: translate(-30px, 17px); }
+  }
   /* Поява випадного меню */
   --animate-menu-in: menu-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
 
@@ -98,6 +119,65 @@
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.08); }
   }
+}
+
+/*
+ * Темна тема (небо над пустелею після заходу: чорнильно-фіолетовий, абрикос і шавлія): ті самі назви кольорів, інші значення — тож усі сторінки темніють самі.
+ * Пісок — чорнильно-фіолетові фони (50 — картки, 100 — сторінка), ink і sand-700 — світлий текст.
+ * Зелений і помаранчевий — світліші: на темному фоні читаються, а текст на них (text-sand-50) стає темним.
+ * Вмикає перемикач у шапці (app/theme.ts) атрибутом data-theme="dark" на <html>.
+ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  /* Текст — «місячний пісок»: теплий білий, родич світлої теми */
+  --color-ink: #f4ede1;
+
+  /* Небо над пустелею одразу після заходу: чорнильно-фіолетові фони (100 — сторінка, 50 — картки, вище — рамки) */
+  --color-sand-50: #1e1b2a;
+  --color-sand-100: #14121d;
+  --color-sand-200: #2a2639;
+  --color-sand-300: #383349;
+  --color-sand-400: #565070;
+  --color-sand-700: #ada6c0;
+
+  /* Абрикосовий захід сонця — ціни, бонуси, головний банер */
+  --color-sunset-100: #2e1d1f;
+  --color-sunset-200: #4d2b25;
+  --color-sunset-500: #ffa86b;
+  --color-sunset-600: #ff9a57;
+  --color-sunset-700: #ffbf8f;
+
+  /* Шавлієвий зелений кактусів — кнопки й посилання (текст на ньому темний) */
+  --color-brand-50: #182420;
+  --color-brand-100: #1d2e27;
+  --color-brand-500: #6bb393;
+  --color-brand-600: #85c9a8;
+  --color-brand-700: #a8dcc2;
+
+  /* Лаванда (приховані товари) — світліша за фіолетовий фон, щоб не зливалась */
+  --color-lavender-50: #2a2440;
+  --color-lavender-100: #352d52;
+  --color-lavender-400: #9a8cf0;
+  --color-lavender-700: #cfc4ff;
+
+  /* Червоний — і для тексту помилок на темному фоні, і для кнопок «Видалити» / «Вийти» */
+  --color-red-50: #2e1520;
+  --color-red-100: #3d1a26;
+  --color-red-700: #f87171;
+  --color-red-800: #fca5a5;
+}
+
+/* Перемикання теми — уся сторінка одним плавним перетіканням зі старих кольорів у нові (app/theme.ts) */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 300ms;
+  animation-timing-function: ease;
+}
+
+/* Помітна рамка фокусу для тих, хто ходить сайтом клавішею Tab (мишкою — не видно). Поля вводу мають власну — рамку кольору */
+:where(a, button, summary, label, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-brand-500);
+  outline-offset: 2px;
 }
 
 /* Для тих, у кого в системі вимкнені анімації — без руху. */

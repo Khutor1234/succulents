@@ -184,7 +184,7 @@ function PhotoViewer({ images, index, onIndex, onClose, onMakeMain, onRemove }: 
       // Клік по темному фону навколо фото — закрити
       onClick={(e) => e.target === e.currentTarget && ref.current?.close()}
       aria-label={t('admin.fields.viewPhoto', { n: index + 1 })}
-      className="m-auto max-h-none max-w-none bg-transparent p-0 backdrop:bg-ink/85"
+      className="m-auto max-h-none max-w-none bg-transparent p-0 backdrop:bg-ink/85 dark:backdrop:bg-black/85"
     >
       <div className="flex h-[100dvh] w-screen flex-col items-center justify-center gap-4 p-4">
         <div className="flex w-full max-w-5xl items-center justify-between text-sand-50">
@@ -219,7 +219,7 @@ function PhotoViewer({ images, index, onIndex, onClose, onMakeMain, onRemove }: 
               {t('admin.fields.makeMain')}
             </button>
           )}
-          <button type="button" onClick={() => onRemove(url)} className="min-h-11 rounded-xl bg-red-700 px-4 font-bold text-white hover:bg-red-800">
+          <button type="button" onClick={() => onRemove(url)} className="min-h-11 rounded-xl bg-red-700 px-4 font-bold text-sand-50 hover:bg-red-800">
             {t('admin.fields.removePhoto')}
           </button>
         </div>

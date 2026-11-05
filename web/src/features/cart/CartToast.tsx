@@ -31,7 +31,7 @@ export function CartToast() {
           <ProductImage src={toast.image} alt="" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold tracking-wider text-sand-300 uppercase">{t('cart.added')}</p>
+          <p className="text-sm font-bold text-sand-300">{t('cart.added')}</p>
           <p className="truncate font-bold text-sand-50">{name}</p>
           <p className="text-sm">{qty > 0 ? t('cart.inCart', { count: qty }) : t('cart.removed')}</p>
           {/* Скільки ще до мінімального замовлення — щоб людина одразу бачила, чи можна оформлювати */}

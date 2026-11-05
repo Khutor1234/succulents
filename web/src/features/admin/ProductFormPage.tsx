@@ -285,7 +285,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
               disabled={remove.isPending}
               title={t('admin.deleteProduct')}
               aria-label={t('admin.deleteProduct')}
-              className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-red-700 text-red-700 transition-colors hover:bg-red-700 hover:text-white disabled:opacity-50"
+              className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-red-700 text-red-700 transition-colors hover:bg-red-700 hover:text-sand-50 disabled:opacity-50"
             >
               <Trash2 {...ICON} />
             </button>

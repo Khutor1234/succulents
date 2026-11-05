@@ -64,7 +64,7 @@ function SourceChip({ name, big, full }: { name: string; big?: boolean; full?: b
 /** Невеликий підпис над чипами: іконка + «Гібрид» / «Природний вид» / «Відбір або мутація». */
 function Kicker({ icon, children, big }: { icon: React.ReactNode; children: string; big?: boolean }) {
   return (
-    <p className={`flex items-center gap-1.5 font-bold tracking-wider text-sand-700 uppercase ${big ? 'text-xs' : 'text-[10px]'}`}>
+    <p className={`flex items-center gap-1.5 font-bold text-sand-700 ${big ? 'text-sm' : 'text-[11px]'}`}>
       {icon}
       {children}
     </p>

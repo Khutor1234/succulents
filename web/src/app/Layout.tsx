@@ -13,13 +13,26 @@ import { formatPrice } from '../lib/format'
 import { ICON } from '../shared/icon'
 import { openSearchKeyboard, searchHref } from '../shared/navigation'
 import { BottomNav } from './BottomNav'
-import { BookOpen, ChevronRight, Construction, Heart, LayoutGrid, LogIn, LogOut, Menu, Package, Search, ShieldCheck, ShoppingBag, User, X } from 'lucide-react'
+import { useTheme } from './theme'
+import { BookOpen, ChevronRight, Construction, Heart, LayoutGrid, LogIn, LogOut, Menu, Moon, Package, Search, ShieldCheck, ShoppingBag, Sun, User, X } from 'lucide-react'
 
 const YEAR = new Date().getFullYear()
 /** Плашка «у розробці» над шапкою. Прибрати — VITE_UNDER_CONSTRUCTION=false у web/.env.production і опублікувати. */
 const UNDER_CONSTRUCTION = import.meta.env.VITE_UNDER_CONSTRUCTION === 'true'
 // Без display: кожна кнопка сама каже, коли її видно (inline-flex — завжди, hidden md:inline-flex — лише на комп’ютері)
 const NAV_BTN = 'min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl px-3 font-medium transition-colors'
+
+/** Світла / темна тема: місяць — увімкнути темну, сонце — повернути світлу. */
+function ThemeToggle() {
+  const { t } = useTranslation()
+  const { theme, toggle } = useTheme()
+  const label = theme === 'dark' ? t('nav.themeLight') : t('nav.themeDark')
+  return (
+    <button type="button" onClick={toggle} aria-label={label} title={label} className={NAV_BTN + ' inline-flex hover:bg-sand-200'}>
+      {theme === 'dark' ? <Sun {...ICON} /> : <Moon {...ICON} />}
+    </button>
+  )
+}
 
 /**
  * Поточна висота елемента (оновлюється при зміні розміру: поворот телефона, другий рядок шапки тощо).
@@ -192,6 +205,7 @@ export function Layout() {
             <Link to={searchHref()} onClick={openSearchKeyboard} aria-label={t('search.open')} title={t('search.open')} className={NAV_BTN + ' inline-flex hover:bg-sand-200'}>
               <Search {...ICON} />
             </Link>
+            <ThemeToggle />
             <Link to="/blog" aria-label={t('blog.title')} title={t('blog.title')} className={NAV_BTN + ' hidden hover:bg-sand-200 md:inline-flex'}>
               <BookOpen {...ICON} />
               <span>{t('blog.title')}</span>
@@ -230,7 +244,7 @@ export function Layout() {
               <button
                 onClick={() => void signOut(auth)}
                 aria-label={t('nav.logout')}
-                className={NAV_BTN + ' hidden bg-red-700 font-bold text-white hover:bg-red-800 md:inline-flex'}
+                className={NAV_BTN + ' hidden font-bold text-red-700 hover:bg-red-50 md:inline-flex'}
               >
                 <LogOut {...ICON} />
                 <span>{t('nav.logout')}</span>
@@ -259,7 +273,7 @@ export function Layout() {
         {menuOpen && <MobileMenu onClose={() => setMenuOpen(false)} />}
       </header>
       {/* Затемнення під меню: натиснули поза меню — закрилось */}
-      {menuOpen && <div className="fixed inset-0 z-30 animate-page-in bg-ink/30 md:hidden" onClick={() => setMenuOpen(false)} aria-hidden />}
+      {menuOpen && <div className="fixed inset-0 z-30 animate-page-in bg-ink/30 md:hidden dark:bg-black/50" onClick={() => setMenuOpen(false)} aria-hidden />}
       <div aria-hidden="true" style={{ height: headerHeight }} />
       <AccountBanner />
       {/* key — щоб анімація появи спрацьовувала на кожному переході між сторінками */}
@@ -270,11 +284,11 @@ export function Layout() {
       <BottomNav />
       {/* Нова сторінка відкривається зверху; «Назад» повертає туди, де людина була */}
       <ScrollRestoration />
-      <footer className="bg-ink text-sand-300">
+      <footer className="bg-ink text-sand-300 dark:bg-sand-50 dark:text-sand-700">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-9 text-sm">
-          <Logo className="text-xl text-sand-100" bg="fill-ink" />
+          <Logo className="text-xl text-sand-100 dark:text-ink" bg="fill-ink dark:fill-sand-50" />
           <span>{t('footer.delivery')}</span>
-          <Link to="/blog" className="font-bold text-sand-100 hover:underline">
+          <Link to="/blog" className="font-bold text-sand-100 hover:underline dark:text-ink">
             {t('blog.title')}
           </Link>
           <span className="ml-auto">© {YEAR}</span>

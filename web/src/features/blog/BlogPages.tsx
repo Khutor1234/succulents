@@ -311,7 +311,7 @@ function CoverEditor({ slug, hasCover }: { slug: string; hasCover: boolean }) {
           type="button"
           onClick={() => window.confirm(t('blog.coverRemoveConfirm')) && save.mutate(null)}
           disabled={save.isPending}
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-red-700/40 px-4 font-bold text-red-700 hover:border-red-700 hover:bg-red-700 hover:text-white disabled:opacity-60"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-red-700/40 px-4 font-bold text-red-700 hover:border-red-700 hover:bg-red-700 hover:text-sand-50 disabled:opacity-60"
         >
           <Trash2 {...ICON} />
           {t('blog.coverRemove')}

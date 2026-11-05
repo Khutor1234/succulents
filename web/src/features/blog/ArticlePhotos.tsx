@@ -56,7 +56,7 @@ export function ArticlePhotos({ slug }: { slug: string }) {
                   onClick={() => window.confirm(t('blog.photoRemoveConfirm')) && edit.mutate({ remove: url })}
                   disabled={edit.isPending}
                   aria-label={t('blog.photoRemove')}
-                  className="absolute top-2 right-2 flex h-10 w-10 items-center justify-center rounded-full bg-sand-50/90 text-red-700 shadow-sm hover:bg-red-700 hover:text-white"
+                  className="absolute top-2 right-2 flex h-10 w-10 items-center justify-center rounded-full bg-sand-50/90 text-red-700 shadow-sm hover:bg-red-700 hover:text-sand-50"
                 >
                   <Trash2 size={18} strokeWidth={2.25} aria-hidden />
                 </button>
@@ -116,7 +116,7 @@ function PhotoViewer({ photos, index, onIndex, onClose }: { photos: string[]; in
         if (e.key === 'ArrowRight') go(1)
         if (e.key === 'ArrowLeft') go(-1)
       }}
-      className="m-auto max-h-none max-w-none bg-transparent p-0 backdrop:bg-ink/85"
+      className="m-auto max-h-none max-w-none bg-transparent p-0 backdrop:bg-ink/85 dark:backdrop:bg-black/85"
     >
       <div
         className="flex h-dvh w-dvw items-center justify-center p-4"
