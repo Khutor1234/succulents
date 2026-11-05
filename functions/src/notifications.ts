@@ -11,7 +11,7 @@ const telegramChatId = defineSecret('TELEGRAM_CHAT_ID')
 
 const PAYMENT_LABELS: Record<Order['payment']['method'], string> = {
   cod: 'Накладений платіж (старе замовлення)',
-  card_transfer: 'Передоплата на картку — надіслати реквізити',
+  card_transfer: 'Передоплата — надіслати реквізити',
 }
 
 function escapeHtml(text: string): string {
