@@ -7,9 +7,13 @@ import { useLang } from '../../i18n'
 import { formatPrice } from '../../lib/format'
 import { PageTitle } from '../../shared/ui'
 import { useBonusBalance, useBonusHistory, useMyOrders } from './api'
+import { BonusRow } from './BonusesPage'
 import { useFavorites } from '../favorites/favoritesStore'
 import { CareGuide } from './CareGuide'
 import { DeliveryProfileSection } from './DeliveryProfileForm'
+
+/** Скільки останніх записів історії бонусів видно в самому кабінеті — решта на окремій сторінці. */
+const HISTORY_PREVIEW = 3
 
 export function formatDate(order: { createdAt?: { toDate(): Date } }) {
   return order.createdAt?.toDate().toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }) ?? ''
@@ -87,20 +91,21 @@ export function AccountPage() {
           </h2>
           {history.isLoading && <p className="text-sand-700">{t('loading')}</p>}
           {history.data?.length === 0 && <p className="text-sand-700">{t('account.noHistory')}</p>}
+          {/* Лише останні записи — щоб блок (і оранжева плашка поруч) не розтягувався; уся історія — окремою сторінкою */}
           <ul className="divide-y-2 divide-sand-200">
-            {history.data?.map((e) => (
-              <li key={e.id} className="flex items-center justify-between gap-4 py-3">
-                <span>
-                  <span className="block font-medium">{t(`account.entry.${e.type}`, { number: e.orderNumber })}</span>
-                  <span className="text-sm text-sand-700">{formatDate(e)}</span>
-                </span>
-                <span className={`font-display text-lg font-extrabold whitespace-nowrap ${e.amount > 0 ? 'text-brand-600' : 'text-sunset-600'}`}>
-                  {e.amount > 0 ? '+' : '−'}
-                  {formatPrice(Math.abs(e.amount), lang)}
-                </span>
-              </li>
+            {history.data?.slice(0, HISTORY_PREVIEW).map((e) => (
+              <BonusRow key={e.id} entry={e} />
             ))}
           </ul>
+          {!!history.data?.length && (
+            <Link
+              to="/account/bonuses"
+              className="group mt-3 flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-sand-200 px-4 font-bold text-brand-700 transition-colors hover:bg-brand-100"
+            >
+              {t('account.bonuses.all', { count: history.data.length })}
+              <ChevronRight size={18} strokeWidth={2.5} className="transition-transform group-hover:translate-x-1" aria-hidden />
+            </Link>
+          )}
         </div>
       </section>
 

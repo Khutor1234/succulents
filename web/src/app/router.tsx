@@ -64,6 +64,18 @@ export const router = createBrowserRouter([
           })),
         ),
       },
+      {
+        path: 'account/bonuses',
+        lazy: lazyPage(() =>
+          import('../features/account/BonusesPage').then(({ BonusesPage }) => ({
+            default: () => (
+              <RequireSignIn>
+                <BonusesPage />
+              </RequireSignIn>
+            ),
+          })),
+        ),
+      },
       { path: 'admin/*', element: <AdminRoute /> },
       // Невідома адреса → та сама сторінка, але з текстом «не знайдено»
       { path: '*', loader: () => { throw new Response('Not found', { status: 404 }) } },

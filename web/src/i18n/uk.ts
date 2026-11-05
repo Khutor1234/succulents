@@ -268,6 +268,12 @@ export const uk = {
       revoke: 'Знято: змінено статус {{number}}',
       welcome: 'Вітальний бонус за реєстрацію',
     },
+    bonuses: {
+      all: 'Уся історія',
+      now: 'Зараз на рахунку',
+      earned: 'Отримано',
+      spent: 'Використано',
+    },
     pendingBonus: '+{{amount}} після виконання',
     creditedBonus: '+{{amount}} нараховано',
   },

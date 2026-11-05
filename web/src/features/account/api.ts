@@ -37,7 +37,7 @@ export function useBonusHistory() {
     enabled: !!uid,
     staleTime: 0,
     queryFn: async () => {
-      const snap = await getDocs(query(collection(db, 'bonuses', uid!, 'history'), orderBy('createdAt', 'desc'), limit(50)))
+      const snap = await getDocs(query(collection(db, 'bonuses', uid!, 'history'), orderBy('createdAt', 'desc'), limit(300)))
       return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as BonusEntry)
     },
   })
@@ -51,7 +51,7 @@ export function useMyOrders() {
     staleTime: 0,
     queryFn: async () => {
       const snap = await getDocs(
-        query(collection(db, 'orders'), where('userId', '==', uid), orderBy('createdAt', 'desc'), limit(50)),
+        query(collection(db, 'orders'), where('userId', '==', uid), orderBy('createdAt', 'desc'), limit(300)),
       )
       return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Order)
     },

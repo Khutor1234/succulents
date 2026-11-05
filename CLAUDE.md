@@ -32,6 +32,8 @@ firestore.rules, storage.rules, firestore.indexes.json
   і `/admin/forms` («Виправити форми»: variegata/cristata/monstrose → «мутація від» звичайної версії, навіть якщо її немає
   в магазині — тоді на сайті назва без посилання). Товари керуються й прямо в магазині: кнопки
   продавця на картках, «Вибрати» (масові дії, `BulkBar`), «Додати» в каталозі й пошуку.
+- Кабінет покупця (`features/account`): `/account` — плитки, бонусний рахунок і лише 3 останні записи історії бонусів;
+  уся історія — `/account/bonuses` (`BonusesPage.tsx`, по місяцях), `/account/orders`, `/account/favorites`.
 - Пов'язані рослини під товаром — `catalog/RelatedPlants.tsx`; для рідкісних родів (до 10 рослин на сайті) — ще й «Інші рослини роду».
 - Блог: статті прямо в коді — `web/src/features/blog/articles.ts`.
 - Назви рослин і теги-форми: `web/src/lib/plants.ts`, `web/src/lib/plantName.ts`.
