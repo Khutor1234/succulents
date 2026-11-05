@@ -219,16 +219,10 @@ export function CheckoutPage() {
             type="email"
             autoComplete="email"
             readOnly={!!user?.email}
-            aria-describedby={user?.email ? 'email-hint' : undefined}
             className={user?.email ? '[&_input]:cursor-not-allowed [&_input]:bg-sand-200 [&_input]:text-sand-700' : ''}
             {...register('email')}
             error={err(errors.email?.message)}
           />
-          {user?.email && (
-            <p id="email-hint" className="-mt-2 text-sm text-sand-700">
-              {t('checkout.emailFromAccount')}
-            </p>
-          )}
         </Section>
 
         <Section title={t('checkout.delivery')} icon={<Truck {...ICON} />}>
