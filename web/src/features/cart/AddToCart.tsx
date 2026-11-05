@@ -9,7 +9,8 @@ import { useCart } from './cartStore'
 import { useCartToast } from './toastStore'
 
 /**
- * Кнопка «У кошик». Якщо товар уже в кошику — замість неї лічильник «− 2 +» і кнопка видалення.
+ * Кнопка «У кошик». Якщо товар уже в кошику — замість неї лічильник «− 2 +». Мінус на одній штуці прибирає товар
+ * з кошика (тоді замість мінуса — кошик-смітник), тож окрема кнопка видалення не потрібна.
  * `size="lg"` — для сторінки товару.
  */
 export function AddToCart({ product, size = 'md' }: { product: Product; size?: 'md' | 'lg' }) {
@@ -52,6 +53,12 @@ export function AddToCart({ product, size = 'md' }: { product: Product; size?: '
     )
   }
 
+  function decrease() {
+    if (qty > 1) return setQty(product.id, qty - 1)
+    remove(product.id)
+    track('cart_remove', { productId: product.id })
+  }
+
   const step =
     'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl font-bold transition-transform hover:bg-brand-700 active:scale-90 disabled:opacity-40'
 
@@ -62,8 +69,8 @@ export function AddToCart({ product, size = 'md' }: { product: Product; size?: '
         role="group"
         aria-label={t('cart.quantity')}
       >
-        <button className={step} onClick={() => setQty(product.id, qty - 1)} disabled={qty <= 1} aria-label={t('cart.decrease')}>
-          <Minus {...ICON} />
+        <button className={step} onClick={decrease} aria-label={qty > 1 ? t('cart.decrease') : t('cart.remove')} title={qty > 1 ? undefined : t('cart.remove')}>
+          {qty > 1 ? <Minus {...ICON} /> : <Trash {...ICON} />}
         </button>
         <span key={bump} className="inline-block animate-pop text-center font-bold" aria-live="polite">
           {t('cart.inCartShort', { count: qty })}
@@ -72,17 +79,6 @@ export function AddToCart({ product, size = 'md' }: { product: Product; size?: '
           <Plus {...ICON} />
         </button>
       </div>
-      <button
-        onClick={() => {
-          remove(product.id)
-          track('cart_remove', { productId: product.id })
-        }}
-        aria-label={t('cart.remove')}
-        title={t('cart.remove')}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sand-200 text-red-700 transition-transform hover:bg-red-100 active:scale-90"
-      >
-        <Trash {...ICON} />
-      </button>
     </div>
   )
 }

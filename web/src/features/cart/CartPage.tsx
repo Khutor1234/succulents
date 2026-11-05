@@ -1,4 +1,4 @@
-import { ArrowRight, Gift, Info } from 'lucide-react'
+import { ArrowRight, Gift, Info, Trash } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { withCuttingMark } from '../../lib/plantName'
 import { ICON } from '../../shared/icon'
@@ -53,30 +53,30 @@ export function CartPage() {
                 <ProductImage src={item.image} alt={name} />
               </Link>
 
-              <div className="flex min-w-0 items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <Link to={`/product/${item.slug}`} className="line-clamp-2 leading-snug font-bold hover:text-brand-600">
-                    {withCuttingMark(name, item.cutting, t('product.cuttingMark'))}
-                  </Link>
-                  <p className="mt-0.5 text-sm text-sand-700">{t('cart.perItem', { price: formatPrice(item.price, lang) })}</p>
-                </div>
-                <button
-                  onClick={() => remove(item.productId)}
-                  aria-label={`${t('cart.remove')}: ${name}`}
-                  title={t('cart.remove')}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-red-700/30 text-red-700 transition-colors hover:border-red-700 hover:bg-red-50"
-                >
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
-                  </svg>
-                </button>
+              <div className="min-w-0">
+                <Link to={`/product/${item.slug}`} className="line-clamp-2 leading-snug font-bold hover:text-brand-600">
+                  {withCuttingMark(name, item.cutting, t('product.cuttingMark'))}
+                </Link>
+                <p className="mt-0.5 text-sm text-sand-700">{t('cart.perItem', { price: formatPrice(item.price, lang) })}</p>
               </div>
 
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center rounded-xl border-2 border-sand-200 bg-sand-50" role="group" aria-label={t('cart.quantity')}>
-                  <button className={step} onClick={() => setQty(item.productId, item.qty - 1)} disabled={item.qty <= 1} aria-label={t('cart.decrease')}>
-                    −
-                  </button>
+                  {/* Мінус на одній штуці прибирає товар з кошика — тоді замість мінуса смітник */}
+                  {item.qty > 1 ? (
+                    <button className={step} onClick={() => setQty(item.productId, item.qty - 1)} aria-label={t('cart.decrease')}>
+                      −
+                    </button>
+                  ) : (
+                    <button
+                      className={`${step} text-red-700 hover:bg-red-50`}
+                      onClick={() => remove(item.productId)}
+                      aria-label={`${t('cart.remove')}: ${name}`}
+                      title={t('cart.remove')}
+                    >
+                      <Trash size={18} strokeWidth={2.2} aria-hidden />
+                    </button>
+                  )}
                   <span className="w-8 text-center font-bold tabular-nums" aria-live="polite">
                     {item.qty}
                   </span>
