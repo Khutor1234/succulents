@@ -17,13 +17,12 @@ export const customerSchema = z
   warehouse: z.string().trim().max(200).default(''),
   // Таксі — лише по Львову і з адресою; інакше Нова Пошта, і тоді потрібне відділення
   taxi: z.boolean().default(false),
-  address: z.string().trim().max(300).default(''),
   comment: z.string().trim().max(1000).optional(),
   // Нові замовлення — лише передоплата на картку. 'cod' лишається в типі Order для старих замовлень.
   paymentMethod: z.literal('card_transfer'),
   })
-  .refine((c) => (c.taxi ? isLviv(c.city) && c.address.length >= 5 : c.warehouse.length > 0), {
-    message: 'Taxi needs a Lviv address; Nova Poshta needs a warehouse',
+  .refine((c) => (c.taxi ? isLviv(c.city) : c.warehouse.length > 0), {
+    message: 'Taxi is only for Lviv; Nova Poshta needs a warehouse',
   })
 
 export const createOrderSchema = z.object({
@@ -105,7 +104,7 @@ export interface Order {
   bonusRefunded?: boolean
   stockRestored?: boolean
   status: 'new' | 'confirmed' | 'shipped' | 'done' | 'cancelled'
-  /** `taxi` і `address` — доставка таксі по Львову (тоді `warehouse` порожнє). Старі замовлення — без них. */
+  /** `taxi` — доставка таксі по Львову (тоді `warehouse` порожнє, адресу власниця питає сама). `address` — лише в кількох перших таксі-замовленнях. */
   delivery: { fullName: string; phone: string; city: string; warehouse: string; comment: string; taxi?: boolean; address?: string }
   payment: { method: 'cod' | 'card_transfer'; paid: boolean }
   lang: 'uk' | 'en'

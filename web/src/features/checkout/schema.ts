@@ -16,16 +16,14 @@ export const checkoutFields = z.object({
   warehouse: z.string().trim().max(200).default(''),
   /** Доставка таксі по Львову замість Нової Пошти — тоді потрібна адреса, а відділення ні. */
   taxi: z.boolean().default(false),
-  address: z.string().trim().max(300).default(''),
   comment: z.string().trim().max(1000).optional(),
   // Оплата лише передоплатою на картку перед відправкою.
   paymentMethod: z.literal('card_transfer'),
 })
 
 export const checkoutSchema = checkoutFields.superRefine((v, ctx) => {
-  if (v.taxi && isLviv(v.city)) {
-    if (v.address.length < 5) ctx.addIssue({ code: 'custom', path: ['address'], message: 'errors.address' })
-  } else if (!v.warehouse) {
+  // Таксі по Львову — відділення не потрібне (адресу власниця спитає в покупця сама)
+  if (!(v.taxi && isLviv(v.city)) && !v.warehouse) {
     ctx.addIssue({ code: 'custom', path: ['warehouse'], message: 'errors.required' })
   }
 })

@@ -42,7 +42,7 @@ interface CreateOrderResponse {
  * (особливо для гостей, у яких немає кабінету). Лише в браузері покупця; помилки сховища просто ігноруємо.
  */
 const LAST_DELIVERY_KEY = 'succulents.lastDelivery'
-const DELIVERY_KEYS = ['fullName', 'phone', 'email', 'city', 'warehouse', 'address'] as const
+const DELIVERY_KEYS = ['fullName', 'phone', 'email', 'city', 'warehouse'] as const
 /** `taxi` — минулого разу вибрали таксі по Львову: наступного разу галочка вже стоїть. */
 type SavedDelivery = Partial<Record<(typeof DELIVERY_KEYS)[number], string>> & { taxi?: boolean }
 
@@ -57,7 +57,7 @@ function loadLastDelivery(): SavedDelivery | null {
 
 function saveLastDelivery(customer: CheckoutData) {
   try {
-    // Таксі — відділення не вводили, Нова Пошта — адресу: порожнє поле лишаємо таким, як було збережено раніше
+    // Таксі — відділення не вводили: лишаємо те, що було збережено раніше
     const prev = loadLastDelivery()
     const data: SavedDelivery = Object.fromEntries(DELIVERY_KEYS.map((k) => [k, customer[k] || prev?.[k] || '']))
     data.taxi = customer.taxi
@@ -125,7 +125,7 @@ export function CheckoutPage() {
   const filledFromProfile = !!profile && Object.values(profile).some(Boolean)
   useEffect(() => {
     if (!profile) return
-    for (const key of ['fullName', 'phone', 'city', 'warehouse', 'address'] as const) {
+    for (const key of ['fullName', 'phone', 'city', 'warehouse'] as const) {
       if (profile[key] && !getValues(key)) setValue(key, profile[key])
     }
     // Вибір таксі — з кабінету, якщо на цьому пристрої ще не замовляли
@@ -158,14 +158,13 @@ export function CheckoutPage() {
       saveLastDelivery(customer)
       if (user && rememberProfile) {
         // Не блокуємо успіх замовлення, якщо збереження профілю раптом не вдасться.
-        // Таксі — відділення не вводили, Нова Пошта — адресу: у кабінеті лишаємо збережене раніше
-        const { fullName, phone, city, warehouse, address, taxi } = customer
+        // Таксі — відділення не вводили, тож у кабінеті лишаємо збережене раніше
+        const { fullName, phone, city, warehouse, taxi } = customer
         saveProfile.mutate({
           fullName,
           phone,
           city,
           warehouse: warehouse || profile?.warehouse || '',
-          address: address || profile?.address || '',
           taxi,
         })
       }
@@ -250,11 +249,8 @@ export function CheckoutPage() {
               </span>
             </label>
           )}
-          {byTaxi ? (
-            <Input label={t('checkout.address')} autoComplete="street-address" placeholder="вул. Городоцька, 12, кв. 5" {...register('address')} error={err(errors.address?.message)} />
-          ) : (
-            <Input label={t('checkout.warehouse')} placeholder="№ 12" {...register('warehouse')} error={err(errors.warehouse?.message)} />
-          )}
+          {/* Таксі — відділення не потрібне */}
+          {!byTaxi && <Input label={t('checkout.warehouse')} placeholder="№ 12" {...register('warehouse')} error={err(errors.warehouse?.message)} />}
           <Input label={t('checkout.comment')} {...register('comment')} />
           {user && (
             <label className="flex min-h-11 cursor-pointer items-center gap-3">

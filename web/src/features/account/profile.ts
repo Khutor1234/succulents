@@ -7,20 +7,19 @@ import { checkoutFields } from '../checkout/schema'
 
 /**
  * Дані доставки, які покупець зберігає в кабінеті й які підставляються в оформлення.
- * `address` і `taxi` — для таксі по Львову (відділення й адреса зберігаються обидва, бо покупець може чергувати).
+ * `taxi` — минулого разу вибрали таксі по Львову (відділення при цьому не стирається).
  */
 export const deliveryProfileSchema = checkoutFields.pick({
   fullName: true,
   phone: true,
   city: true,
   warehouse: true,
-  address: true,
   taxi: true,
 })
 export type DeliveryProfileInput = z.input<typeof deliveryProfileSchema>
 export type DeliveryProfile = z.output<typeof deliveryProfileSchema>
 
-const EMPTY: DeliveryProfile = { fullName: '', phone: '', city: '', warehouse: '', address: '', taxi: false }
+const EMPTY: DeliveryProfile = { fullName: '', phone: '', city: '', warehouse: '', taxi: false }
 
 /** users/{uid}.delivery — читати й писати може лише сам покупець (див. firestore.rules). */
 export function useDeliveryProfile() {

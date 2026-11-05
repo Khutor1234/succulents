@@ -283,7 +283,7 @@ function OrderRow({ order, open, onToggle }: { order: Order; open: boolean; onTo
               </ContactLine>
               {d.taxi ? (
                 <ContactLine icon={CarTaxiFront}>
-                  <strong>{t('admin.order.taxi')}:</strong> {d.city}, {d.address}
+                  <strong>{t('admin.order.taxi')}:</strong> {d.city}{d.address ? `, ${d.address}` : ` — ${t('admin.order.askAddress')}`}
                 </ContactLine>
               ) : (
                 <ContactLine icon={MapPin}>

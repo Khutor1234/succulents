@@ -138,7 +138,7 @@ export const createOrder = onCall(withLogging('createOrder', async (request) => 
         phone: customer.phone,
         city: customer.city,
         warehouse: customer.taxi ? '' : customer.warehouse,
-        ...(customer.taxi ? { taxi: true, address: customer.address } : {}),
+        ...(customer.taxi ? { taxi: true } : {}),
         comment: customer.comment ?? '',
       },
       payment: { method: customer.paymentMethod, paid: false },

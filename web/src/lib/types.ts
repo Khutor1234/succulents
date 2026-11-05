@@ -114,7 +114,7 @@ export interface Order {
   bonusCredited?: boolean
   adjustedAt?: Timestamp
   status: OrderStatus
-  /** `taxi` і `address` — доставка таксі по Львову (тоді `warehouse` порожнє). Старі замовлення — без них. */
+  /** `taxi` — доставка таксі по Львову (тоді `warehouse` порожнє, адресу власниця питає сама). `address` — лише в кількох перших таксі-замовленнях. */
   delivery: { fullName: string; phone: string; city: string; warehouse: string; comment: string; taxi?: boolean; address?: string }
   payment: { method: PaymentMethod; paid: boolean }
   lang: Language
