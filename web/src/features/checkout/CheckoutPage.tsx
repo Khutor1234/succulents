@@ -122,7 +122,6 @@ export function CheckoutPage() {
   const { data: profile } = useDeliveryProfile()
   const saveProfile = useSaveDeliveryProfile()
   const [rememberProfile, setRememberProfile] = useState(true)
-  const filledFromProfile = !!profile && Object.values(profile).some(Boolean)
   useEffect(() => {
     if (!profile) return
     for (const key of ['fullName', 'phone', 'city', 'warehouse'] as const) {
@@ -207,7 +206,6 @@ export function CheckoutPage() {
           <PageTitle>{t('checkout.title')}</PageTitle>
           <CartChanges />
           {!user && <p className="-mt-3 text-sand-700">{t(filledFromDevice ? 'checkout.filledFromDevice' : 'checkout.guestHint')}</p>}
-          {user && filledFromProfile && <p className="-mt-3 text-brand-600">{t('profile.filledFromProfile')}</p>}
         </div>
 
         <Section title={t('checkout.contacts')} icon={<User {...ICON} />}>
