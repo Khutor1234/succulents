@@ -60,7 +60,7 @@ export function AddToCart({ product, size = 'md' }: { product: Product; size?: '
   }
 
   const step =
-    'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl font-bold transition-transform hover:bg-brand-700 active:scale-90 disabled:opacity-40'
+    'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-700 text-xl font-bold transition-transform hover:brightness-125 active:scale-90 disabled:cursor-not-allowed disabled:bg-transparent disabled:opacity-35 disabled:active:scale-100'
 
   return (
     <div className={`flex items-center gap-2 ${size === 'lg' ? '' : 'w-full'}`}>
@@ -75,7 +75,13 @@ export function AddToCart({ product, size = 'md' }: { product: Product; size?: '
         <span key={bump} className="inline-block animate-pop text-center font-bold" aria-live="polite">
           {t('cart.inCartShort', { count: qty })}
         </span>
-        <button className={step} onClick={addOne} disabled={qty >= product.stock} aria-label={t('cart.increase')}>
+        <button
+          className={step}
+          onClick={addOne}
+          disabled={qty >= product.stock}
+          aria-label={qty >= product.stock ? t('cart.noMore') : t('cart.increase')}
+          title={qty >= product.stock ? t('cart.noMore') : undefined}
+        >
           <Plus {...ICON} />
         </button>
       </div>

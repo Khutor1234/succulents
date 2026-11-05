@@ -149,6 +149,7 @@ export const uk = {
     total: 'Разом',
     checkout: 'Оформити замовлення',
     remove: 'Видалити',
+    noMore: 'Більше немає в наявності',
     added: 'Додано в кошик',
     removed: 'Прибрано з кошика',
     inCart: 'У кошику: {{count}} шт.',

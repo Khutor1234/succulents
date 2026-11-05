@@ -35,8 +35,9 @@ export function CartPage() {
     )
   }
 
+  // Кнопку, яку можна натиснути, видно одразу (зафарбована); більше додати не можна — бліда, без фону, і підпис під лічильником
   const step =
-    'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg font-bold leading-none hover:bg-sand-200 disabled:opacity-30'
+    'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-lg font-bold leading-none text-sand-50 transition-colors hover:bg-brand-700 active:scale-90 disabled:cursor-not-allowed disabled:bg-transparent disabled:text-sand-300 disabled:active:scale-100'
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -61,7 +62,7 @@ export function CartPage() {
               </div>
 
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center rounded-xl border-2 border-sand-200 bg-sand-50" role="group" aria-label={t('cart.quantity')}>
+                <div className="flex items-center gap-1 rounded-xl border-2 border-sand-200 bg-sand-50 p-0.5" role="group" aria-label={t('cart.quantity')}>
                   {/* Мінус на одній штуці прибирає товар з кошика — тоді замість мінуса смітник */}
                   {item.qty > 1 ? (
                     <button className={step} onClick={() => setQty(item.productId, item.qty - 1)} aria-label={t('cart.decrease')}>
@@ -69,7 +70,7 @@ export function CartPage() {
                     </button>
                   ) : (
                     <button
-                      className={`${step} text-red-700 hover:bg-red-50`}
+                      className={`${step} bg-red-50 text-red-700 hover:bg-red-100`}
                       onClick={() => remove(item.productId)}
                       aria-label={`${t('cart.remove')}: ${name}`}
                       title={t('cart.remove')}
@@ -80,7 +81,13 @@ export function CartPage() {
                   <span className="w-8 text-center font-bold tabular-nums" aria-live="polite">
                     {item.qty}
                   </span>
-                  <button className={step} onClick={() => setQty(item.productId, item.qty + 1)} disabled={item.qty >= item.maxQty} aria-label={t('cart.increase')}>
+                  <button
+                    className={step}
+                    onClick={() => setQty(item.productId, item.qty + 1)}
+                    disabled={item.qty >= item.maxQty}
+                    aria-label={item.qty >= item.maxQty ? t('cart.noMore') : t('cart.increase')}
+                    title={item.qty >= item.maxQty ? t('cart.noMore') : undefined}
+                  >
                     +
                   </button>
                 </div>
@@ -88,6 +95,7 @@ export function CartPage() {
                   {formatPrice(item.price * item.qty, lang)}
                 </span>
               </div>
+              {item.qty >= item.maxQty && <p className="col-start-2 -mt-2 text-xs font-bold text-sand-700">{t('cart.noMore')}</p>}
               {/* Живець — нагадуємо ще раз перед оформленням, що це одна маленька рослинка без коріння */}
               {item.cutting && (
                 <p className="col-span-2 flex gap-2 rounded-xl bg-sunset-100/70 px-3 py-2 text-xs leading-relaxed text-ink">
