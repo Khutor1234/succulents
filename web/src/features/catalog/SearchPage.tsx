@@ -69,7 +69,12 @@ export function SearchPage() {
         {query && (
           <button
             type="button"
-            onClick={() => setQuery('')}
+            // Курсор лишається в полі: натискання не забирає фокус (і клавіатура на телефоні не ховається)
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              setQuery('')
+              field.current?.focus({ preventScroll: true })
+            }}
             aria-label={t('search.clear')}
             className="absolute top-1/2 right-2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-sand-700 hover:bg-sand-200"
           >
