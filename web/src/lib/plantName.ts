@@ -129,6 +129,15 @@ export function withForms(base: string, tags: PlantTag[]): string {
 }
 
 /**
+ * Назва без форм-мутацій (variegata, cristata, monstrose), але з «hybrid»: «Echeveria Orion hybrid variegata» →
+ * «Echeveria Orion hybrid». «Orion hybrid» — окрема рослина, а не форма «Orion», тож «hybrid» не відкидаємо.
+ */
+export function withoutStates(name: string): string {
+  const { base, states } = parseForms(name)
+  return withForms(base, states.filter((s) => !STATE_TAGS.includes(s)))
+}
+
+/**
  * Ключ для порівняння назв рослин між собою (батьки ↔ товари): без регістру й лапок,
  * «×Graptoveria» = «Graptoveria», а форми в будь-якому написанні зводяться до одного
  * («variegated», «Variegata» → variegata). Тож «Graptoveria 'Debbie'» і «graptoveria Debbie» — одна рослина.

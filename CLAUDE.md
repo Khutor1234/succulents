@@ -38,7 +38,8 @@ firestore.rules, storage.rules, firestore.indexes.json
 - Блог: статті прямо в коді — `web/src/features/blog/articles.ts`.
 - Назви рослин і теги-форми: `web/src/lib/plants.ts`, `web/src/lib/plantName.ts`.
   Повна назва = рід + сорт + форми з галочок, напр. «Echeveria Lola variegata». Галочка «Hybrid» (тег `hybridName`, не плутати зі старим
-  тегом `hybrid` і з полем «Походження») дописує «hybrid» — для гібрида без власної назви: «Echeveria Orion hybrid». Живцям на екрані дописується «(живець)»
+  тегом `hybrid` і з полем «Походження») дописує «hybrid» — для гібрида без власної назви: «Echeveria Orion hybrid». Галочка сама ставить походження «Гібрид» і першого
+  батька «Echeveria Orion». У «Виправити форми» й імпорті «hybrid» — частина назви (`withoutStates`), не форма: «Orion hybrid variegata» — від «Orion hybrid». Живцям на екрані дописується «(живець)»
   (`withCuttingMark`), у базі назва без цього.
 - Світла й темна тема: перемикач у шапці (`app/theme.ts`, localStorage `theme`, за замовчуванням світла). Темна — ті самі
   назви кольорів з іншими значеннями в `index.css` (`:root[data-theme=dark]`), тож нові сторінки темніють самі. Не писати

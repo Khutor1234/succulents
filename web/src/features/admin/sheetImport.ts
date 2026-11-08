@@ -1,4 +1,4 @@
-import { nameKey, parseForms } from '../../lib/plantName'
+import { nameKey, withoutStates } from '../../lib/plantName'
 import { STATE_TAGS, type PlantTag } from '../../lib/plants'
 import { slugify } from '../../lib/slug'
 import type { PlantOrigin, Product } from '../../lib/types'
@@ -270,7 +270,8 @@ export function planImport(plants: SheetPlant[], products: ImportProduct[], toda
   }
   // Продавчиня змінила в таблиці форму чи позначку («Flamenco» → «Flamenco variegata», «(жовта)» → «(рожева)»):
   // та сама рослина за назвою без форм і позначок — якщо в базі лишився рівно один такий товар.
-  const baseKey = (name: string) => key(parseForms(name.replace(/\([^)]*[А-Яа-яІіЇїЄє][^)]*\)/g, ' ')).base)
+  // («hybrid» лишається в назві: «Orion hybrid» — окрема рослина, не форма «Orion»)
+  const baseKey = (name: string) => key(withoutStates(name.replace(/\([^)]*[А-Яа-яІіЇїЄє][^)]*\)/g, ' ')))
   const stillNew: SheetPlant[] = []
   for (const plant of notTypo) {
     const k = key([plant.genus, plant.cultivar].join(' '))

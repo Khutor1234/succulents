@@ -4,7 +4,7 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { Check, ChevronDown, Copy, CopyPlus, Eye, EyeOff, Link2, Lock, X, Trash2 } from 'lucide-react'
-import { detectGenus, parseForms, withCuttingMark, withForms } from '../../lib/plantName'
+import { detectGenus, nameKey, parseForms, withCuttingMark, withForms } from '../../lib/plantName'
 import { ICON } from '../../shared/icon'
 import { HABITATS, ORIGINS } from '../../lib/types'
 import { DEFAULT_GENUS, GENERA, PLANT_CATEGORY, TAG_STYLES, tagsFor, type PlantTag } from '../../lib/plants'
@@ -224,6 +224,19 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
   }
 
   /**
+   * Поставили галочку «Hybrid» — це гібрид без власної назви від самої цієї рослини: «Echeveria Orion hybrid» —
+   * походження «Гібрид», перший батько «Echeveria Orion». Часто це копія самого Orion з його батьками — тоді
+   * другого батька (батька Orion) прибираємо, його вписують, якщо відомо.
+   */
+  function applyHybridOrigin() {
+    const self = [getValues('genus'), getValues('cultivar').trim()].filter(Boolean).join(' ')
+    setValue('origin', 'hybrid', { shouldDirty: true })
+    if (!self || nameKey(getValues('parents.0')) === nameKey(self)) return
+    setValue('parents.0', self, { shouldDirty: true })
+    setValue('parents.1', '', { shouldDirty: true })
+  }
+
+  /**
    * Вийшли з поля «Назва» → якщо туди вписали вид чи форми («ехеверія Lola variegated»),
    * переносимо їх у свої поля: вид — у список, форми — у галочки, а в назві лишаємо тільки «Lola».
    */
@@ -232,6 +245,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     const { base, states } = parseForms(raw)
     const detected = detectGenus(base)
     if (detected) setValue('genus', detected, { shouldDirty: true })
+    const newHybrid = states.includes('hybridName') && !currentTags().includes('hybridName')
     if (states.length) {
       // Вписані форми лише додають галочки; вже поставлені не знімаємо.
       setValue('tags', [...new Set([...currentTags(), ...states])], { shouldDirty: true })
@@ -239,6 +253,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     const cultivar = detected ? base.split(/\s+/).slice(1).join(' ') : base
     if (cultivar !== raw) setValue('cultivar', cultivar, { shouldDirty: true })
     syncPlantName()
+    if (newHybrid) applyHybridOrigin()
   }
 
   return (
@@ -403,7 +418,12 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
                     type="checkbox"
                     value={tag}
                     className="h-4 w-4 accent-brand-600"
-                    {...register('tags', { onChange: syncPlantName })}
+                    {...register('tags', {
+                      onChange: (e) => {
+                        syncPlantName()
+                        if (e.target.value === 'hybridName' && e.target.checked) applyHybridOrigin()
+                      },
+                    })}
                   />
                   {t(`tags.${tag}`)}
                 </label>

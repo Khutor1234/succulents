@@ -1,4 +1,4 @@
-import { nameKey, parseForms } from '../../lib/plantName'
+import { nameKey, parseForms, withoutStates } from '../../lib/plantName'
 import { PLANT_CATEGORY, STATE_TAGS, type PlantTag } from '../../lib/plants'
 import type { PlantOrigin, Product } from '../../lib/types'
 
@@ -29,7 +29,8 @@ export interface FormFixPlan {
 type Plant = Pick<Product, 'id' | 'slug' | 'name' | 'category' | 'tags' | 'origin' | 'parents' | 'isActive'>
 
 // Назва без форм, лапок і різниці в регістрі/пробілах: «Graptoveria 'Debbie' variegata» → «graptoveriadebbie»
-const keyOf = (p: Plant) => parseForms(p.name.uk).base.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
+// («hybrid» лишається: «Orion hybrid variegata» — від «Orion hybrid», а «Orion variegata» — від «Orion»)
+const keyOf = (p: Plant) => withoutStates(p.name.uk).toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
 // Форми з галочок і з назви разом
 const formsOf = (p: Plant): PlantTag[] => {
   const fromName = parseForms(p.name.uk).states
@@ -56,7 +57,7 @@ export function planFormFixes(products: Plant[]): FormFixPlan {
     // Звичайної версії в магазині немає («Lola variegata», а просто «Lola» немає) — джерело все одно «Lola»:
     // так у походженні видно, від чого мутація, хоч посилання на сайті й не буде
     const inShop = candidates[0]?.name.uk.trim()
-    const source = inShop ?? parseForms(p.name.uk).base.trim()
+    const source = inShop ?? withoutStates(p.name.uk)
     // Без форм лишився сам рід («Greenovia variegata» → «Greenovia») — від чого мутація, невідомо
     if (!source || source.split(/\s+/).length < 2) continue
     const parents = (p.parents ?? []).filter(Boolean)
