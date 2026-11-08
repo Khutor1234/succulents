@@ -69,6 +69,7 @@ export const uk = {
     variegata: 'Variegata',
     cristata: 'Cristata',
     monstrose: 'Monstrose',
+    hybridName: 'Hybrid',
     used: 'Б/У',
   },
   blog: {
@@ -654,6 +655,7 @@ export const uk = {
       addSpec: '+ Додати характеристику',
       plant: 'Рослина',
       noGenus: '— не вказано —',
+      rotating: 'Повертаю…',
       genusNew: '+ Додати новий рід',
       tags: 'Теги',
       aliases: 'Інші назви',

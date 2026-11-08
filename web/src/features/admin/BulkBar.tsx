@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { db } from '../../firebase/config'
 import { parseForms, withForms } from '../../lib/plantName'
-import { PLANT_CATEGORY, PLANT_TAGS, STATE_TAGS, type PlantTag } from '../../lib/plants'
+import { NAME_TAGS, PLANT_CATEGORY, PLANT_TAGS, type PlantTag } from '../../lib/plants'
 import type { Product } from '../../lib/types'
 import { isProductQuery } from './api'
 
@@ -36,7 +36,7 @@ function changesFor(p: Product, action: Action): Record<string, unknown> | null 
   if (action.add === tags.includes(action.tag)) return null
   const next = action.add ? [...tags, action.tag] : tags.filter((t) => t !== action.tag)
   const out: Record<string, unknown> = { tags: next }
-  if (p.category === PLANT_CATEGORY && STATE_TAGS.includes(action.tag)) {
+  if (p.category === PLANT_CATEGORY && NAME_TAGS.includes(action.tag)) {
     const { base } = parseForms(p.name.uk)
     out['name.uk'] = withForms(base, next)
   }

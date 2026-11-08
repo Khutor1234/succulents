@@ -37,13 +37,14 @@ export const POTS_CATEGORY = 'pots'
 /**
  * Усі теги товарів. Які з них доступні — залежить від категорії (див. TAGS_BY_CATEGORY):
  * - рослини: «Живець» (продається живець, а не вкорінена рослина) і форми — variegata, cristata, monstrose
- *   (гібрид — не форма, а походження рослини: див. поле origin);
+ *   і «hybrid» — теж слово в кінці назви для гібрида без власної назви («Echeveria Orion hybrid»). Тег — 'hybridName':
+ *   старий тег 'hybrid' (гібрид як походження, тепер поле origin) досі лежить у товарах і ігнорується;
  * - горщики й інструменти: «Б/У» (вживане).
  */
-export const ALL_TAGS = ['cutting', 'variegata', 'cristata', 'monstrose', 'used'] as const
+export const ALL_TAGS = ['cutting', 'variegata', 'cristata', 'monstrose', 'hybridName', 'used'] as const
 export type PlantTag = (typeof ALL_TAGS)[number]
 
-export const PLANT_TAGS: PlantTag[] = ['cutting', 'variegata', 'cristata', 'monstrose']
+export const PLANT_TAGS: PlantTag[] = ['cutting', 'variegata', 'cristata', 'monstrose', 'hybridName']
 
 /** Теги, доступні в категорії; для решти категорій тегів немає. */
 export const TAGS_BY_CATEGORY: Record<string, PlantTag[]> = {
@@ -57,8 +58,14 @@ export const tagsFor = (category: string): PlantTag[] => TAGS_BY_CATEGORY[catego
 export const STATE_TAGS: PlantTag[] = ['variegata', 'cristata', 'monstrose']
 
 /**
+ * Усе, що дописується в кінець назви, у тому порядку: «Echeveria Orion hybrid variegata».
+ * «hybrid» — не мутація, тож у «Формах», родоводах і аналітиці форм (STATE_TAGS) його немає.
+ */
+export const NAME_TAGS: PlantTag[] = ['hybridName', ...STATE_TAGS]
+
+/**
  * Лише відомі теги. У старих товарах у базі може лишитися тег 'hybrid' (колись він був «формою»);
- * тепер гібрид — це походження, тож такий тег просто ігноруємо.
+ * тепер гібрид — це походження, тож такий тег просто ігноруємо (слово «hybrid» у назві — це тег 'hybridName').
  */
 export const knownTags = (tags?: string[]): PlantTag[] =>
   (tags ?? []).filter((t): t is PlantTag => (ALL_TAGS as readonly string[]).includes(t))
@@ -69,6 +76,7 @@ export const TAG_DOTS: Record<PlantTag, string> = {
   variegata: 'bg-[#d9b400]',
   cristata: 'bg-brand-500',
   monstrose: 'bg-[#8e4aa8]',
+  hybridName: 'bg-[#c2603a]',
   used: 'bg-[#7a6a58]',
 }
 
@@ -78,5 +86,6 @@ export const TAG_STYLES: Record<PlantTag, string> = {
   variegata: 'bg-[#f3e7a8] text-[#5c4a00]',
   cristata: 'bg-brand-100 text-brand-700',
   monstrose: 'bg-[#ead7f0] text-[#5a2a6e]',
+  hybridName: 'bg-[#f6dccf] text-[#7a3317]',
   used: 'bg-[#e8e0d5] text-[#4a3f33]',
 }

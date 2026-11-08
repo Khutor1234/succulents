@@ -392,19 +392,20 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
         {categoryTags.length > 0 && (
           <fieldset>
             <legend className="mb-2 text-sm font-medium text-sand-700">{t('admin.fields.tags')}</legend>
-            <div className="flex flex-wrap gap-2">
+            {/* П'ять тегів рослини — в один рядок на всю ширину: кожен розтягується, скільки є місця */}
+            <div className="flex flex-wrap gap-1.5">
               {categoryTags.map((tag) => (
                 <label
                   key={tag}
-                  className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border-2 border-sand-200 bg-sand-50 px-3 has-checked:border-brand-500 has-checked:bg-brand-50"
+                  className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border-2 border-transparent px-2 text-[13px] font-bold whitespace-nowrap has-checked:border-brand-600 ${TAG_STYLES[tag]}`}
                 >
                   <input
                     type="checkbox"
                     value={tag}
-                    className="h-5 w-5 accent-brand-600"
+                    className="h-4 w-4 accent-brand-600"
                     {...register('tags', { onChange: syncPlantName })}
                   />
-                  <span className={`rounded-full px-2.5 py-0.5 text-sm font-bold ${TAG_STYLES[tag]}`}>{t(`tags.${tag}`)}</span>
+                  {t(`tags.${tag}`)}
                 </label>
               ))}
             </div>

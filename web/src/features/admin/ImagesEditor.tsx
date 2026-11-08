@@ -1,12 +1,16 @@
-import { Star, Trash2 } from 'lucide-react'
+import { httpsCallable } from 'firebase/functions'
+import { RotateCcw, RotateCw, Star, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { imageUrl } from '../../firebase/config'
+import { functions, imageUrl } from '../../firebase/config'
 import { ImageCropper } from '../../shared/ImageCropper'
 import { SmallImage } from '../../shared/ui'
 import { uploadProductImage } from './imageUpload'
 
 /** Кругла кнопка-іконка в куті фото. */
+/** Повернути вже завантажене фото на 90° — робить сервер (functions/src/rotatePhoto.ts), віддає адресу нового фото. */
+const rotatePhoto = httpsCallable<{ url: string; dir: 1 | -1 }, { url: string }>(functions, 'rotatePhoto')
+
 const ICON_BTN = 'absolute top-1 left-1 flex h-9 w-9 items-center justify-center rounded-full shadow-sm transition-colors'
 
 interface Props {
@@ -59,6 +63,23 @@ export function ImagesEditor({ images, onChange, onUploadingChange }: Props) {
 
   const makeMain = (url: string) => onChange([url, ...images.filter((u) => u !== url)])
   const remove = (url: string) => onChange(images.filter((u) => u !== url))
+  // Повернуте фото стає на місце старого (і лишається головним, якщо було)
+  async function rotate(url: string, dir: 1 | -1) {
+    setError(false)
+    setUploading(true)
+    onUploadingChange(true)
+    try {
+      const { data } = await rotatePhoto({ url, dir })
+      latest.current = latest.current.map((u) => (u === url ? data.url : u))
+      onChange(latest.current)
+    } catch (err) {
+      console.error(err)
+      setError(true)
+    } finally {
+      setUploading(false)
+      onUploadingChange(false)
+    }
+  }
 
   return (
     <div>
@@ -134,6 +155,8 @@ export function ImagesEditor({ images, onChange, onUploadingChange }: Props) {
           images={images}
           index={viewing}
           onIndex={setViewing}
+          rotating={uploading}
+          onRotate={rotate}
           onClose={() => setViewing(null)}
           onMakeMain={(url) => {
             makeMain(url)
@@ -157,10 +180,13 @@ interface ViewerProps {
   onClose: () => void
   onMakeMain: (url: string) => void
   onRemove: (url: string) => void
+  onRotate: (url: string, dir: 1 | -1) => void
+  /** Поки сервер повертає фото — кнопки неактивні */
+  rotating: boolean
 }
 
 /** Перегляд фото на весь екран. <dialog> сам закривається клавішею Esc і тримає фокус усередині. */
-function PhotoViewer({ images, index, onIndex, onClose, onMakeMain, onRemove }: ViewerProps) {
+function PhotoViewer({ images, index, onIndex, onClose, onMakeMain, onRemove, onRotate, rotating }: ViewerProps) {
   const { t } = useTranslation()
   const ref = useRef<HTMLDialogElement>(null)
   const url = images[index]
@@ -214,6 +240,22 @@ function PhotoViewer({ images, index, onIndex, onClose, onMakeMain, onRemove }: 
         </div>
 
         <div className="flex flex-wrap justify-center gap-2">
+          {/* Повернути фото, зняте боком */}
+          {([-1, 1] as const).map((dir) => {
+            const Icon = dir < 0 ? RotateCcw : RotateCw
+            return (
+              <button
+                key={dir}
+                type="button"
+                onClick={() => onRotate(url, dir)}
+                disabled={rotating}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-sand-50 px-4 font-bold text-ink hover:bg-sand-200 disabled:opacity-60"
+              >
+                <Icon size={18} strokeWidth={2.5} aria-hidden />
+                {rotating ? t('admin.fields.rotating') : t(dir < 0 ? 'cropper.rotateLeft' : 'cropper.rotateRight')}
+              </button>
+            )
+          })}
           {index !== 0 && (
             <button type="button" onClick={() => onMakeMain(url)} className="min-h-11 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 hover:bg-brand-700">
               {t('admin.fields.makeMain')}

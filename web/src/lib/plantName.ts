@@ -1,4 +1,4 @@
-import { GENERA, STATE_TAGS, type PlantTag } from './plants'
+import { GENERA, NAME_TAGS, STATE_TAGS, type PlantTag } from './plants'
 
 /**
  * Назва для показу покупцю: живцям (тег «Живець») — ще «(живець)» у дужках, щоб ще раз нагадати.
@@ -20,6 +20,7 @@ const FORM_LABELS: Partial<Record<PlantTag, string>> = {
   variegata: 'variegata',
   cristata: 'cristata',
   monstrose: 'monstrose',
+  hybridName: 'hybrid',
 }
 
 /** Слова, за якими впізнаємо форму в кінці назви (англійською й латиною, у різних варіантах написання). */
@@ -28,6 +29,7 @@ const FORM_PATTERNS: [PlantTag, RegExp][] = [
   ['variegata', /^variegat(a|ed|e)?$/i],
   ['cristata', /^(cristat(a|ed|e)?|crest(ed)?)$/i],
   ['monstrose', /^(monstros(a|e|us)?|monstr\.?)$/i],
+  ['hybridName', /^hybrid$/i],
 ]
 
 /**
@@ -117,12 +119,12 @@ export function parseForms(name: string): { base: string; states: PlantTag[] } {
   }
   // «f.» перед першою формою теж належить до форм.
   while (cut > 0 && /^(f\.?|forma),?$/i.test(words[cut - 1])) cut--
-  return { base: words.slice(0, cut).join(' ').replace(/[,\s]+$/, ''), states: STATE_TAGS.filter((t) => found.has(t)) }
+  return { base: words.slice(0, cut).join(' ').replace(/[,\s]+$/, ''), states: NAME_TAGS.filter((t) => found.has(t)) }
 }
 
 /** Склеює назву з формами: ('Echeveria Lola', ['variegata', 'cristata']) → «Echeveria Lola variegata cristata». */
 export function withForms(base: string, tags: PlantTag[]): string {
-  const forms = STATE_TAGS.filter((t) => tags.includes(t)).map((t) => FORM_LABELS[t])
+  const forms = NAME_TAGS.filter((t) => tags.includes(t)).map((t) => FORM_LABELS[t])
   return forms.length ? `${base.trim()} ${forms.join(' ')}` : base.trim()
 }
 
