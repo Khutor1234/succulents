@@ -7,6 +7,7 @@ import { router } from './app/router'
 import './i18n'
 import './index.css'
 import { initMonitoring } from './lib/monitoring'
+import { trackVisit } from './lib/visits'
 
 // Першим ділом — щоб Sentry зловив навіть помилки під час запуску сайту.
 initMonitoring()
@@ -30,6 +31,9 @@ window.addEventListener('load', () => {
     /* немає доступу до сховища — нічого страшного */
   }
 })
+
+// Лічильник відвідувачів за день (адмінка → «Покупці»)
+trackVisit()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
