@@ -69,7 +69,7 @@ export function toFormValues(p: Product | null, defaultCategory: string): Produc
     origin: p?.origin ?? 'hybrid',
     habitat: p?.habitat ?? '',
     breeder: p?.breeder ?? '',
-    cultivar: p && category === PLANT_CATEGORY ? cultivarOf(p.name.uk) : '',
+    cultivar: p && category === PLANT_CATEGORY ? cultivarOf(p.name.uk, p.genus) : '',
     specs: p?.specs ?? [],
   }
 }
@@ -83,10 +83,15 @@ export function splitAliases(text: string): string[] {
     .filter((s) => s && !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()))
 }
 
-/** Сорт зі збереженої назви: «Echeveria Lola variegata» → «Lola» (вид і форми відкидаємо). */
-export function cultivarOf(name: string): string {
+/**
+ * Сорт зі збереженої назви: «Echeveria Lola variegata» → «Lola» (вид і форми відкидаємо).
+ * `genus` — рід товару: так відкидається й рід, доданий як «новий» (його немає серед відомих).
+ */
+export function cultivarOf(name: string, genus = ''): string {
   const { base } = parseForms(name)
-  return detectGenus(base) ? base.split(/\s+/).slice(1).join(' ') : base
+  const first = base.split(/\s+/)[0] ?? ''
+  const own = !!genus && first.toLowerCase() === genus.toLowerCase()
+  return own || detectGenus(base) ? base.split(/\s+/).slice(1).join(' ') : base
 }
 
 export function toProductInput({ cultivar: _cultivar, ...data }: ProductFormData, images: string[]): ProductInput {

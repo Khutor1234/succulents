@@ -655,7 +655,6 @@ export const uk = {
       plant: 'Рослина',
       noGenus: '— не вказано —',
       genusNew: '+ Додати новий рід',
-      genusAdd: 'Додати рід',
       tags: 'Теги',
       aliases: 'Інші назви',
       aliasesHint: 'Через кому. Їх видно на сторінці й шукає пошук.',

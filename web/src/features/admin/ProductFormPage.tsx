@@ -92,15 +92,19 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
   const [newGenus, setNewGenus] = useState('')
   // Рід до вибору «+ Додати новий рід» — повертаємо його, поки нову назву не підтвердили
   const [genusBefore, setGenusBefore] = useState(genusValue)
-  function applyNewGenus() {
+  // Новий рід потрапляє в товар одразу під час набору (без кнопки «Додати») — і в повну назву, і при збереженні.
+  // Порожнє поле — повертаємо рід, що був до вибору «+ Додати новий рід»
+  function typeNewGenus(text: string) {
+    setNewGenus(text)
     // «mammillaria» → «Mammillaria»: рід латиною завжди з великої літери
-    const g = newGenus.trim().replace(/\s+/g, ' ')
-    if (!g) return
-    const value = g.charAt(0).toUpperCase() + g.slice(1)
-    setValue('genus', value, { shouldDirty: true })
-    setGenusBefore(value)
-    setAddingGenus(false)
+    const g = text.trim().replace(/\s+/g, ' ')
+    setValue('genus', g ? g.charAt(0).toUpperCase() + g.slice(1) : genusBefore, { shouldDirty: true })
     syncPlantName()
+  }
+  // Вийшли з поля — знову список, у ньому вже є новий рід
+  function finishNewGenus() {
+    setGenusBefore(getValues('genus'))
+    setAddingGenus(false)
   }
   const fullName = useWatch({ control, name: 'name.uk' })
   // Галочка «Живець» — у підсумку назви, як і на сайті, ще «(живець)» у дужках (у саму назву не записується)
@@ -314,7 +318,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
               if (e.target.value !== PLANT_CATEGORY) return
               if (!getValues('genus')) setValue('genus', DEFAULT_GENUS)
               // Звичайну назву переносимо в «Назву» рослини (без виду й форм).
-              if (!getValues('cultivar')) setValue('cultivar', cultivarOf(getValues('name.uk')))
+              if (!getValues('cultivar')) setValue('cultivar', cultivarOf(getValues('name.uk'), getValues('genus')))
               syncPlantName()
             },
           })}
@@ -330,29 +334,21 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
           <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
             {/* Рід: зі списку (основні роди + ті, що вже є в товарах) або новий — пунктом «+ Додати новий рід» */}
             {addingGenus ? (
-              <div>
-                <Input
-                  label={t('catalog.genus')}
-                  autoFocus
-                  value={newGenus}
-                  onChange={(e) => setNewGenus(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      applyNewGenus()
-                    }
-                  }}
-                  placeholder="Mammillaria"
-                />
-                <div className="mt-2 flex gap-2">
-                  <Button type="button" onClick={applyNewGenus} disabled={!newGenus.trim()}>
-                    {t('admin.fields.genusAdd')}
-                  </Button>
-                  <Button type="button" variant="secondary" onClick={() => setAddingGenus(false)}>
-                    {t('admin.cancel')}
-                  </Button>
-                </div>
-              </div>
+              <Input
+                label={t('catalog.genus')}
+                autoFocus
+                value={newGenus}
+                onChange={(e) => typeNewGenus(e.target.value)}
+                onBlur={finishNewGenus}
+                onKeyDown={(e) => {
+                  // Enter — не зберігати всю форму, а лише закінчити з родом
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    e.currentTarget.blur()
+                  }
+                }}
+                placeholder="Mammillaria"
+              />
             ) : (
               <Select
                 label={t('catalog.genus')}
