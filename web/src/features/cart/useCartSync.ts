@@ -42,7 +42,7 @@ export function useCartSync() {
       asked.map(async (item) => {
         try {
           const snap = await getDoc(doc(db, 'products', item.productId))
-          // Залишок — той, що доступний покупцю (без рослин «не на продаж» і без останньої рослини)
+          // Залишок — той, що доступний покупцю (рослини «не на продаж» — 0)
           return snap.exists() ? forBuyer(snap.data() as Product) : null
         } catch {
           return null // прихований товар покупцю не видно — так само «недоступний»

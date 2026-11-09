@@ -5,8 +5,6 @@ import { Link } from 'react-router'
 import { useLang } from '../../i18n'
 import { formatPrice, pick } from '../../lib/format'
 import { withCuttingMark } from '../../lib/plantName'
-import { PLANT_CATEGORY } from '../../lib/plants'
-import { KEEP_LAST } from '../../lib/shop'
 import { searchProducts } from '../../lib/search'
 import type { Product } from '../../lib/types'
 import { useHere } from '../../shared/navigation'
@@ -19,9 +17,8 @@ import { useAllProducts } from './api'
 /** Фільтр «Показати»: усі, лише в наявності, у продажу, не продаються, видимі покупцям, приховані. */
 const SHOWS = ['all', 'inStock', 'forSale', 'notForSale', 'visible', 'hidden'] as const
 type Show = (typeof SHOWS)[number]
-// «У продажу» — як зафарбована іконка-цінник: позначено «у продажу» і покупцю справді є що купити (не 0 і не остання рослина)
-const sellable = (p: Product) =>
-  p.forSale !== false && p.stock > 0 && !(p.category === PLANT_CATEGORY && p.stock <= KEEP_LAST)
+// «У продажу» — як зафарбована іконка-цінник: позначено «у продажу» і покупцю справді є що купити (не 0)
+const sellable = (p: Product) => p.forSale !== false && p.stock > 0
 const SHOW_TEST: Record<Show, (p: Product) => boolean> = {
   all: () => true,
   inStock: (p) => p.stock > 0,

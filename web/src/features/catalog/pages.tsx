@@ -282,7 +282,7 @@ export function CategoryPage() {
   const { isVisible, nameOf, isLoading: settingsLoading } = useCategories()
   const realSeller = useAuth((s) => s.role === 'seller')
   // Продавцю — перемикач «Як бачить покупець» (?view=buyer): сторінка точно така, як у покупця — лише показані рослини,
-  // наявність без тих, що не продаються, і без останньої рослини, звичайні картки (лише зі шпилькою «на головну»)
+  // наявність без тих, що не продаються, звичайні картки (лише зі шпилькою «на головну»)
   const [params, setParams] = useSearchParams()
   const buyerView = realSeller && params.get('view') === 'buyer'
   const isSeller = realSeller && !buyerView

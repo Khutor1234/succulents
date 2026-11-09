@@ -1,4 +1,4 @@
-import { Ban, Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Pin, Plus, Tag, Trash2, TriangleAlert } from 'lucide-react'
+import { Ban, Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Pin, Plus, Tag, Trash2 } from 'lucide-react'
 import { useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -6,7 +6,6 @@ import { useLang } from '../../i18n'
 import { formatPrice, pick } from '../../lib/format'
 import { withCuttingMark } from '../../lib/plantName'
 import { PLANT_CATEGORY } from '../../lib/plants'
-import { KEEP_LAST } from '../../lib/shop'
 import type { Product } from '../../lib/types'
 import { ProductImage } from '../../shared/ui'
 import { useHere } from '../../shared/navigation'
@@ -427,19 +426,16 @@ export function CopyName({ name, className = '' }: { name: string; className?: s
 /**
  * Продавцю: «У продажу» / «Не продається» — квадратна кнопка-іконка в ряду кнопок картки. Не на продаж — покупці бачать
  * «немає в наявності», а продавець і далі бачить справжній залишок (рослина є в колекції, але її не продають).
- * Зафарбована — у продажу. Остання рослина лишається продавцю (KEEP_LAST), а коли на складі 0 — продавати нічого:
- * тоді кнопка сіра й нічого не перемикає (лише плутало б), а натискання чи наведення показує пояснення;
- * ⚠ у куті — що це остання рослина.
+ * Зафарбована — у продажу (покупці бачать увесь залишок). Коли на складі 0 — продавати нічого:
+ * тоді кнопка сіра й нічого не перемикає (лише плутало б), а натискання чи наведення показує пояснення.
  */
 export function ForSaleButton({ product, name, compact = false }: { product: Product; name: string; compact?: boolean }) {
   const { t } = useTranslation()
   const toggle = useToggleForSale()
   const forSale = product.forSale !== false
-  const lastKept = product.category === PLANT_CATEGORY && product.stock > 0 && product.stock <= KEEP_LAST
-  // На складі нічого — теж не перемикається: продавати нічого, спершу додайте кількість
-  const empty = product.stock === 0
-  const locked = lastKept || empty
-  const lockedHint = t(empty ? 'admin.noStockForSale' : 'admin.lastKept')
+  // На складі нічого — не перемикається: продавати нічого, спершу додайте кількість
+  const locked = product.stock === 0
+  const lockedHint = t('admin.noStockForSale')
   const sellable = forSale && !locked
   const [hint, setHint] = useState(false)
   const Icon = sellable ? Tag : Ban
@@ -463,9 +459,6 @@ export function ForSaleButton({ product, name, compact = false }: { product: Pro
         }`}
       >
         <Icon size={18} strokeWidth={2.25} aria-hidden />
-        {lastKept && (
-          <TriangleAlert size={14} strokeWidth={2.6} className="absolute -top-1.5 -right-1.5 rounded-full bg-sand-50 text-sunset-600" aria-hidden />
-        )}
       </button>
       {locked && (
         <span
