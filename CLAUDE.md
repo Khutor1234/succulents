@@ -34,14 +34,16 @@ firestore.rules, storage.rules, firestore.indexes.json
   продавця на картках, «Вибрати» (масові дії, `BulkBar`), «Додати» в каталозі й пошуку.
 - Кабінет покупця (`features/account`): `/account` — плитки, бонусний рахунок і лише 3 останні записи історії бонусів;
   уся історія — `/account/bonuses` (`BonusesPage.tsx`, по місяцях), `/account/orders`, `/account/favorites`.
-- Картка «Походження» на сторінці форми («Від Echeveria Lola») показує ще й батьків звичайної версії або «природний вид» з ареалом
-  (`SourceParents` у `catalog/ParentsLinks.tsx`, товар за точною назвою — `useProductByName`); звичайної версії в магазині немає — нічого.
+- Картка «Походження» на сторінці товару: імена рослин ведуть на сторінку цієї рослини (`PlantChip`, товар за точною назвою — `useProductByName`),
+  немає в магазині — у пошук (для «Від …» — просто назва). Для форми («Від Echeveria Lola») — ще й походження звичайної версії
+  (`SourceParents`): вписане у формі товару в згорнутому блоці «Походження Echeveria Lola» (поле `base`), інакше — з картки звичайної версії.
 - Пов'язані рослини під товаром — `catalog/RelatedPlants.tsx`; для рідкісних родів (до 10 рослин на сайті) — ще й «Інші рослини роду».
 - Блог: статті прямо в коді — `web/src/features/blog/articles.ts`.
 - Назви рослин і теги-форми: `web/src/lib/plants.ts`, `web/src/lib/plantName.ts`.
   Повна назва = рід + сорт + форми з галочок, напр. «Echeveria Lola variegata». Галочка «Hybrid» (тег `hybridName`, не плутати зі старим
   тегом `hybrid` і з полем «Походження») дописує «hybrid» — для гібрида без власної назви: «Echeveria Orion hybrid». Галочка сама ставить походження «Гібрид» і першого
-  батька «Echeveria Orion». У «Виправити форми» й імпорті «hybrid» — частина назви (`withoutStates`), не форма: «Orion hybrid variegata» — від «Orion hybrid». Живцям на екрані дописується «(живець)»
+  батька «Echeveria Orion». Галочка форми (variegata/cristata/monstrose) сама ставить «Відбір або мутація» від рід + сорт (`applyFormOrigin`),
+  а колишнє походження з картки переносить у блок «Походження …» (`base`). У «Виправити форми» й імпорті «hybrid» — частина назви (`withoutStates`), не форма: «Orion hybrid variegata» — від «Orion hybrid». Живцям на екрані дописується «(живець)»
   (`withCuttingMark`), у базі назва без цього.
 - Світла й темна тема: перемикач у шапці (`app/theme.ts`, localStorage `theme`, за замовчуванням світла). Темна — ті самі
   назви кольорів з іншими значеннями в `index.css` (`:root[data-theme=dark]`), тож нові сторінки темніють самі. Не писати

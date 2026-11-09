@@ -4,10 +4,10 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { Check, ChevronDown, Copy, CopyPlus, Eye, EyeOff, Link2, Lock, X, Trash2 } from 'lucide-react'
-import { detectGenus, nameKey, parseForms, withCuttingMark, withForms } from '../../lib/plantName'
+import { detectGenus, nameKey, parseForms, withCuttingMark, withForms, withoutStates } from '../../lib/plantName'
 import { ICON } from '../../shared/icon'
 import { HABITATS, ORIGINS } from '../../lib/types'
-import { DEFAULT_GENUS, GENERA, PLANT_CATEGORY, TAG_STYLES, tagsFor, type PlantTag } from '../../lib/plants'
+import { DEFAULT_GENUS, GENERA, PLANT_CATEGORY, STATE_TAGS, TAG_STYLES, tagsFor, type PlantTag } from '../../lib/plants'
 import { slugify } from '../../lib/slug'
 import type { Product } from '../../lib/types'
 import { Button, Input, Section, Select, StepperInput, Textarea } from '../../shared/ui'
@@ -18,6 +18,7 @@ import { BackLink } from './BackLink'
 import { ImagesEditor } from './ImagesEditor'
 import {
   cultivarOf,
+  hasBase,
   productFormSchema,
   toFormValues,
   toProductInput,
@@ -112,6 +113,13 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
   const isCutting = (Array.isArray(watchedTags) ? watchedTags : watchedTags ? [watchedTags] : []).includes('cutting')
   const slugValue = useWatch({ control, name: 'slug' })
   const origin = useWatch({ control, name: 'origin' })
+  // Походження звичайної версії (для форм) — у згорнутому блоці; за замовчуванням закритий
+  const tagList = Array.isArray(watchedTags) ? (watchedTags as string[]) : watchedTags ? [watchedTags as string] : []
+  const baseName = useWatch({ control, name: 'parents.0' })
+  const baseOrigin = useWatch({ control, name: 'baseOrigin' })
+  const baseParents = useWatch({ control, name: 'baseParents' })
+  const baseFilled = baseOrigin === 'natural' || baseParents.some((p) => p.trim())
+  const [baseOpen, setBaseOpen] = useState(false)
   const isPlant = category === PLANT_CATEGORY
   const categoryTags = tagsFor(category)
 
@@ -219,7 +227,18 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
   function syncPlantName() {
     if (getValues('category') !== PLANT_CATEGORY) return
     const base = [getValues('genus'), getValues('cultivar').trim()].filter(Boolean).join(' ')
-    setValue('name.uk', withForms(base, currentTags()), { shouldDirty: true, shouldValidate: !!errors.name })
+    const before = getValues('name.uk')
+    const name = withForms(base, currentTags())
+    setValue('name.uk', name, { shouldDirty: true, shouldValidate: !!errors.name })
+    // Перше поле походження, яке поставила галочка, йде за назвою: форма — «Від Echeveria Lola» (без форм),
+    // лише «Hybrid» — перший батько «Echeveria Lola». Поставили галочку, а потім ввели «Lola» → там теж «Lola».
+    // Вписане вручну щось інше не чіпаємо.
+    const tags = currentTags()
+    const states = tags.some((tg) => STATE_TAGS.includes(tg))
+    const own = states ? withoutStates : tags.includes('hybridName') ? (n: string) => parseForms(n).base : null
+    const from = getValues('parents.0')
+    if (own && getValues('origin') === (states ? 'cultivar' : 'hybrid') && (!from.trim() || nameKey(from) === nameKey(own(before))))
+      setValue('parents.0', own(name), { shouldDirty: true })
     suggestSlug()
   }
 
@@ -237,6 +256,34 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
   }
 
   /**
+   * Поставили форму (variegata, cristata, monstrose) — це відбір або мутація від звичайної версії: «Echeveria Lola cristata» —
+   * «Від Echeveria Lola» (з «Hybrid» — від «Echeveria Lola hybrid»). Якщо в картці вже було походження самої Lola
+   * (напр., копія її картки з батьками), переносимо його в блок «Походження Echeveria Lola», щоб не загубилось.
+   * Лише «Hybrid» без форм — як і раніше, гібрид від самої рослини.
+   */
+  function applyFormOrigin() {
+    const tags = currentTags()
+    if (!tags.some((tg) => STATE_TAGS.includes(tg))) return tags.includes('hybridName') && applyHybridOrigin()
+    const base = [getValues('genus'), getValues('cultivar').trim()].filter(Boolean).join(' ')
+    if (!base) return
+    const source = withForms(base, tags.includes('hybridName') ? ['hybridName'] : [])
+    const was = getValues('origin')
+    const [p0, p1] = getValues('parents')
+    const baseEmpty = !getValues('baseParents').some((x) => x.trim()) && getValues('baseOrigin') !== 'natural'
+    if (was !== 'cultivar' && baseEmpty) {
+      if (was === 'natural') {
+        setValue('baseOrigin', 'natural', { shouldDirty: true })
+        setValue('baseHabitat', getValues('habitat'), { shouldDirty: true })
+      } else if (was === 'hybrid' && (p0.trim() || p1.trim()) && nameKey(p0) !== nameKey(base)) {
+        setValue('baseOrigin', 'hybrid', { shouldDirty: true })
+        setValue('baseParents', [p0, p1], { shouldDirty: true })
+      }
+    }
+    setValue('origin', 'cultivar', { shouldDirty: true })
+    setValue('parents', [source, ''], { shouldDirty: true })
+  }
+
+  /**
    * Вийшли з поля «Назва» → якщо туди вписали вид чи форми («ехеверія Lola variegated»),
    * переносимо їх у свої поля: вид — у список, форми — у галочки, а в назві лишаємо тільки «Lola».
    */
@@ -245,7 +292,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     const { base, states } = parseForms(raw)
     const detected = detectGenus(base)
     if (detected) setValue('genus', detected, { shouldDirty: true })
-    const newHybrid = states.includes('hybridName') && !currentTags().includes('hybridName')
+    const newForm = states.some((st) => !currentTags().includes(st))
     if (states.length) {
       // Вписані форми лише додають галочки; вже поставлені не знімаємо.
       setValue('tags', [...new Set([...currentTags(), ...states])], { shouldDirty: true })
@@ -253,7 +300,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     const cultivar = detected ? base.split(/\s+/).slice(1).join(' ') : base
     if (cultivar !== raw) setValue('cultivar', cultivar, { shouldDirty: true })
     syncPlantName()
-    if (newHybrid) applyHybridOrigin()
+    if (newForm) applyFormOrigin()
   }
 
   return (
@@ -421,7 +468,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
                     {...register('tags', {
                       onChange: (e) => {
                         syncPlantName()
-                        if (e.target.value === 'hybridName' && e.target.checked) applyHybridOrigin()
+                        if (e.target.checked && e.target.value !== 'cutting') applyFormOrigin()
                       },
                     })}
                   />
@@ -442,7 +489,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
           <p className="mt-1.5 text-sm text-sand-700">{t('admin.fields.aliasesHint')}</p>
         </div>
         {/* Походження: гібрид двох рослин (можна знати лише одного з батьків) або сорт/форма від однієї рослини.
-            На сайті кожне ім'я клікабельне — веде в пошук. */}
+            На сайті кожне ім'я клікабельне — веде на сторінку цієї рослини, а якщо її в магазині немає — у пошук. */}
         {isPlant && (
           <fieldset>
             <legend className="mb-2 text-sm font-medium text-sand-700">{t('admin.fields.origin')}</legend>
@@ -504,6 +551,50 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
                 <Input label={t('admin.fields.breeder')} placeholder="Dick Wright" {...register('breeder')} />
                 <p className="mt-1.5 text-sm text-sand-700">{t('admin.fields.breederHint')}</p>
               </div>
+            )}
+            {/* Форма (variegata…) чи «hybrid» від звичайної версії — її походження, якщо відоме. Згорнуто, щоб не заважало. */}
+            {hasBase(origin, baseName ?? '', tagList) && (
+              <details className="group mt-4 rounded-2xl border-2 border-sand-200 bg-sand-50" open={baseOpen} onToggle={(e) => setBaseOpen(e.currentTarget.open)}>
+                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-2 text-sm font-bold text-sand-700 [&::-webkit-details-marker]:hidden">
+                  <ChevronDown size={18} className="shrink-0 transition-transform group-open:rotate-180" aria-hidden />
+                  <span className="min-w-0 flex-1">{t('admin.fields.baseTitle', { name: baseName })}</span>
+                  {baseFilled && <span className="shrink-0 font-normal">{t('admin.fields.baseFilled')}</span>}
+                </summary>
+                <div className="border-t-2 border-sand-200 px-4 pt-3 pb-4">
+                  <div className="mb-2 inline-flex rounded-xl bg-sand-200 p-1" role="radiogroup" aria-label={t('admin.fields.baseTitle', { name: baseName })}>
+                    {ORIGINS.map((o) => (
+                      <label
+                        key={o}
+                        className="cursor-pointer rounded-lg px-3 py-1.5 text-sm font-bold text-sand-700 transition-colors has-checked:bg-sand-50 has-checked:text-ink has-checked:shadow-sm"
+                      >
+                        <input
+                          type="radio"
+                          value={o}
+                          className="sr-only"
+                          {...register('baseOrigin', {
+                            onChange: (e) => e.target.value === 'natural' && !getValues('baseHabitat') && setValue('baseHabitat', 'Мексика'),
+                          })}
+                        />
+                        {t(`admin.fields.origins.${o}`)}
+                      </label>
+                    ))}
+                  </div>
+                  {baseOrigin === 'natural' ? (
+                    <Input label={t('admin.fields.habitat')} list="habitats" placeholder="Мексика" {...register('baseHabitat')} />
+                  ) : baseOrigin === 'cultivar' ? (
+                    <Input label={t('admin.fields.cultivarOf')} className="[&>span]:sr-only" placeholder="Echeveria lilacina" {...register('baseParents.0')} />
+                  ) : (
+                    <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+                      <Input label={t('admin.fields.parentA')} placeholder="Echeveria elegans" {...register('baseParents.0')} />
+                      <span className="hidden pb-3 text-center font-display text-xl font-extrabold text-sand-700 sm:block" aria-hidden>
+                        ×
+                      </span>
+                      <Input label={t('admin.fields.parentB')} placeholder={t('admin.fields.parentUnknown')} {...register('baseParents.1')} />
+                    </div>
+                  )}
+                  <p className="mt-1.5 text-sm text-sand-700">{t('admin.fields.baseHint', { name: baseName })}</p>
+                </div>
+              </details>
             )}
           </fieldset>
         )}

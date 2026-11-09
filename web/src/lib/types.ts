@@ -59,6 +59,11 @@ export interface Product {
   habitat?: string
   /** Хто вивів гібрид чи сорт: людина або розплідник/компанія, напр. «Dick Wright». Для природного виду порожньо. */
   breeder?: string
+  /**
+   * Походження звичайної версії (parents[0]) для форми: «Echeveria Lola variegata» від «Echeveria Lola», а та —
+   * lilacina × derenbergii. Заповнює продавець у формі (згорнутий блок); немає — береться з картки звичайної версії.
+   */
+  base?: { origin: PlantOrigin; parents: string[]; habitat?: string } | null
   /** Характеристики, напр. «Діаметр горщика: 8 см». */
   specs?: { label: Localized; value: Localized }[]
   /** Скільки покупців (з акаунтом) додали в улюблене — рахує сервер (functions/onFavoritesChanged). */

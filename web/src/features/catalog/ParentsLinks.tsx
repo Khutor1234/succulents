@@ -3,14 +3,15 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useAuth } from '../auth/authStore'
 import { useProductByName } from './api'
-import type { PlantOrigin } from '../../lib/types'
+import type { PlantOrigin, Product } from '../../lib/types'
 
 /**
  * Ім'я рослини чи країни — «чип», що веде в пошук (одразу видно, чи є в магазині сам батько або його інші «діти»).
- * `plain` — просто назва без посилання (такої рослини в магазині немає).
+ * `href` — веде прямо на цю адресу (сторінку рослини). `plain` — просто назва без посилання (такої рослини в магазині немає).
  */
 function Chip({
   to,
+  href,
   title,
   big,
   grow,
@@ -20,6 +21,7 @@ function Chip({
   children,
 }: {
   to: string
+  href?: string
   title: string
   big?: boolean
   grow?: boolean
@@ -41,50 +43,67 @@ function Chip({
       </span>
     )
   return (
-    <Link to={`/search?q=${encodeURIComponent(to)}`} title={title} className={className}>
+    <Link to={href ?? `/search?q=${encodeURIComponent(to)}`} title={title} className={className}>
       {icon}
       {label}
     </Link>
   )
 }
 
-/** «Мутація від …»: назва-посилання, а якщо такої рослини в магазині немає — просто назва. */
-function SourceChip({ name, big, full }: { name: string; big?: boolean; full?: boolean }) {
+/**
+ * Рослина за назвою: є в магазині — веде на її сторінку; немає — у пошук (там видно її «дітей»),
+ * а з `plainIfMissing` — просто назва без посилання.
+ */
+function PlantChip({ name, big, full, plainIfMissing }: { name: string; big?: boolean; full?: boolean; plainIfMissing?: boolean }) {
   const { t } = useTranslation()
   const isSeller = useAuth((s) => s.role === 'seller')
-  const { data: source } = useProductByName(name, isSeller)
-  const missing = source === null
+  const { data: plant } = useProductByName(name, isSeller)
+  const missing = plant === null
+  const title = plant ? t('search.openPlant', { name }) : missing && plainIfMissing ? t('search.notInShop', { name }) : t('search.findParent', { name })
   return (
-    <Chip to={name} title={missing ? t('search.notInShop', { name }) : t('search.findParent', { name })} big={big} full={full} plain={missing}>
+    <Chip to={name} href={plant ? `/product/${plant.slug}` : undefined} title={title} big={big} full={full} plain={missing && plainIfMissing}>
       {name}
     </Chip>
   )
 }
 
+/** «Мутація від …»: веде на сторінку цієї рослини, а якщо її в магазині немає — просто назва. */
+const SourceChip = (props: { name: string; big?: boolean; full?: boolean }) => <PlantChip {...props} plainIfMissing />
+
 /**
- * Батьки звичайної версії для форми (variegata, cristata…): «Echeveria Lola variegata» від «Echeveria Lola»,
- * а та — Echeveria lilacina × Echeveria derenbergii. Лише якщо звичайна версія є в магазині й її батьки відомі.
+ * Походження звичайної версії для форми (variegata, cristata…, «hybrid»): «Echeveria Lola variegata» від «Echeveria Lola»,
+ * а та — Echeveria lilacina × Echeveria derenbergii (або природний вид, або відбір від іншої рослини).
+ * Вписане продавцем у формі цієї рослини (`base`), інакше — з картки звичайної версії, якщо вона є в магазині.
  */
-function SourceParents({ name, tile, cross }: { name: string; tile: (name?: string) => React.ReactNode; cross: React.ReactNode }) {
+function SourceParents({ name, base, tile, cross }: { name: string; base?: Product['base']; tile: (name?: string) => React.ReactNode; cross: React.ReactNode }) {
   const { t } = useTranslation()
   const isSeller = useAuth((s) => s.role === 'seller')
   const { data: source } = useProductByName(name, isSeller)
-  const parents = (source?.parents ?? []).filter(Boolean)
-  if (!source) return null
-  // Звичайна версія — природний вид: батьків немає, тож показуємо, звідки він
-  if (source.origin === 'natural')
+  const info = base ?? (source ? { origin: source.origin ?? 'hybrid', parents: source.parents ?? [], habitat: source.habitat } : null)
+  if (!info) return null
+  const parents = info.parents.filter(Boolean)
+  // Природний вид: батьків немає, тож показуємо, звідки він
+  if (info.origin === 'natural')
     return (
       <p className="mt-3 flex flex-wrap items-center gap-2 border-t border-sand-200 pt-3 text-sm text-sand-700">
         <Leaf size={14} strokeWidth={2.5} className="shrink-0" aria-hidden />
         <span>{t('search.sourceNatural', { name })}</span>
-        {source.habitat && (
-          <Chip to={source.habitat} title={t('search.findParent', { name: source.habitat })} big icon={<MapPin size={14} strokeWidth={2.5} aria-hidden />}>
-            {source.habitat}
+        {info.habitat && (
+          <Chip to={info.habitat} title={t('search.findParent', { name: info.habitat })} big icon={<MapPin size={14} strokeWidth={2.5} aria-hidden />}>
+            {info.habitat}
           </Chip>
         )}
       </p>
     )
-  if ((source.origin ?? 'hybrid') !== 'hybrid' || parents.length === 0) return null
+  if (parents.length === 0) return null
+  if (info.origin === 'cultivar')
+    return (
+      <p className="mt-3 flex flex-wrap items-center gap-2 border-t border-sand-200 pt-3 text-sm text-sand-700">
+        <Sparkles size={14} strokeWidth={2.5} className="shrink-0" aria-hidden />
+        <span>{t('search.sourceCultivar', { name })}</span>
+        <PlantChip name={parents[0]} big />
+      </p>
+    )
   return (
     <div className="mt-3 border-t border-sand-200 pt-3">
       <p className="text-sm text-sand-700">{t('search.sourceParents', { name })}</p>
@@ -118,6 +137,7 @@ export function ParentsLinks({
   origin = 'hybrid',
   habitat,
   breeder,
+  base,
   label = false,
   fullNames = false,
   className = '',
@@ -126,6 +146,8 @@ export function ParentsLinks({
   origin?: PlantOrigin
   habitat?: string
   breeder?: string
+  /** Походження звичайної версії — лише для форм (variegata…) і «hybrid»; undefined — рослина не форма. */
+  base?: Product['base']
   label?: boolean
   /** На картці не обрізати довгі назви батьків (напр., у дрібних картках «Пов’язані рослини»). */
   fullNames?: boolean
@@ -213,7 +235,7 @@ export function ParentsLinks({
   // Плитка одного з батьків — без підписів «материнська/батьківська»: часто це невідомо
   const parentTile = (name?: string) => (
     <div className="flex min-w-0 flex-1 items-center justify-center rounded-2xl bg-sand-100 px-2 py-3 text-center">
-      {name ? <Chip to={name} title={find(name)} big>{name}</Chip> : unknown}
+      {name ? <PlantChip name={name} big /> : unknown}
     </div>
   )
 
@@ -236,7 +258,8 @@ export function ParentsLinks({
           <SourceChip name={names[0]} big />
         </div>
       )}
-      {cultivar && names[0] && <SourceParents name={names[0]} tile={parentTile} cross={cross} />}
+      {/* Форма від звичайної версії (variegata…) чи «hybrid» від неї — ще й походження самої звичайної версії */}
+      {(cultivar || (base !== undefined && !natural)) && names[0] && <SourceParents name={names[0]} base={base} tile={parentTile} cross={cross} />}
       {!natural && !cultivar && names.length > 0 && (
         <div className="mt-3 flex items-center gap-2">
           {parentTile(names[0])}

@@ -524,6 +524,7 @@ export function ProductPage() {
             origin={product.origin}
             habitat={product.habitat}
             breeder={product.breeder}
+            base={product.origin === 'cultivar' || product.tags?.includes('hybridName') ? (product.base ?? null) : undefined}
             label
             className="mt-4"
           />

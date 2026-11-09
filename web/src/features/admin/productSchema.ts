@@ -39,6 +39,10 @@ export const productFormSchema = z.object({
   habitat: z.string().trim().max(80),
   /** Селекціонер: людина чи компанія, що вивела гібрид або сорт. */
   breeder: z.string().trim().max(120),
+  /** Походження звичайної версії (для форм і «hybrid»): природний вид / гібрид / відбір — як і в самої рослини. */
+  baseOrigin: z.enum(ORIGINS),
+  baseParents: z.tuple([z.string().trim().max(120), z.string().trim().max(120)]),
+  baseHabitat: z.string().trim().max(80),
   // Група галочок у react-hook-form: жодної — false, одна чи більше — масив значень.
   tags: z.preprocess((v) => (Array.isArray(v) ? v : v ? [v] : []), z.array(z.enum(ALL_TAGS))),
   specs: z.array(z.object({ label: localized(true), value: localized(true) })),
@@ -69,6 +73,9 @@ export function toFormValues(p: Product | null, defaultCategory: string): Produc
     origin: p?.origin ?? 'hybrid',
     habitat: p?.habitat ?? '',
     breeder: p?.breeder ?? '',
+    baseOrigin: p?.base?.origin ?? 'hybrid',
+    baseParents: [p?.base?.parents?.[0] ?? '', p?.base?.parents?.[1] ?? ''],
+    baseHabitat: p?.base?.habitat ?? '',
     cultivar: p && category === PLANT_CATEGORY ? cultivarOf(p.name.uk, p.genus) : '',
     specs: p?.specs ?? [],
   }
@@ -94,9 +101,24 @@ export function cultivarOf(name: string, genus = ''): string {
   return own || detectGenus(base) ? base.split(/\s+/).slice(1).join(' ') : base
 }
 
-export function toProductInput({ cultivar: _cultivar, ...data }: ProductFormData, images: string[]): ProductInput {
+/** Чи є в рослини «звичайна версія», чиє походження можна вказати: форма-мутація чи «hybrid» від неї. */
+export const hasBase = (origin: string, parent: string, tags: readonly string[]) =>
+  !!parent.trim() && (origin === 'cultivar' || tags.includes('hybridName'))
+
+function toBase(data: ProductFormData): ProductInput['base'] {
+  if (!hasBase(data.origin, data.parents[0], data.tags)) return null
+  const { baseOrigin: origin, baseParents, baseHabitat } = data
+  const parents = (origin === 'natural' ? [] : origin === 'cultivar' ? baseParents.slice(0, 1) : baseParents).filter(Boolean)
+  // Нічого не заповнено — не зберігаємо (на сайті тоді візьмемо з картки звичайної версії)
+  if (origin !== 'natural' && parents.length === 0) return null
+  return origin === 'natural' ? { origin, parents, habitat: baseHabitat } : { origin, parents }
+}
+
+export function toProductInput(form: ProductFormData, images: string[]): ProductInput {
+  const { cultivar: _cultivar, baseOrigin: _origin, baseParents: _parents, baseHabitat: _habitat, ...data } = form
   return {
     ...data,
+    base: toBase(form),
     aliases: splitAliases(data.aliases),
     // Сорт походить від однієї рослини — другого батька не зберігаємо, навіть якщо його вписали до перемикання.
     // Природна рослина батьків не має; сорт — лише одну вихідну рослину.

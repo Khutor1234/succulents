@@ -72,20 +72,20 @@ export const knownTags = (tags?: string[]): PlantTag[] =>
 
 /** Насичені кольори кружечків у фільтрах — тих самих відтінків, що й бейджі, але помітні на світлому фоні. */
 export const TAG_DOTS: Record<PlantTag, string> = {
-  cutting: 'bg-[#a8865a]',
+  cutting: 'bg-[#c2603a]',
   variegata: 'bg-[#d9b400]',
   cristata: 'bg-brand-500',
   monstrose: 'bg-[#8e4aa8]',
-  hybridName: 'bg-[#c2603a]',
+  hybridName: 'bg-[#a8865a]',
   used: 'bg-[#7a6a58]',
 }
 
-/** Кольори бейджів: живець — нейтральний пісок, стани — помітні. */
+/** Кольори бейджів: живець — помітний теракотовий, Hybrid — нейтральний пісок, стани — помітні. */
 export const TAG_STYLES: Record<PlantTag, string> = {
-  cutting: 'bg-sand-200 text-ink',
+  cutting: 'bg-[#f6dccf] text-[#7a3317]',
   variegata: 'bg-[#f3e7a8] text-[#5c4a00]',
   cristata: 'bg-brand-100 text-brand-700',
   monstrose: 'bg-[#ead7f0] text-[#5a2a6e]',
-  hybridName: 'bg-[#f6dccf] text-[#7a3317]',
+  hybridName: 'bg-sand-200 text-ink',
   used: 'bg-[#e8e0d5] text-[#4a3f33]',
 }
