@@ -489,7 +489,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
           <p className="mt-1.5 text-sm text-sand-700">{t('admin.fields.aliasesHint')}</p>
         </div>
         {/* Походження: гібрид двох рослин (можна знати лише одного з батьків) або сорт/форма від однієї рослини.
-            На сайті кожне ім'я клікабельне — веде на сторінку цієї рослини, а якщо її в магазині немає — у пошук. */}
+            На сайті кожне ім'я клікабельне — веде на сторінку цієї рослини, а якщо її в магазині немає — просто назва. */}
         {isPlant && (
           <fieldset>
             <legend className="mb-2 text-sm font-medium text-sand-700">{t('admin.fields.origin')}</legend>

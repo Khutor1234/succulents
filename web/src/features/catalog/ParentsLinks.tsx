@@ -51,24 +51,23 @@ function Chip({
 }
 
 /**
- * Рослина за назвою: є в магазині — веде на її сторінку; немає — у пошук (там видно її «дітей»),
- * а з `plainIfMissing` — просто назва без посилання.
+ * Рослина за назвою: є в магазині — веде на її сторінку; немає — просто назва без посилання
+ * (поки перевіряємо — теж без посилання, щоб не мигнуло клікабельним).
  */
-function PlantChip({ name, big, full, plainIfMissing }: { name: string; big?: boolean; full?: boolean; plainIfMissing?: boolean }) {
+function PlantChip({ name, big, full }: { name: string; big?: boolean; full?: boolean }) {
   const { t } = useTranslation()
   const isSeller = useAuth((s) => s.role === 'seller')
   const { data: plant } = useProductByName(name, isSeller)
-  const missing = plant === null
-  const title = plant ? t('search.openPlant', { name }) : missing && plainIfMissing ? t('search.notInShop', { name }) : t('search.findParent', { name })
+  const title = plant ? t('search.openPlant', { name }) : t('search.notInShop', { name })
   return (
-    <Chip to={name} href={plant ? `/product/${plant.slug}` : undefined} title={title} big={big} full={full} plain={missing && plainIfMissing}>
+    <Chip to={name} href={plant ? `/product/${plant.slug}` : undefined} title={title} big={big} full={full} plain={!plant}>
       {name}
     </Chip>
   )
 }
 
 /** «Мутація від …»: веде на сторінку цієї рослини, а якщо її в магазині немає — просто назва. */
-const SourceChip = (props: { name: string; big?: boolean; full?: boolean }) => <PlantChip {...props} plainIfMissing />
+const SourceChip = PlantChip
 
 /**
  * Походження звичайної версії для форми (variegata, cristata…, «hybrid»): «Echeveria Lola variegata» від «Echeveria Lola»,
