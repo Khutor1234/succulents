@@ -86,15 +86,37 @@ export function Rosette({
 }
 
 /** Рамка для інтерактиву: малюнок, керування, пояснення. */
-function Demo({ title, children, controls, explain }: { title: string; children: ReactNode; controls: ReactNode; explain: ReactNode }) {
+function Demo({
+  title,
+  children,
+  controls,
+  explain,
+  controlsFirst = false,
+}: {
+  title: string
+  children: ReactNode
+  controls: ReactNode
+  explain: ReactNode
+  /** Спершу вибір (напр. роди для схрещування), під ним — картинка */
+  controlsFirst?: boolean
+}) {
   return (
     <figure className="mt-7 overflow-hidden rounded-3xl border-2 border-sand-200 bg-sand-50">
       <figcaption className="flex items-center gap-2 border-b-2 border-sand-200 px-5 py-3 text-xs font-bold tracking-wider text-sand-700 uppercase">
         <span className="h-2 w-2 rounded-full bg-sunset-500" aria-hidden />
         {title}
       </figcaption>
-      <div className="px-4 pt-4">{children}</div>
-      <div className="px-5 pt-3">{controls}</div>
+      {controlsFirst ? (
+        <>
+          <div className="px-5 pt-4">{controls}</div>
+          <div className="px-4 pt-1">{children}</div>
+        </>
+      ) : (
+        <>
+          <div className="px-4 pt-4">{children}</div>
+          <div className="px-5 pt-3">{controls}</div>
+        </>
+      )}
       <div aria-live="polite" className="m-4 mt-3 rounded-2xl bg-sand-100 p-4 text-sm leading-relaxed">
         {explain}
       </div>
@@ -961,6 +983,7 @@ export function HybridDemo() {
   return (
     <Demo
       title="Спробуйте: схрестіть два роди"
+      controlsFirst
       controls={
         <div className="flex items-end gap-2">
           <GenusSelect label="Перший рід" value={a} onChange={setA} />
