@@ -909,6 +909,11 @@ const HYBRIDS: { a: Genus; b: Genus; name: string; uk: string; examples: string;
     text: 'Рідкісніший гібрид із бархатистим або глянцевим листям.',
   },
   {
+    a: 'Cremnophila', b: 'Sedum', name: 'Cremnosedum', uk: 'Кремноседум',
+    examples: "'Little Gem', 'Crocodile'",
+    text: 'Маленькі щільні розетки, що швидко розростаються килимком. На сонці листя бронзовіє або червоніє.',
+  },
+  {
     a: 'Manfreda', b: 'Agave', name: 'Mangave', uk: 'Мангаве',
     examples: "'Kaleidoscope', 'Pineapple Express'",
     text: 'Від агави — форма, від манфреди — плямисте забарвлення й швидший ріст.',
