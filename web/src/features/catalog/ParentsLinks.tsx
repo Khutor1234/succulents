@@ -2,7 +2,7 @@ import { GitFork, Leaf, MapPin, Sprout, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useAuth } from '../auth/authStore'
-import { useNameInShop } from './api'
+import { useProductByName } from './api'
 import type { PlantOrigin } from '../../lib/types'
 
 /**
@@ -52,12 +52,48 @@ function Chip({
 function SourceChip({ name, big, full }: { name: string; big?: boolean; full?: boolean }) {
   const { t } = useTranslation()
   const isSeller = useAuth((s) => s.role === 'seller')
-  const { data: inShop } = useNameInShop(name, isSeller)
-  const missing = inShop === false
+  const { data: source } = useProductByName(name, isSeller)
+  const missing = source === null
   return (
     <Chip to={name} title={missing ? t('search.notInShop', { name }) : t('search.findParent', { name })} big={big} full={full} plain={missing}>
       {name}
     </Chip>
+  )
+}
+
+/**
+ * Батьки звичайної версії для форми (variegata, cristata…): «Echeveria Lola variegata» від «Echeveria Lola»,
+ * а та — Echeveria lilacina × Echeveria derenbergii. Лише якщо звичайна версія є в магазині й її батьки відомі.
+ */
+function SourceParents({ name, tile, cross }: { name: string; tile: (name?: string) => React.ReactNode; cross: React.ReactNode }) {
+  const { t } = useTranslation()
+  const isSeller = useAuth((s) => s.role === 'seller')
+  const { data: source } = useProductByName(name, isSeller)
+  const parents = (source?.parents ?? []).filter(Boolean)
+  if (!source) return null
+  // Звичайна версія — природний вид: батьків немає, тож показуємо, звідки він
+  if (source.origin === 'natural')
+    return (
+      <p className="mt-3 flex flex-wrap items-center gap-2 border-t border-sand-200 pt-3 text-sm text-sand-700">
+        <Leaf size={14} strokeWidth={2.5} className="shrink-0" aria-hidden />
+        <span>{t('search.sourceNatural', { name })}</span>
+        {source.habitat && (
+          <Chip to={source.habitat} title={t('search.findParent', { name: source.habitat })} big icon={<MapPin size={14} strokeWidth={2.5} aria-hidden />}>
+            {source.habitat}
+          </Chip>
+        )}
+      </p>
+    )
+  if ((source.origin ?? 'hybrid') !== 'hybrid' || parents.length === 0) return null
+  return (
+    <div className="mt-3 border-t border-sand-200 pt-3">
+      <p className="text-sm text-sand-700">{t('search.sourceParents', { name })}</p>
+      <div className="mt-2 flex items-center gap-2">
+        {tile(parents[0])}
+        {cross}
+        {tile(parents[1])}
+      </div>
+    </div>
   )
 }
 
@@ -200,6 +236,7 @@ export function ParentsLinks({
           <SourceChip name={names[0]} big />
         </div>
       )}
+      {cultivar && names[0] && <SourceParents name={names[0]} tile={parentTile} cross={cross} />}
       {!natural && !cultivar && names.length > 0 && (
         <div className="mt-3 flex items-center gap-2">
           {parentTile(names[0])}

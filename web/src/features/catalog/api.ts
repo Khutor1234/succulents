@@ -62,17 +62,15 @@ export function useProduct(slug: string, withHidden = false) {
 }
 
 /**
- * Чи є в магазині товар саме з такою назвою — напр., звичайна версія, від якої варієгата «мутація від …».
- * Немає — назву показуємо без посилання. Один дешевий запит за точною назвою (а не весь каталог).
+ * Товар саме з такою назвою (або null) — напр., звичайна версія, від якої варієгата «мутація від …»:
+ * немає — назву показуємо без посилання, є — показуємо ще й її батьків. Один дешевий запит за точною назвою.
  */
-export function useNameInShop(name: string | undefined, withHidden = false) {
+export function useProductByName(name: string | undefined, withHidden = false) {
   return useQuery({
     queryKey: ['product-name', name, withHidden],
     enabled: !!name,
-    queryFn: async () => {
-      const constraints = [where('name.uk', '==', name!), ...(withHidden ? [] : [where('isActive', '==', true)]), limit(1)]
-      return !(await getDocs(query(collection(db, 'products'), ...constraints))).empty
-    },
+    queryFn: async () =>
+      (await (withHidden ? fetchAny : fetchProducts)(where('name.uk', '==', name!), limit(1)))[0] ?? null,
   })
 }
 
