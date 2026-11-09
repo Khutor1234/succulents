@@ -1,6 +1,7 @@
 import { z } from 'zod'
-import { detectGenus, parseForms } from '../../lib/plantName'
+import { detectGenus, parseForms, withForms, withoutStates } from '../../lib/plantName'
 import { ALL_TAGS, DEFAULT_GENUS, PLANT_CATEGORY } from '../../lib/plants'
+import { slugify } from '../../lib/slug'
 import { ORIGINS, type Product } from '../../lib/types'
 import type { ProductInput } from './api'
 
@@ -78,6 +79,37 @@ export function toFormValues(p: Product | null, defaultCategory: string): Produc
     baseHabitat: p?.base?.habitat ?? '',
     cultivar: p && category === PLANT_CATEGORY ? cultivarOf(p.name.uk, p.genus) : '',
     specs: p?.specs ?? [],
+  }
+}
+
+/**
+ * Нова рослина з відомими даними — плюсик продавця біля рослини, якої немає в магазині (картка «Походження»):
+ * /admin/products/new?name=Echeveria Lola variegata&origin=hybrid&p1=…&p2=…&habitat=…
+ * Назва розкладається на рід, сорт і галочки форм; форма без вказаного походження — «Від» звичайної версії.
+ */
+export function prefillPlant(params: URLSearchParams, values: ProductFormInput): ProductFormInput {
+  const full = params.get('name')?.trim()
+  if (!full) return values
+  const { base, states } = parseForms(full)
+  const words = base.split(/\s+/)
+  // Рід — відомий або просто перше слово з великої літери («Pachyveria Glauca» → Pachyveria)
+  const genus = detectGenus(base) ?? (words.length > 1 && /^\p{Lu}/u.test(words[0]) ? words[0] : '')
+  const cultivar = genus ? words.slice(1).join(' ') : base
+  const given = params.get('origin') as Product['origin']
+  const origin = given && (ORIGINS as readonly string[]).includes(given) ? given : states.length ? 'cultivar' : values.origin
+  const fromForm = origin === 'cultivar' && !given && states.length ? withoutStates(full) : ''
+  const name = withForms([genus, cultivar].filter(Boolean).join(' '), states)
+  return {
+    ...values,
+    category: PLANT_CATEGORY,
+    genus,
+    cultivar,
+    name: { uk: name },
+    slug: slugify(name),
+    tags: states,
+    origin,
+    parents: [fromForm || (params.get('p1') ?? ''), fromForm ? '' : (params.get('p2') ?? '')],
+    habitat: params.get('habitat') ?? (origin === 'natural' ? 'Мексика' : ''),
   }
 }
 

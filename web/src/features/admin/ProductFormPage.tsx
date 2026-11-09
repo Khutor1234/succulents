@@ -19,6 +19,7 @@ import { ImagesEditor } from './ImagesEditor'
 import {
   cultivarOf,
   hasBase,
+  prefillPlant,
   productFormSchema,
   toFormValues,
   toProductInput,
@@ -29,6 +30,7 @@ import {
 /**
  * /admin/products/new — створення, /admin/products/:id — редагування,
  * /admin/products/new?copy=:id — новий товар, заповнений даними іншого (швидко зробити, напр., варієгатну форму).
+ * /admin/products/new?name=…&origin=…&p1=…&p2=…&habitat=… — нова рослина з відомими даними (плюсик у картці «Походження»).
  */
 export function ProductFormPage() {
   const { t } = useTranslation()
@@ -78,7 +80,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     // Копія: усе як в оригіналі, крім адреси сторінки — вона складеться з назви при збереженні.
     defaultValues: source
       ? { ...toFormValues(source, source.category), slug: '' }
-      : toFormValues(product, searchParams.get('category') ?? categories[0]?.id ?? ''),
+      : prefillPlant(searchParams, toFormValues(product, searchParams.get('category') ?? categories[0]?.id ?? '')),
   })
   const specs = useFieldArray({ control, name: 'specs' })
   // Вид і синхронізація назви — лише для рослин; теги — ті, що доступні в категорії (рослини, горщики, інструменти).
@@ -205,7 +207,8 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
 
   // Адресу, яку ми самі підставили, оновлюємо разом із назвою — поки її не змінили вручну.
   // Для вже існуючого товару адресу не чіпаємо, щоб не ламати старі посилання.
-  const [autoSlug, setAutoSlug] = useState('')
+  // Нова рослина з плюсика (?name=…) — адресу вже підставили, вона й далі йде за назвою
+  const [autoSlug, setAutoSlug] = useState(() => (product || source ? '' : getValues('slug')))
   function suggestSlug() {
     const current = getValues('slug')
     if (current && (product || current !== autoSlug)) return

@@ -783,6 +783,7 @@ export const uk = {
     sourceNatural: '{{name}} — природний вид',
     sourceCultivar: '{{name}} — відбір або мутація від',
     openPlant: 'Відкрити «{{name}}»',
+    addPlant: 'Створити картку «{{name}}»',
     breeder: 'Селекціонер',
     findBreeder: 'Інші рослини від «{{name}}»',
     findParent: 'Знайти «{{name}}» у магазині',
