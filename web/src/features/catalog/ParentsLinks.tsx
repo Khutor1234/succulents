@@ -259,9 +259,10 @@ export function ParentsLinks({
           {!natural && !cultivar && (
             <>
               {/* Дві назви ділять рядок порівну */}
-              <Chip full={fullNames} to={names[0]} title={find(names[0])} grow>{names[0]}</Chip>
+              {/* Як і на сторінці товару: є в магазині — на сторінку рослини, немає — без посилання */}
+              <PlantChip full={fullNames} name={names[0]} grow />
               {cross}
-              {names[1] ? <Chip full={fullNames} to={names[1]} title={find(names[1])} grow>{names[1]}</Chip> : unknown}
+              {names[1] ? <PlantChip full={fullNames} name={names[1]} grow /> : unknown}
             </>
           )}
         </div>
