@@ -914,6 +914,21 @@ const HYBRIDS: { a: Genus; b: Genus; name: string; uk: string; examples: string;
     text: 'Маленькі щільні розетки, що швидко розростаються килимком. На сонці листя бронзовіє або червоніє.',
   },
   {
+    a: 'Pachyphytum', b: 'Sedum', name: 'Pachysedum', uk: 'Пахіседум',
+    examples: "'Ganzhou'",
+    text: 'Товсте видовжене листя, як у пахіфітума, на стеблах, що кущаться, як у седума. На сонці рожевіє.',
+  },
+  {
+    a: 'Cremnophila', b: 'Graptopetalum', name: 'Cremnopetalum', uk: 'Кремнопеталум',
+    examples: "'Fred Wass', 'Apricot Dreams'",
+    text: 'Рідкісний гібрид для колекціонерів: розетки на стеблах із товстим листям, часто з абрикосовим рум’янцем.',
+  },
+  {
+    a: 'Cremnophila', b: 'Pachyphytum', name: 'Cremnophytum', uk: 'Кремнофітум',
+    examples: '',
+    text: 'Дуже рідкісний і новий гібрид: назву роду ботаніки описали лише 2022 року, відомих сортів поки немає.',
+  },
+  {
     a: 'Manfreda', b: 'Agave', name: 'Mangave', uk: 'Мангаве',
     examples: "'Kaleidoscope', 'Pineapple Express'",
     text: 'Від агави — форма, від манфреди — плямисте забарвлення й швидший ріст.',
@@ -958,12 +973,21 @@ export function HybridDemo() {
       explain={
         hybrid ? (
           <>
-            <b className="text-brand-600">{hybrid.uk}.</b> {hybrid.text} Відомі сорти: <span className="font-semibold">{hybrid.examples}</span>.
+            <b className="text-brand-600">{hybrid.uk}.</b> {hybrid.text}
+            {hybrid.examples && (
+              <>
+                {' '}
+                Відомі сорти: <span className="font-semibold">{hybrid.examples}</span>.
+              </>
+            )}
           </>
         ) : a === b ? (
           <>Це один і той самий рід — виходить звичайний гібрид усередині роду, наприклад <i>Echeveria</i> &lsquo;Lola&rsquo;.</>
         ) : (
-          <>Такий гібрид поки не відомий або дуже рідкісний. Спробуйте, наприклад, Graptopetalum × Echeveria чи Sedum × Echeveria.</>
+          <>
+            Ці роди з різних родин: <i>Agave</i> й <i>Manfreda</i> — холодкові, решта — товстолисті. Такі рослини між собою не схрещуються.
+            Спробуйте, наприклад, Graptopetalum × Echeveria чи Sedum × Echeveria.
+          </>
         )
       }
     >
