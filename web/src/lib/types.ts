@@ -57,6 +57,8 @@ export interface Product {
   origin?: PlantOrigin
   /** Природний ареал для 'natural': країна чи регіон, напр. «Мексика». */
   habitat?: string
+  /** Культивар із назви окремо («Ruby Blush» для «Echeveria chihuahuaensis 'Ruby Blush'») — лише для поля «Культивар» у формі. */
+  cultivarName?: string
   /** Хто вивів гібрид чи сорт: людина або розплідник/компанія, напр. «Dick Wright». Для природного виду порожньо. */
   breeder?: string
   /**

@@ -42,7 +42,11 @@ firestore.rules, storage.rules, firestore.indexes.json
 - Пов'язані рослини під товаром — `catalog/RelatedPlants.tsx`; для рідкісних родів (до 10 рослин на сайті) — ще й «Інші рослини роду».
 - Блог: статті прямо в коді — `web/src/features/blog/articles.ts`.
 - Назви рослин і теги-форми: `web/src/lib/plants.ts`, `web/src/lib/plantName.ts`.
-  Повна назва = рід + сорт + форми з галочок, напр. «Echeveria Lola variegata». Галочка «Hybrid» (тег `hybridName`, не плутати зі старим
+  Повна назва = рід + вид/назва + культивар у лапках + форми з галочок, напр. «Echeveria Lola variegata», «Echeveria agavoides 'Maria'».
+  Поле «Культивар» у формі (`selection`; у товарі — `cultivarName`, назва й так містить його в лапках; `splitCultivar`/`plantBase` у `admin/productSchema.ts`):
+  вписаний культивар сам ставить «Відбір або мутація» від виду/назви («Echeveria agavoides»). Старі назви зі словом у лапках форма показує
+  в «Вид або назва», поки культивар не перенесли: «Виправити форми» → вкладка «Культивари» (?tab=cultivars, `cultivarFixes.ts`) пише лише `cultivarName`,
+  назву й батьків не чіпає. «Echeveria 'Lola'» без назви перед лапками — назва гібрида, не культивар. Галочка «Hybrid» (тег `hybridName`, не плутати зі старим
   тегом `hybrid` і з полем «Походження») дописує «hybrid» — для гібрида без власної назви: «Echeveria Orion hybrid». Галочка сама ставить походження «Гібрид» і першого
   батька «Echeveria Orion». Галочка форми (variegata/cristata/monstrose) сама ставить «Відбір або мутація» від рід + сорт (`applyFormOrigin`),
   а колишнє походження з картки переносить у блок «Походження …» (`base`). У «Виправити форми» й імпорті «hybrid» — частина назви (`withoutStates`), не форма: «Orion hybrid variegata» — від «Orion hybrid». Живцям на екрані дописується «(живець)»

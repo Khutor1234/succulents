@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { doc, serverTimestamp, writeBatch } from 'firebase/firestore'
-import { ArrowRight, Sparkles, SpellCheck } from 'lucide-react'
+import { ArrowRight, Quote, Sparkles, SpellCheck } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
@@ -10,6 +10,7 @@ import { Button } from '../../shared/ui'
 import { useAllProducts } from './api'
 import { BackLink } from './BackLink'
 import { planFormFixes, type FormFix } from './formFixes'
+import { planCultivarFixes, type CultivarFix } from './cultivarFixes'
 import { planNameFixes, type NameFix } from './nameFixes'
 
 /** Firestore приймає до 500 записів за раз — ділимо з запасом. */
@@ -31,9 +32,9 @@ function useApplyFixes<T extends { id: string }>(patch: (fix: T) => Record<strin
   })
 }
 
-const TABS = ['forms', 'names'] as const
+const TABS = ['forms', 'names', 'cultivars'] as const
 type Tab = (typeof TABS)[number]
-const TAB_ICONS = { forms: Sparkles, names: SpellCheck }
+const TAB_ICONS = { forms: Sparkles, names: SpellCheck, cultivars: Quote }
 
 /**
  * /admin/forms — дві вкладки:
@@ -44,14 +45,14 @@ const TAB_ICONS = { forms: Sparkles, names: SpellCheck }
 export function FormFixesPage() {
   const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
-  const tab: Tab = params.get('tab') === 'names' ? 'names' : 'forms'
+  const tab: Tab = TABS.find((x) => x === params.get('tab')) ?? 'forms'
   const { data: products, isLoading } = useAllProducts()
 
   return (
     <div className="max-w-4xl">
       <BackLink fallback="/admin/import" />
       <h1 className="mb-4 font-display text-3xl font-extrabold text-brand-600">{t(`admin.fixes.title.${tab}`)}</h1>
-      <div className="mb-4 flex w-fit rounded-2xl bg-sand-200 p-1" role="tablist" aria-label={t('admin.fixes.tabsLabel')}>
+      <div className="mb-4 flex w-fit max-w-full overflow-x-auto rounded-2xl bg-sand-200 p-1" role="tablist" aria-label={t('admin.fixes.tabsLabel')}>
         {TABS.map((id) => {
           const Icon = TAB_ICONS[id]
           return (
@@ -61,11 +62,12 @@ export function FormFixesPage() {
               role="tab"
               aria-selected={tab === id}
               onClick={() => setParams(id === 'forms' ? {} : { tab: id }, { replace: true, preventScrollReset: true })}
-              className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-bold transition-colors ${
+              className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-bold whitespace-nowrap transition-colors sm:px-4 ${
                 tab === id ? 'bg-brand-600 text-sand-50 shadow-sm' : 'text-sand-700 hover:text-ink'
               }`}
             >
-              <Icon size={16} strokeWidth={2.25} aria-hidden />
+              {/* На телефоні без значків — так три вкладки вміщаються в рядок */}
+              <Icon size={16} strokeWidth={2.25} className="hidden sm:block" aria-hidden />
               {t(`admin.fixes.tabs.${id}`)}
             </button>
           )
@@ -74,7 +76,14 @@ export function FormFixesPage() {
 
       {isLoading && <p className="text-sand-700">{t('loading')}</p>}
       {/* key: при перемиканні вкладок галочки й повідомлення «Готово» починаються заново */}
-      {products && (tab === 'forms' ? <FormsTab key="forms" products={products} /> : <NamesTab key="names" products={products} />)}
+      {products &&
+        (tab === 'names' ? (
+          <NamesTab key="names" products={products} />
+        ) : tab === 'cultivars' ? (
+          <CultivarsTab key="cultivars" products={products} />
+        ) : (
+          <FormsTab key="forms" products={products} />
+        ))}
     </div>
   )
 }
@@ -248,6 +257,39 @@ function NamesTab({ products }: { products: Product[] }) {
                 )}
               </span>
             ))}
+          </span>
+        )}
+      />
+    </div>
+  )
+}
+
+/** «Культивари»: слово в лапках переходить у поле «Культивар» форми. Назва, батьки й походження не змінюються. */
+function CultivarsTab({ products }: { products: Product[] }) {
+  const { t } = useTranslation()
+  const apply = useApplyFixes<CultivarFix>((f) => ({ cultivarName: f.cultivar }))
+  const fixes = useMemo(() => planCultivarFixes(products), [products])
+  const field = (label: string, value: string) => (
+    <span className="inline-flex items-center gap-1">
+      <span className="text-sand-700">{label}:</span>
+      <span className="font-bold text-brand-700">{value}</span>
+    </span>
+  )
+  return (
+    <div className="space-y-4">
+      <Hint>{t('admin.formFixes.cultivarsHint')}</Hint>
+      <FixList
+        fixes={fixes}
+        apply={apply}
+        row={(f) => (
+          <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+            <span className="text-sand-700 line-through">
+              {t('admin.fields.cultivar')}: {f.before}
+            </span>
+            <ArrowRight size={14} strokeWidth={2.5} className="shrink-0 text-sand-700" aria-hidden />
+            {field(t('admin.fields.cultivar'), f.rest)}
+            <span className="text-sand-700">·</span>
+            {field(t('admin.fields.selection'), f.cultivar)}
           </span>
         )}
       />

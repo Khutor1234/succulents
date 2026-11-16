@@ -30,6 +30,8 @@ export const productFormSchema = z.object({
   genus: z.string(),
   /** Лише у формі: сорт/назва рослини без виду й форм («Lola»). Повна назва складається з виду, сорту й форм. */
   cultivar: z.string(),
+  /** Лише у формі: культивар — відбір від виду, у назві в лапках: «Echeveria» + «agavoides» + «Maria» → «Echeveria agavoides 'Maria'». */
+  selection: z.string(),
   /** Інші назви одним рядком через кому; при збереженні стають списком. */
   aliases: z.string().max(500),
   /** Двоє батьків (гібрид): «Echeveria Lola» × «Echeveria Romeo». Порожні рядки — не вказано. */
@@ -77,7 +79,7 @@ export function toFormValues(p: Product | null, defaultCategory: string): Produc
     baseOrigin: p?.base?.origin ?? 'hybrid',
     baseParents: [p?.base?.parents?.[0] ?? '', p?.base?.parents?.[1] ?? ''],
     baseHabitat: p?.base?.habitat ?? '',
-    cultivar: p && category === PLANT_CATEGORY ? cultivarOf(p.name.uk, p.genus) : '',
+    ...nameFields(p, category),
     specs: p?.specs ?? [],
   }
 }
@@ -94,16 +96,19 @@ export function prefillPlant(params: URLSearchParams, values: ProductFormInput):
   const words = base.split(/\s+/)
   // Рід — відомий або просто перше слово з великої літери («Pachyveria Glauca» → Pachyveria)
   const genus = detectGenus(base) ?? (words.length > 1 && /^\p{Lu}/u.test(words[0]) ? words[0] : '')
-  const cultivar = genus ? words.slice(1).join(' ') : base
+  const { cultivar, selection } = splitCultivar(genus ? words.slice(1).join(' ') : base)
   const given = params.get('origin') as Product['origin']
-  const origin = given && (ORIGINS as readonly string[]).includes(given) ? given : states.length ? 'cultivar' : values.origin
-  const fromForm = origin === 'cultivar' && !given && states.length ? withoutStates(full) : ''
-  const name = withForms([genus, cultivar].filter(Boolean).join(' '), states)
+  // Форма — від звичайної версії; культивар виду («agavoides 'Maria'») — від самого виду
+  const species = selection && cultivar ? [genus, cultivar].filter(Boolean).join(' ') : ''
+  const origin = given && (ORIGINS as readonly string[]).includes(given) ? given : states.length || species ? 'cultivar' : values.origin
+  const fromForm = origin === 'cultivar' && !given ? (states.length ? withoutStates(full) : species) : ''
+  const name = withForms(plantBase(genus, cultivar, selection), states)
   return {
     ...values,
     category: PLANT_CATEGORY,
     genus,
     cultivar,
+    selection,
     name: { uk: name },
     slug: slugify(name),
     tags: states,
@@ -120,6 +125,32 @@ export function splitAliases(text: string): string[] {
     .split(/[,;\n]/)
     .map((s) => s.trim().replace(/\s+/g, ' '))
     .filter((s) => s && !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()))
+}
+
+/**
+ * Культивар окремо: «agavoides 'Maria'» → «agavoides» і культивар «Maria», «Debbie 'test'» → «Debbie» і «test».
+ * Лише коли перед лапками є вид чи назва — «'Lola'» сама по собі лишається назвою (це назва гібрида).
+ */
+export function splitCultivar(rest: string): { cultivar: string; selection: string } {
+  const m = rest.trim().match(/^(.+?)\s+['‘’"]([^'‘’"]+)['‘’"]$/u)
+  return m ? { cultivar: m[1], selection: m[2].trim() } : { cultivar: rest, selection: '' }
+}
+
+/** Повна назва без форм: рід + вид/назва + культивар у лапках. */
+export const plantBase = (genus: string, cultivar: string, selection: string) =>
+  [genus, cultivar.trim(), selection.trim() ? `'${selection.trim()}'` : ''].filter(Boolean).join(' ')
+
+/** Назва без культивару в лапках: «Echeveria agavoides 'Maria'» → «Echeveria agavoides». */
+export const withoutSelection = (name: string) => parseForms(name).base.replace(/\s*['‘’"][^'‘’"]+['‘’"]$/, '').trim()
+
+/**
+ * Поля «Вид або назва» й «Культивар» для форми. Культивар — лише якщо його вже перенесли в поле (cultivarName у товарі,
+ * вкладка «Культивари» в «Виправити форми» або збереження форми); інакше слово в лапках лишається в «Вид або назва».
+ */
+function nameFields(p: Product | null, category: string): { cultivar: string; selection: string } {
+  const rest = p && category === PLANT_CATEGORY ? cultivarOf(p.name.uk, p.genus) : ''
+  const split = splitCultivar(rest)
+  return p?.cultivarName?.trim() && split.selection === p.cultivarName.trim() ? split : { cultivar: rest, selection: '' }
 }
 
 /**
@@ -147,10 +178,12 @@ function toBase(data: ProductFormData): ProductInput['base'] {
 }
 
 export function toProductInput(form: ProductFormData, images: string[]): ProductInput {
-  const { cultivar: _cultivar, baseOrigin: _origin, baseParents: _parents, baseHabitat: _habitat, ...data } = form
+  const { cultivar: _cultivar, selection: _selection, baseOrigin: _origin, baseParents: _parents, baseHabitat: _habitat, ...data } = form
   return {
     ...data,
     base: toBase(form),
+    // Культивар окремим полем — щоб форма показала його в «Культивар» (назва й так містить його в лапках)
+    cultivarName: data.category === PLANT_CATEGORY ? form.selection.trim() : '',
     aliases: splitAliases(data.aliases),
     // Сорт походить від однієї рослини — другого батька не зберігаємо, навіть якщо його вписали до перемикання.
     // Природна рослина батьків не має; сорт — лише одну вихідну рослину.

@@ -19,6 +19,9 @@ import { ImagesEditor } from './ImagesEditor'
 import {
   cultivarOf,
   hasBase,
+  plantBase,
+  splitCultivar,
+  withoutSelection,
   prefillPlant,
   productFormSchema,
   toFormValues,
@@ -229,18 +232,20 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
    */
   function syncPlantName() {
     if (getValues('category') !== PLANT_CATEGORY) return
-    const base = [getValues('genus'), getValues('cultivar').trim()].filter(Boolean).join(' ')
+    const base = plantBase(getValues('genus'), getValues('cultivar'), getValues('selection'))
     const before = getValues('name.uk')
     const name = withForms(base, currentTags())
     setValue('name.uk', name, { shouldDirty: true, shouldValidate: !!errors.name })
     // Перше поле походження, яке поставила галочка, йде за назвою: форма — «Від Echeveria Lola» (без форм),
     // лише «Hybrid» — перший батько «Echeveria Lola». Поставили галочку, а потім ввели «Lola» → там теж «Lola».
-    // Вписане вручну щось інше не чіпаємо.
+    // Культивар виду — «Від Echeveria agavoides». Вписане вручну щось інше не чіпаємо.
     const tags = currentTags()
     const states = tags.some((tg) => STATE_TAGS.includes(tg))
-    const own = states ? withoutStates : tags.includes('hybridName') ? (n: string) => parseForms(n).base : null
+    const hybrid = tags.includes('hybridName')
+    const selection = !states && !hybrid && !!getValues('selection').trim()
+    const own = states ? withoutStates : hybrid ? (n: string) => parseForms(n).base : selection ? withoutSelection : null
     const from = getValues('parents.0')
-    if (own && getValues('origin') === (states ? 'cultivar' : 'hybrid') && (!from.trim() || nameKey(from) === nameKey(own(before))))
+    if (own && getValues('origin') === (states || selection ? 'cultivar' : 'hybrid') && (!from.trim() || nameKey(from) === nameKey(own(before))))
       setValue('parents.0', own(name), { shouldDirty: true })
     suggestSlug()
   }
@@ -251,7 +256,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
    * другого батька (батька Orion) прибираємо, його вписують, якщо відомо.
    */
   function applyHybridOrigin() {
-    const self = [getValues('genus'), getValues('cultivar').trim()].filter(Boolean).join(' ')
+    const self = plantBase(getValues('genus'), getValues('cultivar'), getValues('selection'))
     setValue('origin', 'hybrid', { shouldDirty: true })
     if (!self || nameKey(getValues('parents.0')) === nameKey(self)) return
     setValue('parents.0', self, { shouldDirty: true })
@@ -267,7 +272,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
   function applyFormOrigin() {
     const tags = currentTags()
     if (!tags.some((tg) => STATE_TAGS.includes(tg))) return tags.includes('hybridName') && applyHybridOrigin()
-    const base = [getValues('genus'), getValues('cultivar').trim()].filter(Boolean).join(' ')
+    const base = plantBase(getValues('genus'), getValues('cultivar'), getValues('selection'))
     if (!base) return
     const source = withForms(base, tags.includes('hybridName') ? ['hybridName'] : [])
     const was = getValues('origin')
@@ -287,6 +292,18 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
   }
 
   /**
+   * Вписали культивар виду («agavoides» + «Maria») — це відбір від виду: «Відбір або мутація» від «Echeveria agavoides».
+   * Лише без форм і «Hybrid» (тоді діють їхні правила) і коли вид вказано. Далі поле «Від» іде за назвою (syncPlantName).
+   */
+  function applySelectionOrigin() {
+    const tags = currentTags()
+    if (!getValues('selection').trim() || tags.includes('hybridName') || tags.some((tg) => STATE_TAGS.includes(tg))) return
+    if (!getValues('cultivar').trim() || getValues('origin') === 'cultivar') return
+    setValue('origin', 'cultivar', { shouldDirty: true })
+    setValue('parents', [[getValues('genus'), getValues('cultivar').trim()].filter(Boolean).join(' '), ''], { shouldDirty: true })
+  }
+
+  /**
    * Вийшли з поля «Назва» → якщо туди вписали вид чи форми («ехеверія Lola variegated»),
    * переносимо їх у свої поля: вид — у список, форми — у галочки, а в назві лишаємо тільки «Lola».
    */
@@ -300,10 +317,15 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
       // Вписані форми лише додають галочки; вже поставлені не знімаємо.
       setValue('tags', [...new Set([...currentTags(), ...states])], { shouldDirty: true })
     }
-    const cultivar = detected ? base.split(/\s+/).slice(1).join(' ') : base
+    // Вписали й культивар у лапках («agavoides 'Maria'») — переносимо його в поле «Культивар»
+    const rest = detected ? base.split(/\s+/).slice(1).join(' ') : base
+    const split = getValues('selection').trim() ? null : splitCultivar(rest)
+    const cultivar = split?.selection ? split.cultivar : rest
+    if (split?.selection) setValue('selection', split.selection, { shouldDirty: true })
     if (cultivar !== raw) setValue('cultivar', cultivar, { shouldDirty: true })
     syncPlantName()
     if (newForm) applyFormOrigin()
+    else applySelectionOrigin()
   }
 
   return (
@@ -396,7 +418,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
         </Select>
         {/* Рослина: окремо вид і назва (сорт), форми — галочками нижче, а повна назва складається сама */}
         {isPlant ? (
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+          <div className="grid gap-4 sm:grid-cols-3">
             {/* Рід: зі списку (основні роди + ті, що вже є в товарах) або новий — пунктом «+ Додати новий рід» */}
             {addingGenus ? (
               <Input
@@ -445,6 +467,17 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
               label={t('admin.fields.cultivar')}
               placeholder="Lola"
               {...register('cultivar', { onChange: syncPlantName, onBlur: onCultivarBlur })}
+            />
+            {/* Культивар виду — у назві в лапках; сам ставить «Відбір або мутація» від виду */}
+            <Input
+              label={t('admin.fields.selection')}
+              placeholder="Maria"
+              {...register('selection', {
+                onChange: () => {
+                  syncPlantName()
+                  applySelectionOrigin()
+                },
+              })}
             />
           </div>
         ) : (

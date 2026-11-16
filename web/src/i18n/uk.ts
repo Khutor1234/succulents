@@ -401,8 +401,8 @@ export const uk = {
     importFromSheet: 'Імпорт з таблиці',
     importShort: 'Імпорт',
     fixes: {
-      title: { forms: 'Виправити форми', names: 'Виправити назви' },
-      tabs: { forms: 'Форми', names: 'Назви батьків' },
+      title: { forms: 'Виправити форми', names: 'Виправити назви', cultivars: 'Виправити культивари' },
+      tabs: { forms: 'Форми', names: 'Назви батьків', cultivars: 'Культивари' },
       tabsLabel: 'Що виправити',
     },
     nameFixes: {
@@ -426,6 +426,7 @@ export const uk = {
       noOrigin: 'Не вказано',
       chooseFirst: 'Позначте рослини галочками',
       after: 'Мутація від {{name}}',
+      cultivarsHint: 'Рослини, у назві яких після виду чи назви є слово в лапках, — напр., «Echeveria chihuahuaensis ‘Ruby Blush’» чи «Graptoveria Debbie ‘test’». Це культивар: у формі товару він має стояти в полі «Культивар», а не в «Вид або назва». Тут його туди перенесемо. Назва на сайті, батьки й походження не зміняться. Позначте галочками рослини, які треба виправити, і натисніть «Застосувати».',
       apply_one: 'Застосувати до {{count}} рослини',
       apply_few: 'Застосувати до {{count}} рослин',
       apply_many: 'Застосувати до {{count}} рослин',
@@ -651,7 +652,8 @@ export const uk = {
     fields: {
       category: 'Категорія',
       nameUk: 'Назва',
-      cultivar: 'Назва (сорт)',
+      cultivar: 'Вид або назва',
+      selection: 'Культивар',
       fullName: 'Повна назва на сайті',
       fullNameHint: 'Складається сама з полів вище.',
       descriptionUk: 'Опис',
