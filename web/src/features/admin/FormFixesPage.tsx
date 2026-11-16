@@ -90,7 +90,8 @@ function Hint({ children }: { children: string }) {
 
 /**
  * Спільна частина обох вкладок: «Знайдено N», «Вибрати / зняти всі», рядки з галочками й кнопка «Застосувати».
- * Після «Застосувати» список перераховується — у ньому лишаються рядки, з яких зняли галочку.
+ * Спершу нічого не вибрано: продавець сам ставить галочки на тих, кого виправити.
+ * Після «Застосувати» список перераховується — у ньому лишаються невибрані рядки, а галочки знову зняті.
  */
 function FixList<T extends { id: string; slug: string; name: string }>({
   fixes,
@@ -102,15 +103,16 @@ function FixList<T extends { id: string; slug: string; name: string }>({
   row: (fix: T) => React.ReactNode
 }) {
   const { t } = useTranslation()
-  // Зняті галочки (за замовчуванням вибрано все)
-  const [skipped, setSkipped] = useState<Set<string>>(new Set())
-  const chosen = fixes.filter((f) => !skipped.has(f.id))
+  // Вибрані галочками (за замовчуванням — жодного)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const chosen = fixes.filter((f) => selected.has(f.id))
   const toggle = (id: string) => {
-    const next = new Set(skipped)
+    const next = new Set(selected)
     if (next.has(id)) next.delete(id)
     else next.add(id)
-    setSkipped(next)
+    setSelected(next)
   }
+  const allChosen = fixes.length > 0 && chosen.length === fixes.length
   return (
     <>
       {apply.isSuccess && <p className="rounded-xl bg-brand-100 p-3 font-bold text-brand-700">{t('admin.formFixes.done', { count: apply.data })}</p>}
@@ -122,10 +124,10 @@ function FixList<T extends { id: string; slug: string; name: string }>({
             <p className="font-bold">{t('admin.formFixes.found', { count: fixes.length })}</p>
             <button
               type="button"
-              onClick={() => setSkipped(skipped.size ? new Set() : new Set(fixes.map((f) => f.id)))}
+              onClick={() => setSelected(allChosen ? new Set() : new Set(fixes.map((f) => f.id)))}
               className="text-sm font-bold text-brand-600 underline"
             >
-              {skipped.size ? t('admin.formFixes.selectAll') : t('admin.formFixes.selectNone')}
+              {allChosen ? t('admin.formFixes.selectNone') : t('admin.formFixes.selectAll')}
             </button>
           </div>
           <ul className="space-y-2">
@@ -133,10 +135,10 @@ function FixList<T extends { id: string; slug: string; name: string }>({
               <li key={f.id}>
                 <label
                   className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-3 transition-colors ${
-                    skipped.has(f.id) ? 'border-sand-200 bg-sand-50 opacity-60' : 'border-brand-500/40 bg-sand-50'
+                    selected.has(f.id) ? 'border-brand-600 bg-brand-100/40' : 'border-sand-200 bg-sand-50 hover:border-brand-500/40'
                   }`}
                 >
-                  <input type="checkbox" checked={!skipped.has(f.id)} onChange={() => toggle(f.id)} className="mt-1 h-5 w-5 shrink-0 accent-brand-600" />
+                  <input type="checkbox" checked={selected.has(f.id)} onChange={() => toggle(f.id)} className="mt-1 h-5 w-5 shrink-0 accent-brand-600" />
                   <span className="min-w-0 flex-1">
                     {/* Назва — на сторінку самої рослини (там є й «Редагувати») */}
                     <Link to={`/product/${f.slug}`} className="font-bold hover:text-brand-600" onClick={(e) => e.stopPropagation()}>
@@ -149,8 +151,12 @@ function FixList<T extends { id: string; slug: string; name: string }>({
             ))}
           </ul>
           <div className="sticky bottom-[var(--bottom-nav-h,0px)] z-30 -mx-4 border-t-2 border-sand-200 bg-sand-100/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
-            <Button onClick={() => apply.mutate(chosen)} disabled={apply.isPending || chosen.length === 0}>
-              {apply.isPending ? t('admin.import.applying') : t('admin.formFixes.apply', { count: chosen.length })}
+            <Button onClick={() => apply.mutate(chosen, { onSuccess: () => setSelected(new Set()) })} disabled={apply.isPending || chosen.length === 0}>
+              {apply.isPending
+                ? t('admin.import.applying')
+                : chosen.length === 0
+                  ? t('admin.formFixes.chooseFirst')
+                  : t('admin.formFixes.apply', { count: chosen.length })}
             </Button>
           </div>
         </>
