@@ -1,4 +1,4 @@
-import { Ban, Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Pin, Plus, Tag, Trash2 } from 'lucide-react'
+import { Ban, Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Pin, Plus, Scissors, Tag, Trash2 } from 'lucide-react'
 import { useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -11,7 +11,7 @@ import { ProductImage } from '../../shared/ui'
 import { useHere } from '../../shared/navigation'
 import { useProgressive } from '../../shared/useProgressive'
 import { useAuth } from '../auth/authStore'
-import { useDeleteProduct, useSetStock, useToggleForSale, useToggleOnHome, useToggleProductActive } from '../admin/api'
+import { useDeleteProduct, useSetStock, useToggleCutting, useToggleForSale, useToggleOnHome, useToggleProductActive } from '../admin/api'
 import { BulkBar } from '../admin/BulkBar'
 import { AddToCart } from '../cart/AddToCart'
 import { FavoriteButton } from '../favorites/FavoriteButton'
@@ -96,6 +96,8 @@ export function ProductCard({
         <FavoriteButton product={product} className="absolute top-2 right-2" />
         {/* Продавцю — шпилька «на головну»: позначені рослини першими в «Нових надходженнях» */}
         {realSeller && <HomePin product={product} name={name} className="absolute top-14 right-2" />}
+        {/* Продавцю — «Живець» під шпилькою (у ряд кнопок унизу картки вже не вміщається) */}
+        {isSeller && product.category === PLANT_CATEGORY && <CuttingToggle product={product} name={name} className="absolute top-26 right-2" />}
         {/* Походження — плашкою внизу фото: під назвою не займає місця, тож картки з батьками й без однакові.
             Кожен батько — окреме посилання в пошук. */}
         {product.category === PLANT_CATEGORY && (
@@ -383,6 +385,38 @@ export function HomePin({ product, name, className = '', compact = false }: { pr
       }
     >
       <Pin size={18} strokeWidth={2.25} fill={on ? 'currentColor' : 'none'} aria-hidden />
+    </button>
+  )
+}
+
+/** «Живець» (тег 'cutting'): позначений — теракотовий, як бейдж «Живець». Лише для рослин. */
+export function CuttingToggle({ product, name, className = '', compact = false }: { product: Product; name: string; className?: string; compact?: boolean }) {
+  const { t } = useTranslation()
+  const toggle = useToggleCutting()
+  const on = !!product.tags?.includes('cutting')
+  const label = t(on ? 'admin.cuttingOff' : 'admin.cuttingOn', { name })
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        // Кнопка лежить на фото-посиланні — не відкриваємо товар
+        e.preventDefault()
+        e.stopPropagation()
+        toggle.mutate({ id: product.id, cutting: !on, tags: product.tags })
+      }}
+      disabled={toggle.isPending}
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
+      className={
+        compact
+          ? `${iconBtn(true)} ${on ? 'border-[#c2603a] bg-[#c2603a] text-sand-50 hover:opacity-90' : 'border-sand-300 text-sand-700 hover:border-[#c2603a]'} ${className}`
+          : `flex h-10 w-10 items-center justify-center rounded-full shadow-sm transition-transform hover:scale-110 active:scale-95 disabled:opacity-60 ${
+              on ? 'bg-[#c2603a] text-sand-50' : 'bg-sand-50/95 text-ink'
+            } ${className}`
+      }
+    >
+      <Scissors size={18} strokeWidth={2.25} aria-hidden />
     </button>
   )
 }

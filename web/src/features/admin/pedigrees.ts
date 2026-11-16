@@ -1,4 +1,4 @@
-import { baseKey, familyKey, makeNameResolver, nameKey } from '../../lib/plantName'
+import { baseKey, familyKey, familyName, makeNameResolver, nameKey } from '../../lib/plantName'
 import { PLANT_CATEGORY, STATE_TAGS } from '../../lib/plants'
 import type { Product } from '../../lib/types'
 
@@ -115,7 +115,8 @@ export function buildPedigrees(products: Product[]) {
     // Потрібні справді різні рослини родини, а не просто кілька однакових товарів
     if (new Set(items.map((p) => nameKey(p.name.uk))).size < 2) continue
     const sorted = [...items].sort(plainFirst)
-    formGroups.push({ name: sorted[0].name.uk, items: sorted })
+    // Заголовок — сама рослина без форм, культивару й hybrid: «Echeveria chihuahuaensis», а не «… 'Ruby Blush'»
+    formGroups.push({ name: familyName(sorted[0].name.uk), items: sorted })
   }
 
   const byName = (a: { child: Product } | FormGroup, b: { child: Product } | FormGroup) =>

@@ -173,12 +173,16 @@ export function baseKey(name: string): string {
  * це сама назва гібрида) лишається «echeveria lola». Для «Інші форми цієї рослини» і «Родоводи» → «Форми».
  */
 export function familyKey(name: string): string {
-  const base = parseForms(name).base.replace(/^(\S+\s+.*?\S)\s+['‘’"][^'‘’"]+['‘’"]$/u, '$1')
   const skip = new Set<string>([...STATE_TAGS, 'hybridName'])
-  return nameKey(base)
+  return nameKey(familyName(name))
     .split(' ')
     .filter((w) => !skip.has(w))
     .join(' ')
+}
+
+/** Назва родини для показу: «Echeveria chihuahuaensis 'Ruby Blush' variegata» → «Echeveria chihuahuaensis». */
+export function familyName(name: string): string {
+  return parseForms(name).base.replace(/^(\S+\s+.*?\S)\s+['‘’"][^'‘’"]+['‘’"]$/u, '$1')
 }
 
 /** Відстань між двома рядками в буквах (скільки букв замінити, додати чи прибрати) — щоб знаходити описки. */

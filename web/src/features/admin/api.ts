@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import {
   addDoc,
+  arrayRemove,
+  arrayUnion,
   deleteDoc,
   deleteField,
   collection,
@@ -141,6 +143,17 @@ export function useToggleForSale() {
     mutationFn: ({ id, forSale }: { id: string; forSale: boolean }) =>
       updateDoc(doc(db, 'products', id), { forSale, updatedAt: serverTimestamp() }),
     onSuccess: (_, { id, forSale }) => patchProduct(queryClient, id, { forSale }),
+  })
+}
+
+/** «Живець» — тег 'cutting': швидко з картки, без форми. Інші теги не чіпаємо. */
+export function useToggleCutting() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, cutting }: { id: string; cutting: boolean; tags?: Product['tags'] }) =>
+      updateDoc(doc(db, 'products', id), { tags: cutting ? arrayUnion('cutting') : arrayRemove('cutting'), updatedAt: serverTimestamp() }),
+    onSuccess: (_, { id, cutting, tags }) =>
+      patchProduct(queryClient, id, { tags: cutting ? [...new Set([...(tags ?? []), 'cutting' as const])] : (tags ?? []).filter((t) => t !== 'cutting') }),
   })
 }
 

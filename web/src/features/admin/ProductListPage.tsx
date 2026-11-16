@@ -5,13 +5,14 @@ import { Link } from 'react-router'
 import { useLang } from '../../i18n'
 import { formatPrice, pick } from '../../lib/format'
 import { withCuttingMark } from '../../lib/plantName'
+import { PLANT_CATEGORY } from '../../lib/plants'
 import { searchProducts } from '../../lib/search'
 import type { Product } from '../../lib/types'
 import { useHere } from '../../shared/navigation'
 import { Select, SmallImage, SucculentIcon } from '../../shared/ui'
 import { useProgressive } from '../../shared/useProgressive'
 import { useCategories } from '../catalog/categories'
-import { CopyName, DeleteButton, ForSaleButton, HomePin, SellerStock, VisibilityButton } from '../catalog/ProductCard'
+import { CopyName, CuttingToggle, DeleteButton, ForSaleButton, HomePin, SellerStock, VisibilityButton } from '../catalog/ProductCard'
 import { useAllProducts } from './api'
 
 /** Фільтр «Показати»: усі, лише в наявності, у продажу, не продаються, видимі покупцям, приховані. */
@@ -176,6 +177,7 @@ function Row({ product }: { product: Product }) {
         <VisibilityButton product={product} name={name} compact />
         <ForSaleButton product={product} name={name} compact />
         <HomePin product={product} name={name} compact />
+        {product.category === PLANT_CATEGORY && <CuttingToggle product={product} name={name} compact />}
         <DeleteButton product={product} name={name} compact />
       </div>
     </li>

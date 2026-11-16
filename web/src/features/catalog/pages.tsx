@@ -20,7 +20,7 @@ import { useCategories } from './categories'
 import { ParentsLinks } from './ParentsLinks'
 import { PlantFilters, TagBadges } from './PlantFilters'
 import { SELLER_SORTS, SORTS, usePlantFilters, type SortOrder } from './usePlantFilters'
-import { CopyName, DeleteButton, ForSaleButton, HomePin, ProductGrid, SellerStock, VisibilityButton } from './ProductCard'
+import { CopyName, CuttingToggle, DeleteButton, ForSaleButton, HomePin, ProductGrid, SellerStock, VisibilityButton } from './ProductCard'
 import { ProductGallery } from './ProductGallery'
 import { RelatedPlants } from './RelatedPlants'
 
@@ -485,6 +485,7 @@ export function ProductPage() {
               <VisibilityButton product={product} name={name} compact />
               <ForSaleButton product={product} name={name} compact />
               <HomePin product={product} name={name} compact />
+              {product.category === PLANT_CATEGORY && <CuttingToggle product={product} name={name} compact />}
               <DeleteButton
                 product={product}
                 name={name}
