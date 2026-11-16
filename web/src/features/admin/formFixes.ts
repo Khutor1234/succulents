@@ -1,11 +1,13 @@
 import { nameKey, parseForms, withoutStates } from '../../lib/plantName'
 import { PLANT_CATEGORY, STATE_TAGS, type PlantTag } from '../../lib/plants'
+import { cultivarOf, splitCultivar, withoutSelection } from './productSchema'
 import type { PlantOrigin, Product } from '../../lib/types'
 
 /**
  * «Виправити форми»: варієгата, кристата чи монстроза — це мутація конкретної рослини, а не нове схрещування.
  * Тож «Graptoveria Debbie variegata» має бути «Відбір або мутація» від «Graptoveria Debbie»,
  * а не мати ті самі батьки, що й Debbie. Батьків-гібрида видно на сторінці самої Debbie.
+ * Так само культивар (слово в лапках після назви): «Echeveria agavoides 'Maria'» — відбір від «Echeveria agavoides».
  */
 
 export interface FormFix {
@@ -17,6 +19,8 @@ export interface FormFix {
   source: string
   /** Чи є звичайна версія в магазині. Немає — все одно записуємо «мутація від …», на сайті назва буде без посилання. */
   sourceInShop: boolean
+  /** form — форма (variegata…) від звичайної версії; selection — культивар від рослини без культивару */
+  kind: 'form' | 'selection'
   before: { origin?: PlantOrigin; parents: string[] }
 }
 
@@ -26,7 +30,7 @@ export interface FormFixPlan {
   ok: number
 }
 
-type Plant = Pick<Product, 'id' | 'slug' | 'name' | 'category' | 'tags' | 'origin' | 'parents' | 'isActive'>
+type Plant = Pick<Product, 'id' | 'slug' | 'name' | 'category' | 'tags' | 'origin' | 'parents' | 'isActive' | 'genus'>
 
 // Назва без форм, лапок і різниці в регістрі/пробілах: «Graptoveria 'Debbie' variegata» → «graptoveriadebbie»
 // («hybrid» лишається: «Orion hybrid variegata» — від «Orion hybrid», а «Orion variegata» — від «Orion»)
@@ -46,9 +50,29 @@ export function planFormFixes(products: Plant[]): FormFixPlan {
   }
 
   const plan: FormFixPlan = { fixes: [], ok: 0 }
+  const shopByKey = new Map(plants.map((p) => [nameKey(p.name.uk), p.name.uk.trim()]))
+
+  // Культивар без форм: «Echeveria agavoides 'Maria'» — відбір від «Echeveria agavoides» (рослина без культивару).
+  // Лише коли перед лапками є вид чи назва; «Echeveria 'Lola'» — сама назва гібрида, її не чіпаємо.
+  function checkSelection(p: Plant) {
+    if (p.tags?.includes('hybridName') || !splitCultivar(cultivarOf(p.name.uk, p.genus)).selection) return
+    const plain = withoutSelection(p.name.uk)
+    const inShop = shopByKey.get(nameKey(plain))
+    const source = inShop ?? plain
+    if (source.split(/\s+/).length < 2) return
+    const parents = (p.parents ?? []).filter(Boolean)
+    if (p.origin === 'cultivar' && parents.length === 1 && nameKey(parents[0]) === nameKey(source)) {
+      plan.ok++
+      return
+    }
+    plan.fixes.push({ id: p.id, slug: p.slug, name: p.name.uk, source, sourceInShop: !!inShop, kind: 'selection', before: { origin: p.origin, parents } })
+  }
   for (const p of plants) {
     const forms = formsOf(p)
-    if (forms.length === 0) continue
+    if (forms.length === 0) {
+      checkSelection(p)
+      continue
+    }
     // Джерело — завжди звичайна версія, без жодної форми: «Cubic Frost variegata cristata» — від «Cubic Frost»,
     // а не від «Cubic Frost variegata». Серед однакових — та, що показана на сайті.
     const candidates = (byKey.get(keyOf(p)) ?? [])
@@ -66,7 +90,7 @@ export function planFormFixes(products: Plant[]): FormFixPlan {
       plan.ok++
       continue
     }
-    plan.fixes.push({ id: p.id, slug: p.slug, name: p.name.uk, source, sourceInShop: !!inShop, before: { origin: p.origin, parents } })
+    plan.fixes.push({ id: p.id, slug: p.slug, name: p.name.uk, source, sourceInShop: !!inShop, kind: 'form', before: { origin: p.origin, parents } })
   }
   plan.fixes.sort((a, b) => a.name.localeCompare(b.name))
   return plan

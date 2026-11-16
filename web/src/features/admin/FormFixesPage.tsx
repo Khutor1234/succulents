@@ -207,7 +207,7 @@ function FormsTab({ products }: { products: Product[] }) {
             <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
               <span className="text-sand-700 line-through">{before(f)}</span>
               <ArrowRight size={14} strokeWidth={2.5} className="shrink-0 text-sand-700" aria-hidden />
-              <span className="font-bold text-brand-700">{t('admin.formFixes.after', { name: f.source })}</span>
+              <span className="font-bold text-brand-700">{t(f.kind === 'selection' ? 'admin.formFixes.afterSelection' : 'admin.formFixes.after', { name: f.source })}</span>
             </span>
             {!f.sourceInShop && <span className="mt-1 block text-xs text-sand-700">{t('admin.formFixes.notInShop')}</span>}
           </>
