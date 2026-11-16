@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { baseKey, makeNameResolver, nameKey } from '../../lib/plantName'
+import { familyKey, makeNameResolver, nameKey } from '../../lib/plantName'
 import { PLANT_CATEGORY } from '../../lib/plants'
 import type { Product } from '../../lib/types'
 import { useAuth } from '../auth/authStore'
@@ -19,14 +19,14 @@ const genusOf = (p: Product) => p.genus || p.name.uk.split(/\s+/)[0] || ''
 
 /**
  * Як інші рослини пов’язані з цією:
- * - інша форма тієї ж рослини (звичайна ↔ variegata/cristata);
+ * - інша форма тієї ж рослини (звичайна ↔ variegata/cristata), її культивари й «hybrid» (lib/plantName: familyKey);
  * - один із її батьків;
  * - гібрид, у якого вона — один із батьків;
  * - рослина зі спільним батьком.
  */
 function relationOf(product: Product, other: Product, resolve: (name: string) => string): Relation | null {
-  // Назви порівнюємо без лапок, регістру й різниці в написанні форм (lib/plantName: nameKey, baseKey)
-  if (baseKey(other.name.uk) === baseKey(product.name.uk)) return 'form'
+  // Назви порівнюємо без лапок, регістру, форм, «hybrid» і культивару: «chihuahuaensis 'Ruby Blush'» — родина chihuahuaensis
+  if (familyKey(other.name.uk) === familyKey(product.name.uk)) return 'form'
   // Батьки — точна назва разом із формою: батько «Echeveria lilacina» — це саме lilacina,
   // а не «lilacina variegata» чи «lilacina monstrose» (то її форми, а не батьки)
   const self = nameKey(product.name.uk)

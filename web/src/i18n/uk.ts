@@ -557,7 +557,7 @@ export const uk = {
       hints: {
         trios: 'Зібрано всю родину: обидва батьки й гібрид від них.',
         families: 'Рослина-батько й усі її діти з колекції — спершу ті, в кого дітей найбільше. У рамці поруч — та сама рослина у формах variegata, cristata, monstrose.',
-        forms: 'Та сама рослина в кількох формах: звичайна, variegata, cristata, monstrose.',
+        forms: 'Та сама рослина в кількох формах: звичайна, variegata, cristata, monstrose, а також її культивари (слово в лапках, напр. ‘Ruby Blush’) і hybrid.',
       },
       sameFormHint: 'Батьки й діти — лише в однаковій формі: звичайна дитина — від звичайних батьків. Variegata, cristata й monstrose — на вкладці «Форми».',
       empty: {

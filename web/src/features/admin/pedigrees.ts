@@ -1,4 +1,4 @@
-import { baseKey, makeNameResolver, nameKey } from '../../lib/plantName'
+import { baseKey, familyKey, makeNameResolver, nameKey } from '../../lib/plantName'
 import { PLANT_CATEGORY, STATE_TAGS } from '../../lib/plants'
 import type { Product } from '../../lib/types'
 
@@ -6,7 +6,8 @@ import type { Product } from '../../lib/types'
  * Підбірки для сторінки «Родоводи» (лише для продавця): що з колекції пов'язане між собою.
  * - трійки: є і дитина, і обидва батьки;
  * - пари: є дитина й лише один із батьків;
- * - форми: та сама рослина в кількох формах (звичайна, variegata, cristata…);
+ * - форми: та сама рослина в кількох формах (звичайна, variegata, cristata…), разом із її культиварами й «hybrid»
+ *   («Echeveria chihuahuaensis», «… 'Ruby Blush'», «… variegata»; «Orion» і «Orion hybrid») — lib/plantName: familyKey;
  * - нащадки: рослина-батько й усі її діти з колекції.
  * Назви батьків зіставляються з товарами без огляду на лапки, регістр і дрібні описки (lib/plantName).
  */
@@ -51,20 +52,25 @@ export function buildPedigrees(products: Product[]) {
   }
   for (const list of byKey.values()) list.sort(better)
   const resolve = makeNameResolver([...byKey.keys()])
-  const byBase = new Map<string, Product[]>()
+  // Родина: рослина, її форми, культивари й «hybrid» — спершу сама рослина, далі за кількістю форм і назвою
+  const plainFirst = (a: Product, b: Product) =>
+    Number(nameKey(b.name.uk) === familyKey(b.name.uk)) - Number(nameKey(a.name.uk) === familyKey(a.name.uk)) ||
+    forms(a).length - forms(b).length ||
+    a.name.uk.localeCompare(b.name.uk)
+  const byFamily = new Map<string, Product[]>()
   for (const p of plants) {
-    const k = baseKey(p.name.uk)
-    byBase.set(k, [...(byBase.get(k) ?? []), p])
+    const k = familyKey(p.name.uk)
+    byFamily.set(k, [...(byFamily.get(k) ?? []), p])
   }
-  for (const list of byBase.values()) list.sort(better)
-  // Інші форми тієї самої рослини (по одній на кожну форму): для «Lola» — «Lola variegata», «Lola cristata»
+  for (const list of byFamily.values()) list.sort((a, b) => better(a, b) || plainFirst(a, b))
+  // Інші рослини тієї самої родини (по одній на кожну назву): для «Lola» — «Lola variegata», «Lola cristata»,
+  // для chihuahuaensis — ще й «chihuahuaensis 'Ruby Blush'»
   const formsOf = (p: Product) => {
-    const own = forms(p).join('+')
-    const taken = new Set([own])
-    return (byBase.get(baseKey(p.name.uk)) ?? []).filter((x) => {
-      const f = forms(x).join('+')
-      if (taken.has(f)) return false
-      taken.add(f)
+    const taken = new Set([nameKey(p.name.uk)])
+    return (byFamily.get(familyKey(p.name.uk)) ?? []).filter((x) => {
+      const k = nameKey(x.name.uk)
+      if (taken.has(k)) return false
+      taken.add(k)
       return true
     })
   }
@@ -105,10 +111,10 @@ export function buildPedigrees(products: Product[]) {
   }
 
   const formGroups: FormGroup[] = []
-  for (const items of byBase.values()) {
-    // Потрібні справді різні форми, а не просто кілька однакових товарів
-    if (new Set(items.map((p) => forms(p).join('+'))).size < 2) continue
-    const sorted = [...items].sort((a, b) => forms(a).length - forms(b).length || a.name.uk.localeCompare(b.name.uk))
+  for (const items of byFamily.values()) {
+    // Потрібні справді різні рослини родини, а не просто кілька однакових товарів
+    if (new Set(items.map((p) => nameKey(p.name.uk))).size < 2) continue
+    const sorted = [...items].sort(plainFirst)
     formGroups.push({ name: sorted[0].name.uk, items: sorted })
   }
 

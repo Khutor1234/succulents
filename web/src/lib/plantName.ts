@@ -166,6 +166,21 @@ export function baseKey(name: string): string {
     .join(' ')
 }
 
+/**
+ * Ключ «родини» рослини — без форм, без «hybrid» і без культивару в лапках після назви:
+ * «Echeveria chihuahuaensis 'Ruby Blush' variegata», «Echeveria chihuahuaensis variegata» і сама chihuahuaensis —
+ * одна родина; «Echeveria Orion» і «Echeveria Orion hybrid» — теж. «Echeveria 'Lola'» (лапки одразу після роду —
+ * це сама назва гібрида) лишається «echeveria lola». Для «Інші форми цієї рослини» і «Родоводи» → «Форми».
+ */
+export function familyKey(name: string): string {
+  const base = parseForms(name).base.replace(/^(\S+\s+.*?\S)\s+['‘’"][^'‘’"]+['‘’"]$/u, '$1')
+  const skip = new Set<string>([...STATE_TAGS, 'hybridName'])
+  return nameKey(base)
+    .split(' ')
+    .filter((w) => !skip.has(w))
+    .join(' ')
+}
+
 /** Відстань між двома рядками в буквах (скільки букв замінити, додати чи прибрати) — щоб знаходити описки. */
 export function editDistance(a: string, b: string): number {
   if (Math.abs(a.length - b.length) > 3) return 99
