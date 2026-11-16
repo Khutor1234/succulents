@@ -47,12 +47,22 @@ export function FormFixesPage() {
   const [params, setParams] = useSearchParams()
   const tab: Tab = TABS.find((x) => x === params.get('tab')) ?? 'forms'
   const { data: products, isLoading } = useAllProducts()
+  // Скільки рослин можна виправити на кожній вкладці — у дужках біля назви вкладки
+  const counts = useMemo(
+    () =>
+      products && {
+        forms: planFormFixes(products).fixes.length,
+        names: planNameFixes(products).length,
+        cultivars: planCultivarFixes(products).length,
+      },
+    [products],
+  )
 
   return (
     <div className="max-w-4xl">
       <BackLink fallback="/admin/import" />
       <h1 className="mb-4 font-display text-3xl font-extrabold text-brand-600">{t(`admin.fixes.title.${tab}`)}</h1>
-      <div className="mb-4 flex w-fit max-w-full overflow-x-auto rounded-2xl bg-sand-200 p-1" role="tablist" aria-label={t('admin.fixes.tabsLabel')}>
+      <div className="mb-4 grid grid-cols-3 rounded-2xl bg-sand-200 p-1 sm:flex sm:w-fit" role="tablist" aria-label={t('admin.fixes.tabsLabel')}>
         {TABS.map((id) => {
           const Icon = TAB_ICONS[id]
           return (
@@ -62,13 +72,15 @@ export function FormFixesPage() {
               role="tab"
               aria-selected={tab === id}
               onClick={() => setParams(id === 'forms' ? {} : { tab: id }, { replace: true, preventScrollReset: true })}
-              className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-bold whitespace-nowrap transition-colors sm:px-4 ${
+              className={`inline-flex min-h-10 items-center justify-center gap-1 rounded-xl px-1.5 text-sm font-bold whitespace-nowrap transition-colors sm:gap-1.5 sm:px-4 ${
                 tab === id ? 'bg-brand-600 text-sand-50 shadow-sm' : 'text-sand-700 hover:text-ink'
               }`}
             >
-              {/* На телефоні без значків — так три вкладки вміщаються в рядок */}
+              {/* На телефоні без значків і з короткими назвами — так три вкладки з кількістю вміщаються в рядок */}
               <Icon size={16} strokeWidth={2.25} className="hidden sm:block" aria-hidden />
-              {t(`admin.fixes.tabs.${id}`)}
+              <span className="hidden sm:inline">{t(`admin.fixes.tabs.${id}`)}</span>
+              <span className="sm:hidden">{t(`admin.fixes.tabsShort.${id}`)}</span>
+              {counts && <span className={tab === id ? 'font-semibold opacity-80' : 'font-semibold'}>({counts[id]})</span>}
             </button>
           )
         })}

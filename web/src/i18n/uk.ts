@@ -403,6 +403,7 @@ export const uk = {
     fixes: {
       title: { forms: 'Виправити форми', names: 'Виправити назви', cultivars: 'Виправити культивари' },
       tabs: { forms: 'Форми', names: 'Назви батьків', cultivars: 'Культивари' },
+      tabsShort: { forms: 'Форми', names: 'Назви', cultivars: 'Культивари' },
       tabsLabel: 'Що виправити',
     },
     nameFixes: {
