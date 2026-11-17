@@ -104,6 +104,11 @@ service cloud.firestore {
         && request.resource.data.count == resource.data.count + 1;
     }
 
+    // Результати «Перевірки походження» (адмінка → /admin/origins): що знайдено про рослину на довідкових сайтах.
+    match /originChecks/{id} {
+      allow read, write: if isSeller();
+    }
+
     // Службові документи (лічильник номерів замовлень тощо) — тільки для Functions.
     match /counters/{id} {
       allow read, write: if false;

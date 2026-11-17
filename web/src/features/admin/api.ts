@@ -13,6 +13,8 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  Timestamp,
+  writeBatch,
   updateDoc,
   where,
 } from 'firebase/firestore'
@@ -187,5 +189,40 @@ export function useUpdateOrder() {
     mutationFn: ({ id, ...patch }: { id: string; status?: OrderStatus; payment?: Order['payment'] }) =>
       updateDoc(doc(db, 'orders', id), { ...patch, updatedAt: serverTimestamp() }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] }),
+  })
+}
+
+/** Збережена перевірка однієї рослини («Перевірка походження»): клітинки рядка таблиці, як їх вставили. */
+export interface SavedCheck {
+  id: string
+  cells: string[]
+  checkedAt?: Timestamp
+}
+
+/** Усі збережені перевірки — новіші першими (якщо про рослину кілька рядків, діє найновіший). */
+export function useOriginChecks() {
+  return useQuery({
+    queryKey: ['admin', 'originChecks'],
+    queryFn: async () => {
+      const snap = await getDocs(collection(db, 'originChecks'))
+      return snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }) as SavedCheck)
+        .sort((a, b) => (b.checkedAt?.toMillis() ?? 0) - (a.checkedAt?.toMillis() ?? 0))
+    },
+  })
+}
+
+/** Зберегти рядки перевірки: та сама рослина (за назвою) — перезаписується новими даними. */
+export function useSaveOriginChecks() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (rows: { id: string; cells: string[] }[]) => {
+      for (let i = 0; i < rows.length; i += 400) {
+        const batch = writeBatch(db)
+        for (const r of rows.slice(i, i + 400)) batch.set(doc(db, 'originChecks', r.id), { cells: r.cells, checkedAt: serverTimestamp() })
+        await batch.commit()
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'originChecks'] }),
   })
 }

@@ -1,22 +1,28 @@
-import { ArrowRight, Check, ClipboardCopy, ExternalLink, Plus } from 'lucide-react'
+import { ArrowRight, Check, CircleCheck, ClipboardCopy, ExternalLink, Plus, Save } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { PLANT_CATEGORY } from '../../lib/plants'
 import { useHere } from '../../shared/navigation'
+import { nameKey } from '../../lib/plantName'
+import { slugify } from '../../lib/slug'
 import { Select, Textarea } from '../../shared/ui'
-import { useAllProducts } from './api'
+import { useAllProducts, useOriginChecks, useSaveOriginChecks } from './api'
 import { BackLink } from './BackLink'
 import { FixList, Hint, useApplyFixes } from './FormFixesPage'
-import { checkablePlants, parseCheck, planOriginFixes, toTsv, type CheckRow, type OriginFix } from './originCheck'
+import { checkablePlants, parseCells, planOriginFixes, rowFromCells, toTsv, type CheckRow, type OriginFix } from './originCheck'
 
-// Вставлена перевірка зберігається в браузері — не загубиться, якщо сторінку оновили
+// Ще не збережена вставка лежить у браузері — не загубиться, якщо сторінку оновили
 const STORAGE_KEY = 'succulents.originCheck'
+// Документ перевірки — за назвою рослини: повторна перевірка тієї самої рослини перезаписує стару
+const checkId = (name: string) => slugify(nameKey(name)).slice(0, 200) || 'row'
 
 /**
  * /admin/origins — «Перевірка походження»:
  * 1) список рослин роду таблицею — «Скопіювати» (його перевіряє Claude на worldofsucculents.com та інших сайтах);
- * 2) вставити результат — і видно лише розбіжності «Було / Стане» з джерелом; записується лише вибране галочками.
+ * 2) вставити результат і «Зберегти» — перевірки лишаються в базі (originChecks), повторна перевірка рослини замінює стару;
+ * 3) з усіх збережених перевірок видно лише розбіжності «Було / Стане» з джерелом; записується лише вибране галочками.
+ * Копіювати можна лише неперевірені рослини — напр. нові, щойно додані.
  */
 export function OriginCheckPage() {
   const { t } = useTranslation()
@@ -27,16 +33,31 @@ export function OriginCheckPage() {
     for (const p of plants) count.set(p.genus || '—', (count.get(p.genus || '—') ?? 0) + 1)
     return [...count].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
   }, [plants])
+  const { data: checks } = useOriginChecks()
+  const saveChecks = useSaveOriginChecks()
+  const rows = useMemo(() => (checks ?? []).map((c) => rowFromCells(c.cells)), [checks])
+  const plan = useMemo(() => planOriginFixes(products ?? [], rows), [products, rows])
   const [genus, setGenus] = useState('')
-  const list = genus ? plants.filter((p) => (p.genus || '—') === genus) : plants
+  const [onlyNew, setOnlyNew] = useState(true)
+  const inGenus = genus ? plants.filter((p) => (p.genus || '—') === genus) : plants
+  const unchecked = inGenus.filter((p) => !plan.checked.has(p.id))
+  const list = onlyNew ? unchecked : inGenus
   const [copied, setCopied] = useState(false)
   const [text, setText] = useState(() => localStorage.getItem(STORAGE_KEY) ?? '')
-  const plan = useMemo(() => planOriginFixes(products ?? [], parseCheck(text)), [products, text])
+  const pasted = useMemo(() => parseCells(text), [text])
   const apply = useApplyFixes<OriginFix>((f) => f.patch)
 
-  function save(value: string) {
+  function edit(value: string) {
     setText(value)
-    localStorage.setItem(STORAGE_KEY, value)
+    if (value) localStorage.setItem(STORAGE_KEY, value)
+    else localStorage.removeItem(STORAGE_KEY)
+  }
+
+  async function save() {
+    // Та сама рослина двічі в одній таблиці — лишається останній рядок
+    const byId = new Map(pasted.map((cells) => [checkId(cells[0]), cells]))
+    await saveChecks.mutateAsync([...byId].map(([id, cells]) => ({ id, cells })))
+    edit('')
   }
 
   async function copy() {
@@ -67,10 +88,15 @@ export function OriginCheckPage() {
                   </option>
                 ))}
               </Select>
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold">
+                <input type="checkbox" checked={onlyNew} onChange={(e) => setOnlyNew(e.target.checked)} className="h-5 w-5 accent-brand-600" />
+                {t('admin.originCheck.onlyNew', { count: unchecked.length })}
+              </label>
               <button
                 type="button"
                 onClick={copy}
-                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-colors hover:bg-brand-700"
+                disabled={list.length === 0}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-colors hover:bg-brand-700 disabled:opacity-50"
               >
                 {copied ? <Check size={18} strokeWidth={2.5} aria-hidden /> : <ClipboardCopy size={18} strokeWidth={2.25} aria-hidden />}
                 {copied ? t('admin.originCheck.copied') : t('admin.originCheck.copy', { count: list.length })}
@@ -81,7 +107,10 @@ export function OriginCheckPage() {
               <summary className="cursor-pointer text-sm font-bold text-brand-600">{t('admin.originCheck.showList', { count: list.length })}</summary>
               <ul className="mt-2 divide-y divide-sand-200 text-sm">
                 {list.map((p) => (
-                  <li key={p.id} className="flex flex-wrap gap-x-2 py-1.5">
+                  <li key={p.id} className="flex flex-wrap items-center gap-x-2 py-1.5">
+                    {plan.checked.has(p.id) && (
+                      <CircleCheck size={16} strokeWidth={2.5} className="shrink-0 text-brand-600" aria-label={t('admin.originCheck.checked')} />
+                    )}
                     <span className="font-semibold">{p.name.uk}</span>
                     <span className="text-sand-700">
                       {p.origin ? t(`admin.fields.origins.${p.origin}`) : t('admin.formFixes.noOrigin')}
@@ -98,20 +127,34 @@ export function OriginCheckPage() {
             <Textarea
               label={t('admin.originCheck.paste')}
               value={text}
-              onChange={(e) => save(e.target.value)}
+              onChange={(e) => edit(e.target.value)}
               rows={5}
               spellCheck={false}
               className="font-mono text-xs"
             />
             {text.trim() && (
-              <button type="button" onClick={() => save('')} className="text-sm font-bold text-sand-700 underline">
-                {t('admin.originCheck.clear')}
-              </button>
+              <div className="flex flex-wrap items-center gap-4">
+                <button
+                  type="button"
+                  onClick={save}
+                  disabled={pasted.length === 0 || saveChecks.isPending}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-colors hover:bg-brand-700 disabled:opacity-50"
+                >
+                  <Save size={18} strokeWidth={2.25} aria-hidden />
+                  {t('admin.originCheck.save', { count: pasted.length })}
+                </button>
+                <button type="button" onClick={() => edit('')} className="text-sm font-bold text-sand-700 underline">
+                  {t('admin.originCheck.clear')}
+                </button>
+              </div>
             )}
+            {saveChecks.isError && <p className="text-sm text-sunset-600">{t('admin.originCheck.saveError')}</p>}
+            <p className="text-sm text-sand-700">{t('admin.originCheck.saved', { count: rows.length })}</p>
           </section>
 
-          {text.trim() && (
+          {rows.length > 0 && (
             <section className="space-y-4">
+              <h2 className="font-bold">{t('admin.originCheck.step3')}</h2>
               <FixList
                 fixes={plan.fixes}
                 apply={apply}

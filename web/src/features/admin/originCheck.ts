@@ -63,24 +63,31 @@ export interface CheckRow {
   note: string
 }
 
-/** Читає вставлену таблицю (з табуляцією, як копіюється з Google-таблиці чи чату). Рядок із заголовками пропускає. */
-export function parseCheck(text: string): CheckRow[] {
+/** Читає вставлену таблицю (з табуляцією, як копіюється з Google-таблиці чи чату) у клітинки. Рядок із заголовками пропускає. */
+export function parseCells(text: string): string[][] {
   return text
     .split(/\r?\n/)
     .map((line) => line.split('\t').map((c) => c.trim().replace(/\s+/g, ' ')))
     .filter((cells) => cells[0] && cells[0].toLowerCase() !== 'назва')
-    .map(([name, fixedName = '', origin = '', p1 = '', p2 = '', habitat = '', breeder = '', aliases = '', source = '', note = '']) => ({
-      name,
-      fixedName,
-      origin: parseOrigin(origin),
-      parents: [p1, p2].filter(Boolean),
-      habitat,
-      breeder,
-      aliases: splitAliases(aliases),
-      source,
-      note,
-    }))
+    .map((cells) => cells.slice(0, COLUMNS.length))
 }
+
+/** Рядок перевірки з клітинок таблиці (так він і зберігається в базі — originChecks). */
+export function rowFromCells([name, fixedName = '', origin = '', p1 = '', p2 = '', habitat = '', breeder = '', aliases = '', source = '', note = '']: string[]): CheckRow {
+  return {
+    name,
+    fixedName,
+    origin: parseOrigin(origin),
+    parents: [p1, p2].filter(Boolean),
+    habitat,
+    breeder,
+    aliases: splitAliases(aliases),
+    source,
+    note,
+  }
+}
+
+export const parseCheck = (text: string): CheckRow[] => parseCells(text).map(rowFromCells)
 
 export interface FieldChange {
   field: 'name' | 'origin' | 'parents' | 'habitat' | 'breeder' | 'aliases'
@@ -107,6 +114,8 @@ export interface OriginPlan {
   unknown: CheckRow[]
   /** Таких рослин у магазині немає: зазвичай батьки — з тим, що про них відомо */
   missing: CheckRow[]
+  /** Рослини магазину, про які вже є перевірка (id) — їх не треба копіювати на перевірку знову */
+  checked: Set<string>
 }
 
 const sameText = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
@@ -134,7 +143,7 @@ export function planOriginFixes(products: Product[], rows: CheckRow[]): OriginPl
     const keys = names.filter(Boolean).map(nameKey)
     return keys.map((k) => byKey.get(k)).find(Boolean) ?? keys.map((k) => byAlias.get(k)).find(Boolean)
   }
-  const plan: OriginPlan = { fixes: [], ok: 0, unknown: [], missing: [] }
+  const plan: OriginPlan = { fixes: [], ok: 0, unknown: [], missing: [], checked: new Set() }
   const seen = new Set<string>()
   for (const row of rows) {
     const p = find([row.name, row.fixedName, ...row.aliases])
@@ -144,6 +153,7 @@ export function planOriginFixes(products: Product[], rows: CheckRow[]): OriginPl
     }
     if (seen.has(p.id)) continue
     seen.add(p.id)
+    plan.checked.add(p.id)
     const fix = (changes: FieldChange[], patch: Record<string, unknown>) =>
       plan.fixes.push({ id: p.id, slug: p.slug, name: p.name.uk, changes, patch, source: row.source, note: row.note })
 
