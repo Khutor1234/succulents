@@ -17,7 +17,7 @@ import { planNameFixes, type NameFix } from './nameFixes'
 const CHUNK = 400
 
 /** Записує зміни пачками; `patch` — що змінити в товарі. */
-function useApplyFixes<T extends { id: string }>(patch: (fix: T) => Record<string, unknown>) {
+export function useApplyFixes<T extends { id: string }>(patch: (fix: T) => Record<string, unknown>) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (fixes: T[]) => {
@@ -100,7 +100,7 @@ export function FormFixesPage() {
   )
 }
 
-function Hint({ children }: { children: string }) {
+export function Hint({ children }: { children: string }) {
   return (
     <p className="mb-4 flex items-start gap-2 rounded-2xl bg-sand-100 p-4 text-sm leading-relaxed text-sand-800">
       <Sparkles size={18} strokeWidth={2.25} className="mt-0.5 shrink-0 text-sunset-600" aria-hidden />
@@ -114,7 +114,7 @@ function Hint({ children }: { children: string }) {
  * Спершу нічого не вибрано: продавець сам ставить галочки на тих, кого виправити.
  * Після «Застосувати» список перераховується — у ньому лишаються невибрані рядки, а галочки знову зняті.
  */
-function FixList<T extends { id: string; slug: string; name: string }>({
+export function FixList<T extends { id: string; slug: string; name: string }>({
   fixes,
   apply,
   row,

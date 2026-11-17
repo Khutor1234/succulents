@@ -115,6 +115,8 @@ export function prefillPlant(params: URLSearchParams, values: ProductFormInput):
     origin,
     parents: [fromForm || (params.get('p1') ?? ''), fromForm ? '' : (params.get('p2') ?? '')],
     habitat: params.get('habitat') ?? (origin === 'natural' ? 'Мексика' : ''),
+    breeder: params.get('breeder') ?? values.breeder,
+    aliases: params.get('aliases') ?? values.aliases,
   }
 }
 
