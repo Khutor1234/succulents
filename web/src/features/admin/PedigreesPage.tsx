@@ -1,11 +1,13 @@
-import { ArrowDown, ArrowRight, Layers, Network, UsersRound, X, type LucideIcon } from 'lucide-react'
+import { ArrowDown, ArrowRight, Layers, Network, Plus, UsersRound, X, type LucideIcon } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
 import type { Product } from '../../lib/types'
 import { nameKey } from '../../lib/plantName'
+import { PLANT_CATEGORY } from '../../lib/plants'
+import { useHere } from '../../shared/navigation'
 import { useAllProducts } from './api'
-import { buildPedigrees } from './pedigrees'
+import { buildPedigrees, type PlantNode } from './pedigrees'
 
 // «Батько й дитина» прибрано: ті самі пари вже є в «Нащадках» (батько і всі його діти)
 const TABS = ['trios', 'families', 'forms'] as const
@@ -28,7 +30,7 @@ export function PedigreesPage() {
 
   const q = nameKey(search.trim())
   const has = (...ps: Product[]) => !q || ps.some((p) => nameKey(p.name.uk).includes(q))
-  const trios = all.trios.filter((x) => has(x.child, ...x.parents))
+  const trios = all.trios.filter((x) => !q || [x.child, ...x.parents].some((n) => nameKey(n.name).includes(q)))
   const forms = all.formGroups.filter((g) => has(...g.items))
   const families = all.families.filter((f) => has(f.parent, ...f.parentForms, ...f.children.flatMap((c) => [c.child, ...c.forms])))
   const counts: Record<Tab, number> = { trios: trios.length, families: families.length, forms: forms.length }
@@ -88,14 +90,14 @@ export function PedigreesPage() {
 
       {tab === 'trios' && (
         <ul className="grid gap-4 lg:grid-cols-2">
-          {trios.map(({ child, parents }) => (
-            <li key={child.id} className="rounded-3xl border-2 border-sand-200 bg-sand-50 p-3 sm:p-4">
+          {trios.map(({ key, child, parents }) => (
+            <li key={key} className="rounded-3xl border-2 border-sand-200 bg-sand-50 p-3 sm:p-4">
               <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-1.5 sm:gap-2">
-                <Mini p={parents[0]} />
+                <NodeCard n={parents[0]} />
                 <Sign><X size={18} strokeWidth={2.6} aria-label="×" /></Sign>
-                <Mini p={parents[1]} />
+                <NodeCard n={parents[1]} />
                 <Sign><ArrowRight size={18} strokeWidth={2.6} aria-hidden /></Sign>
-                <Mini p={child} highlight />
+                <NodeCard n={child} highlight parents={[parents[0].name, parents[1].name]} />
               </div>
             </li>
           ))}
@@ -181,6 +183,34 @@ function WithForms({ p, forms, highlight, children }: { p: Product; forms: Produ
 function Sign({ children }: { children: ReactNode }) {
   // Знак посередині фото (фото квадратні — тож вирівнюємо по верхній частині картки)
   return <span className="mt-[calc(50%-0.75rem)] flex h-6 items-center text-sand-700 sm:mt-10">{children}</span>
+}
+
+/**
+ * Рослина в трійці: товар — звичайна картка; такої рослини в магазині немає — пунктирна картка з назвою
+ * і плюсиком «Створити картку» (для дитини — одразу з походженням «Гібрид» і батьками).
+ */
+function NodeCard({ n, highlight, parents }: { n: PlantNode; highlight?: boolean; parents?: [string, string] }) {
+  const { t } = useTranslation()
+  const here = useHere()
+  if (n.product) return <Mini p={n.product} highlight={highlight} />
+  const params = new URLSearchParams({ category: PLANT_CATEGORY, name: n.name })
+  if (parents) {
+    params.set('origin', 'hybrid')
+    params.set('p1', parents[0])
+    params.set('p2', parents[1])
+  }
+  const label = t('search.addPlant', { name: n.name })
+  return (
+    <Link to={`/admin/products/new?${params}`} state={{ from: here }} title={label} aria-label={label} className="group block min-w-0">
+      <span className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-sand-300 p-1 text-center transition-colors group-hover:border-brand-500">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sand-50 transition-transform group-hover:scale-110">
+          <Plus size={18} strokeWidth={3} aria-hidden />
+        </span>
+        <span className="text-[10px] leading-tight font-bold text-sand-700 sm:text-xs">{t('admin.pedigrees.notInShop')}</span>
+      </span>
+      <span className="mt-1 block text-xs leading-snug font-semibold break-words text-sand-700 group-hover:text-brand-600 sm:text-sm">{n.name}</span>
+    </Link>
+  )
 }
 
 /** Маленька картка: фото й повна назва, посилання на сторінку товару. Приховані й без залишку позначені. */
