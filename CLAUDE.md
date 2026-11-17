@@ -50,7 +50,7 @@ firestore.rules, storage.rules, firestore.indexes.json
   в «Вид або назва», поки культивар не перенесли: «Виправити форми» → вкладка «Культивари» (?tab=cultivars, `cultivarFixes.ts`) пише лише `cultivarName`,
   назву й батьків не чіпає. «Echeveria 'Lola'» без назви перед лапками — назва гібрида, не культивар. Галочка «Hybrid» (тег `hybridName`, не плутати зі старим
   тегом `hybrid` і з полем «Походження») дописує «hybrid» — для гібрида без власної назви: «Echeveria Orion hybrid». Галочка сама ставить походження «Гібрид» і першого
-  батька «Echeveria Orion». Галочка форми (variegata/cristata/monstrose) сама ставить «Відбір або мутація» від рід + сорт (`applyFormOrigin`),
+  батька «Echeveria Orion»; з одним батьком у «Походженні» — «Гібрид від Echeveria Orion» і нижче батьки Orion (а не «Orion × невідомий»). Галочка форми (variegata/cristata/monstrose) сама ставить «Відбір або мутація» від рід + сорт (`applyFormOrigin`),
   а колишнє походження з картки переносить у блок «Походження …» (`base`). У «Виправити форми» й імпорті «hybrid» — частина назви (`withoutStates`), не форма: «Orion hybrid variegata» — від «Orion hybrid». Живцям на екрані дописується «(живець)»
   (`withCuttingMark`), у базі назва без цього.
 - Світла й темна тема: перемикач у шапці (`app/theme.ts`, localStorage `theme`, за замовчуванням світла). Темна — ті самі

@@ -199,6 +199,8 @@ export function ParentsLinks({
 
   const natural = origin === 'natural'
   const cultivar = origin === 'cultivar'
+  // «Echeveria Orion hybrid» (галочка «Hybrid», base задано) з одним батьком — це «гібрид від Orion», а не «Orion × невідомий»
+  const hybridOf = !natural && !cultivar && base !== undefined && !!names[0] && !names[1]
   if (!natural && names.length === 0 && !(big && breeder)) return null
 
   const kicker = natural ? (
@@ -250,13 +252,13 @@ export function ParentsLinks({
               {habitat}
             </Chip>
           )}
-          {cultivar && names[0] && (
+          {(cultivar || hybridOf) && names[0] && (
             <>
               <span className="shrink-0 self-center text-xs text-sand-700">{t('search.from')}</span>
               <SourceChip full={fullNames} name={names[0]} />
             </>
           )}
-          {!natural && !cultivar && (
+          {!natural && !cultivar && !hybridOf && (
             <>
               {/* Дві назви ділять рядок порівну */}
               {/* Як і на сторінці товару: є в магазині — на сторінку рослини, немає — без посилання */}
@@ -294,9 +296,13 @@ export function ParentsLinks({
           <SourceChip name={names[0]} big known={base ?? undefined} />
         </div>
       )}
-      {/* Форма від звичайної версії (variegata…) чи «hybrid» від неї — ще й походження самої звичайної версії */}
-      {(cultivar || (base !== undefined && !natural)) && names[0] && <SourceParents name={names[0]} base={base} tile={parentTile} cross={cross} />}
-      {!natural && !cultivar && names.length > 0 && (
+      {hybridOf && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-sand-700">
+          <span>{t('search.hybridOfHint')}</span>
+          <PlantChip name={names[0]} big known={base ?? undefined} />
+        </div>
+      )}
+      {!natural && !cultivar && !hybridOf && names.length > 0 && (
         <div className="mt-3 flex items-stretch gap-2">
           {/* «Echeveria Orion hybrid»: перший батько — сам Orion, і про нього може бути відоме походження (base) */}
           {parentTile(names[0], base ?? undefined)}
@@ -304,6 +310,8 @@ export function ParentsLinks({
           {parentTile(names[1])}
         </div>
       )}
+      {/* Форма від звичайної версії (variegata…) чи «hybrid» від неї — нижче ще й походження самої звичайної версії */}
+      {(cultivar || (base !== undefined && !natural)) && names[0] && <SourceParents name={names[0]} base={base} tile={parentTile} cross={cross} />}
       {breeder && !natural && (
         <p className="mt-3 flex flex-wrap items-center gap-2 border-t border-sand-200 pt-3 text-sm text-sand-700">
           <Sprout size={16} strokeWidth={2.25} className="shrink-0" aria-hidden />

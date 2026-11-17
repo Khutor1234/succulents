@@ -794,6 +794,7 @@ export const uk = {
     father: 'Батьківська',
     naturalHint: 'Росте в природі. Ареал:',
     cultivarHint: 'Від',
+    hybridOfHint: 'Гібрид від',
     sourceParents: 'Батьки {{name}}:',
     sourceNatural: '{{name}} — природний вид',
     sourceCultivar: '{{name}} — відбір або мутація від',

@@ -105,6 +105,8 @@ export function ProductCard({
             parents={product.parents}
             origin={product.origin}
             habitat={product.habitat}
+            // «Orion hybrid» з одним батьком — «від Echeveria Orion», а не «Orion × невідомий»
+            base={product.tags?.includes('hybridName') ? (product.base ?? null) : undefined}
             fullNames={fullNames}
             className="absolute inset-x-2 bottom-2 rounded-2xl bg-sand-50/95 p-1.5 shadow-sm"
           />
