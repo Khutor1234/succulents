@@ -41,8 +41,8 @@ firestore.rules, storage.rules, firestore.indexes.json
   уся історія — `/account/bonuses` (`BonusesPage.tsx`, по місяцях), `/account/orders`, `/account/favorites`.
 - Картка «Походження» на сторінці товару: імена рослин ведуть на сторінку цієї рослини (`PlantChip`, товар за точною назвою — `useProductByName`),
   немає в магазині — пунктирна плашка без посилання, а продавцю — з плюсиком: нова картка з назвою й відомим походженням
-  (`/admin/products/new?name=…&origin=…&p1=…&p2=…&habitat=…`, `prefillPlant` у `admin/productSchema.ts`). Для форми («Від Echeveria Lola») — ще й походження звичайної версії
-  (`SourceParents`): вписане у формі товару в згорнутому блоці «Походження Echeveria Lola» (поле `base`), інакше — з картки звичайної версії.
+  (`/admin/products/new?name=…&origin=…&p1=…&p2=…&habitat=…`, `prefillPlant` у `admin/productSchema.ts`). Для форми й відбору — одним рядком «Від [рослина] = її батьки / природний вид, ареал / від …»
+  (`FromRow`; телефон — два рядки): вписане у формі товару в згорнутому блоці «Походження Echeveria Lola» (поле `base`), інакше — з картки звичайної версії.
 - «Інші форми цієї рослини» (під товаром) і «Родоводи» → «Форми» групують за `familyKey` (lib/plantName): без форм, «hybrid» і культивару
   в лапках після назви — chihuahuaensis, її 'Ruby Blush' і variegata разом; Orion і Orion hybrid разом.
 - Пов'язані рослини під товаром — `catalog/RelatedPlants.tsx`; для рідкісних родів (до 10 рослин на сайті) — ще й «Інші рослини роду».

@@ -108,48 +108,79 @@ function AddPlantLink({ name, known, grow }: { name: string; known?: Product['ba
 /** «Мутація від …»: веде на сторінку цієї рослини, а якщо її в магазині немає — просто назва. */
 const SourceChip = PlantChip
 
+/** Знак у рядку походження: «=» чи «×» — помаранчевий, як у «Родоводах». */
+function Sign({ children }: { children: string }) {
+  return (
+    <span aria-label={children} className="shrink-0 font-display text-2xl leading-none font-extrabold text-sunset-600">
+      {children}
+    </span>
+  )
+}
+
 /**
- * Походження звичайної версії для форми (variegata, cristata…, «hybrid»): «Echeveria Lola variegata» від «Echeveria Lola»,
- * а та — Echeveria lilacina × Echeveria derenbergii (або природний вид, або відбір від іншої рослини).
- * Вписане продавцем у формі цієї рослини (`base`), інакше — з картки звичайної версії, якщо вона є в магазині.
+ * Один рядок «Від [рослина] = її походження», як у «Родоводах»:
+ * «Від Echeveria Lola = Echeveria lilacina × Echeveria derenbergii», «… = природний вид, Мексика», «… = відбір від …».
+ * Походження рослини, від якої ця, — вписане продавцем у формі (`base`, для форм variegata… і «hybrid»),
+ * інакше — з її власної картки, якщо вона є в магазині. Нічого не відомо — лише «Від [рослина]».
  */
-function SourceParents({ name, base, tile, cross }: { name: string; base?: Product['base']; tile: (name?: string) => React.ReactNode; cross: React.ReactNode }) {
+function FromRow({ lead, name, base }: { lead: string; name: string; base?: Product['base'] | null }) {
   const { t } = useTranslation()
   const isSeller = useAuth((s) => s.role === 'seller')
   const { data: source } = useProductByName(name, isSeller)
   const info = base ?? (source ? { origin: source.origin ?? 'hybrid', parents: source.parents ?? [], habitat: source.habitat } : null)
-  if (!info) return null
-  const parents = info.parents.filter(Boolean)
-  // Природний вид: батьків немає, тож показуємо, звідки він
-  if (info.origin === 'natural')
-    return (
-      <p className="mt-3 flex flex-wrap items-center gap-2 border-t border-sand-200 pt-3 text-sm text-sand-700">
-        <Leaf size={14} strokeWidth={2.5} className="shrink-0" aria-hidden />
-        <span>{t('search.sourceNatural', { name })}</span>
+  const parents = (info?.parents ?? []).filter(Boolean)
+  // Батьки ділять рядок порівну (як у «Родоводах»)
+  const tile = (n?: string) =>
+    n ? (
+      <PlantChip name={n} big grow />
+    ) : (
+      <span className="flex min-h-11 flex-1 basis-0 items-center justify-center rounded-2xl border border-dashed border-sand-300 bg-sand-100/60 px-3.5 py-2 text-sm text-sand-700 italic">
+        {t('search.unknownParent')}
+      </span>
+    )
+  let rest: React.ReactNode = null
+  if (info?.origin === 'natural')
+    rest = (
+      <>
+        <span className="inline-flex items-center gap-1.5 font-semibold">
+          <Leaf size={14} strokeWidth={2.5} aria-hidden />
+          {t('search.natural')}
+        </span>
         {info.habitat && (
           <Chip to={info.habitat} title={t('search.findParent', { name: info.habitat })} big icon={<MapPin size={14} strokeWidth={2.5} aria-hidden />}>
             {info.habitat}
           </Chip>
         )}
-      </p>
+      </>
     )
-  if (parents.length === 0) return null
-  if (info.origin === 'cultivar')
-    return (
-      <p className="mt-3 flex flex-wrap items-center gap-2 border-t border-sand-200 pt-3 text-sm text-sand-700">
-        <Sparkles size={14} strokeWidth={2.5} className="shrink-0" aria-hidden />
-        <span>{t('search.sourceCultivar', { name })}</span>
+  else if (info?.origin === 'cultivar' && parents[0])
+    rest = (
+      <>
+        <span className="shrink-0 font-semibold">{t('search.from')}</span>
         <PlantChip name={parents[0]} big />
-      </p>
+      </>
     )
-  return (
-    <div className="mt-3 border-t border-sand-200 pt-3">
-      <p className="text-sm text-sand-700">{t('search.sourceParents', { name })}</p>
-      <div className="mt-2 flex items-stretch gap-2">
+  else if (parents.length > 0)
+    rest = (
+      <>
         {tile(parents[0])}
-        {cross}
+        <Sign>×</Sign>
         {tile(parents[1])}
+      </>
+    )
+  // Телефон: «Від [рослина]», під ним «= її батьки»; ширше — усе в один рядок
+  return (
+    <div className="mt-3 flex flex-col gap-2 text-sm text-sand-700 sm:flex-row sm:items-center">
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 font-semibold">{lead}</span>
+        <PlantChip name={name} big known={base ?? undefined} />
       </div>
+      {rest && (
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Sign>=</Sign>
+          {rest}
+        </div>
+      )}
     </div>
   )
 }
@@ -290,18 +321,10 @@ export function ParentsLinks({
           )}
         </div>
       )}
-      {cultivar && names[0] && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-sand-700">
-          <span>{t('search.cultivarHint')}</span>
-          <SourceChip name={names[0]} big known={base ?? undefined} />
-        </div>
-      )}
-      {hybridOf && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-sand-700">
-          <span>{t('search.hybridOfHint')}</span>
-          <PlantChip name={names[0]} big known={base ?? undefined} />
-        </div>
-      )}
+      {/* «Від Lola = lilacina × derenbergii» — одним рядком: від кого ця рослина і звідки та */}
+      {cultivar && names[0] && <FromRow lead={t('search.cultivarHint')} name={names[0]} base={base} />}
+      {/* Зверху вже «Гібрид» — тож просто «Від …» */}
+      {hybridOf && <FromRow lead={t('search.cultivarHint')} name={names[0]} base={base} />}
       {!natural && !cultivar && !hybridOf && names.length > 0 && (
         <div className="mt-3 flex items-stretch gap-2">
           {/* «Echeveria Orion hybrid»: перший батько — сам Orion, і про нього може бути відоме походження (base) */}
@@ -310,8 +333,6 @@ export function ParentsLinks({
           {parentTile(names[1])}
         </div>
       )}
-      {/* Форма від звичайної версії (variegata…) чи «hybrid» від неї — нижче ще й походження самої звичайної версії */}
-      {(cultivar || (base !== undefined && !natural)) && names[0] && <SourceParents name={names[0]} base={base} tile={parentTile} cross={cross} />}
       {breeder && !natural && (
         <p className="mt-3 flex flex-wrap items-center gap-2 border-t border-sand-200 pt-3 text-sm text-sand-700">
           <Sprout size={16} strokeWidth={2.25} className="shrink-0" aria-hidden />
