@@ -1,4 +1,4 @@
-import { EyeOff, List, Pencil, Plus, Tags } from 'lucide-react'
+import { CircleCheck, EyeOff, List, Pencil, Plus, Tags } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -13,7 +13,7 @@ import { Select, SmallImage, SucculentIcon } from '../../shared/ui'
 import { useProgressive } from '../../shared/useProgressive'
 import { useCategories } from '../catalog/categories'
 import { CopyName, CuttingToggle, DeleteButton, ForSaleButton, HomePin, SellerStock, VisibilityButton } from '../catalog/ProductCard'
-import { useAllProducts } from './api'
+import { useAllProducts, useToggleVerified } from './api'
 import { CategoriesPage } from './CategoriesPage'
 import { TabBar, useTab } from './TabBar'
 
@@ -21,7 +21,7 @@ const TABS = ['list', 'categories'] as const
 const TAB_ICONS = { list: List, categories: Tags }
 
 /** Фільтр «Показати»: усі, лише в наявності, у продажу, не продаються, видимі покупцям, приховані. */
-const SHOWS = ['all', 'inStock', 'forSale', 'notForSale', 'visible', 'hidden'] as const
+const SHOWS = ['all', 'inStock', 'forSale', 'notForSale', 'visible', 'hidden', 'verified', 'unverified'] as const
 type Show = (typeof SHOWS)[number]
 // «У продажу» — як зафарбована іконка-цінник: позначено «у продажу» і покупцю справді є що купити (не 0)
 const sellable = (p: Product) => p.forSale !== false && p.stock > 0
@@ -32,6 +32,8 @@ const SHOW_TEST: Record<Show, (p: Product) => boolean> = {
   notForSale: (p) => !sellable(p),
   visible: (p) => p.isActive,
   hidden: (p) => !p.isActive,
+  verified: (p) => !!p.verified,
+  unverified: (p) => !p.verified,
 }
 
 type Sort = 'name' | 'new' | 'stock'
@@ -141,6 +143,32 @@ export function ProductListPage() {
   )
 }
 
+/**
+ * «Перевірено вручну»: галочка, яку продавець ставить сама, коли перевірила рослину (назву, походження, фото…).
+ * Зелена й зафарбована — перевірено; сіра — ні (за замовчуванням).
+ */
+function VerifiedToggle({ product }: { product: Product }) {
+  const { t } = useTranslation()
+  const toggle = useToggleVerified()
+  const on = !!product.verified
+  const label = t(on ? 'admin.list.verifiedOn' : 'admin.list.verifiedOff')
+  return (
+    <button
+      type="button"
+      onClick={() => toggle.mutate({ id: product.id, verified: !on })}
+      disabled={toggle.isPending}
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
+      className={`-my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors active:scale-95 disabled:opacity-60 ${
+        on ? 'text-brand-600 hover:bg-brand-100' : 'text-sand-400 hover:bg-sand-200 hover:text-sand-700'
+      }`}
+    >
+      <CircleCheck size={19} strokeWidth={on ? 2.75 : 2} className={on ? 'fill-brand-100' : ''} aria-hidden />
+    </button>
+  )
+}
+
 function Row({ product }: { product: Product }) {
   const { t } = useTranslation()
   const lang = useLang()
@@ -152,6 +180,7 @@ function Row({ product }: { product: Product }) {
       <div className="flex min-w-0 flex-1 basis-60 items-center gap-1">
         {/* На початку рядка — щоб у всіх товарів була на одному місці */}
         <CopyName name={name} />
+        <VerifiedToggle product={product} />
         <Link to={`/product/${product.slug}`} className="flex min-w-0 items-center gap-2.5">
           {product.images[0] ? (
             // Навели мишку на фото — поруч воно ж, але велике (щоб роздивитися рослину)

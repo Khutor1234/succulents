@@ -74,6 +74,8 @@ export interface Product {
   onHome?: boolean
   /** Коли позначили «на головну» — для порядку «як позначала». */
   onHomeAt?: Timestamp
+  /** Продавець сама перевірила рослину вручну (галочка в списку товарів адмінки). Не вказано — не перевірено. */
+  verified?: boolean
   createdAt?: Timestamp
 }
 
