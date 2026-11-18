@@ -1,17 +1,19 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { doc, serverTimestamp, writeBatch } from 'firebase/firestore'
-import { ArrowRight, Quote, Sparkles, SpellCheck } from 'lucide-react'
+import { ArrowRight, Quote, SearchCheck, Sparkles, SpellCheck } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
 import { db } from '../../firebase/config'
 import type { Product } from '../../lib/types'
 import { Button } from '../../shared/ui'
-import { useAllProducts } from './api'
+import { useAllProducts, useOriginChecks } from './api'
 import { BackLink } from './BackLink'
 import { planFormFixes, type FormFix } from './formFixes'
 import { planCultivarFixes, type CultivarFix } from './cultivarFixes'
 import { planNameFixes, type NameFix } from './nameFixes'
+import { OriginsTab } from './OriginCheckPage'
+import { planOriginFixes, rowFromCells } from './originCheck'
 
 /** Firestore приймає до 500 записів за раз — ділимо з запасом. */
 const CHUNK = 400
@@ -32,14 +34,15 @@ export function useApplyFixes<T extends { id: string }>(patch: (fix: T) => Recor
   })
 }
 
-const TABS = ['forms', 'names', 'cultivars'] as const
+const TABS = ['forms', 'names', 'cultivars', 'origins'] as const
 type Tab = (typeof TABS)[number]
-const TAB_ICONS = { forms: Sparkles, names: SpellCheck, cultivars: Quote }
+const TAB_ICONS = { forms: Sparkles, names: SpellCheck, cultivars: Quote, origins: SearchCheck }
 
 /**
- * /admin/forms — дві вкладки:
+ * /admin/forms — вкладки:
  * - «Виправити форми»: варієгати, кристати й монстрози стають «Відбір або мутація» від звичайної версії;
  * - «Виправити назви» (?tab=names): батьки, записані не так, як рослина в магазині (описка, лапки, регістр).
+ * - «Культивари» (?tab=cultivars); «Перевірка походження» (?tab=origins, OriginCheckPage.tsx) — звірка з довідковими сайтами.
  * Спершу список «було → стане», кожен рядок можна зняти галочкою; записується лише після «Застосувати».
  */
 export function FormFixesPage() {
@@ -47,6 +50,7 @@ export function FormFixesPage() {
   const [params, setParams] = useSearchParams()
   const tab: Tab = TABS.find((x) => x === params.get('tab')) ?? 'forms'
   const { data: products, isLoading } = useAllProducts()
+  const { data: checks } = useOriginChecks()
   // Скільки рослин можна виправити на кожній вкладці — у дужках біля назви вкладки
   const counts = useMemo(
     () =>
@@ -54,15 +58,16 @@ export function FormFixesPage() {
         forms: planFormFixes(products).fixes.length,
         names: planNameFixes(products).length,
         cultivars: planCultivarFixes(products).length,
+        origins: planOriginFixes(products, (checks ?? []).map((c) => rowFromCells(c.cells))).fixes.length,
       },
-    [products],
+    [products, checks],
   )
 
   return (
     <div className="max-w-4xl">
       <BackLink fallback="/admin/import" />
       <h1 className="mb-4 font-display text-3xl font-extrabold text-brand-600">{t(`admin.fixes.title.${tab}`)}</h1>
-      <div className="mb-4 grid grid-cols-3 rounded-2xl bg-sand-200 p-1 sm:flex sm:w-fit" role="tablist" aria-label={t('admin.fixes.tabsLabel')}>
+      <div className="mb-4 grid grid-cols-2 rounded-2xl bg-sand-200 p-1 sm:flex sm:w-fit" role="tablist" aria-label={t('admin.fixes.tabsLabel')}>
         {TABS.map((id) => {
           const Icon = TAB_ICONS[id]
           return (
@@ -76,7 +81,7 @@ export function FormFixesPage() {
                 tab === id ? 'bg-brand-600 text-sand-50 shadow-sm' : 'text-sand-700 hover:text-ink'
               }`}
             >
-              {/* На телефоні без значків і з короткими назвами — так три вкладки з кількістю вміщаються в рядок */}
+              {/* На телефоні без значків і з короткими назвами — так вкладки з кількістю вміщаються по дві в рядок */}
               <Icon size={16} strokeWidth={2.25} className="hidden sm:block" aria-hidden />
               <span className="hidden sm:inline">{t(`admin.fixes.tabs.${id}`)}</span>
               <span className="sm:hidden">{t(`admin.fixes.tabsShort.${id}`)}</span>
@@ -91,6 +96,8 @@ export function FormFixesPage() {
       {products &&
         (tab === 'names' ? (
           <NamesTab key="names" products={products} />
+        ) : tab === 'origins' ? (
+          <OriginsTab key="origins" />
         ) : tab === 'cultivars' ? (
           <CultivarsTab key="cultivars" products={products} />
         ) : (

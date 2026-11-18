@@ -8,7 +8,6 @@ import { nameKey } from '../../lib/plantName'
 import { slugify } from '../../lib/slug'
 import { Select, Textarea } from '../../shared/ui'
 import { useAllProducts, useOriginChecks, useSaveOriginChecks } from './api'
-import { BackLink } from './BackLink'
 import { FixList, Hint, useApplyFixes } from './FormFixesPage'
 import { checkablePlants, parseCells, planOriginFixes, rowFromCells, toTsv, type CheckRow, type OriginFix } from './originCheck'
 
@@ -18,13 +17,13 @@ const STORAGE_KEY = 'succulents.originCheck'
 const checkId = (name: string) => slugify(nameKey(name)).slice(0, 200) || 'row'
 
 /**
- * /admin/origins — «Перевірка походження»:
+ * «Перевірка походження» — вкладка «Виправити форми» (/admin/forms?tab=origins):
  * 1) список рослин роду таблицею — «Скопіювати» (його перевіряє Claude на worldofsucculents.com та інших сайтах);
  * 2) вставити результат і «Зберегти» — перевірки лишаються в базі (originChecks), повторна перевірка рослини замінює стару;
  * 3) з усіх збережених перевірок видно лише розбіжності «Було / Стане» з джерелом; записується лише вибране галочками.
  * Копіювати можна лише неперевірені рослини — напр. нові, щойно додані.
  */
-export function OriginCheckPage() {
+export function OriginsTab() {
   const { t } = useTranslation()
   const { data: products, isLoading } = useAllProducts()
   const plants = useMemo(() => checkablePlants(products ?? []), [products])
@@ -67,11 +66,7 @@ export function OriginCheckPage() {
   }
 
   return (
-    <div className="max-w-4xl space-y-6">
-      <div>
-        <BackLink fallback="/admin" />
-        <h1 className="font-display text-3xl font-extrabold text-brand-600">{t('admin.originCheck.title')}</h1>
-      </div>
+    <div className="space-y-6">
       <Hint>{t('admin.originCheck.hint')}</Hint>
       {isLoading && <p className="text-sand-700">{t('loading')}</p>}
 

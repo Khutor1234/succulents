@@ -401,9 +401,9 @@ export const uk = {
     importFromSheet: 'Імпорт з таблиці',
     importShort: 'Імпорт',
     fixes: {
-      title: { forms: 'Виправити форми', names: 'Виправити назви', cultivars: 'Виправити культивари' },
-      tabs: { forms: 'Форми', names: 'Назви батьків', cultivars: 'Культивари' },
-      tabsShort: { forms: 'Форми', names: 'Назви', cultivars: 'Культивари' },
+      title: { forms: 'Виправити форми', names: 'Виправити назви', cultivars: 'Виправити культивари', origins: 'Перевірка походження' },
+      tabs: { forms: 'Форми', names: 'Назви батьків', cultivars: 'Культивари', origins: 'Перевірка походження' },
+      tabsShort: { forms: 'Форми', names: 'Назви', cultivars: 'Культивари', origins: 'Походження' },
       tabsLabel: 'Що виправити',
     },
     nameFixes: {
@@ -581,8 +581,7 @@ export const uk = {
       tools: 'Інструменти',
       toolsHint: 'Зміни одразу в багатьох товарах.',
       importText: 'Оновити назви й додати нові рослини з Google-таблиці «Рослини».',
-      formsText: 'Variegata, Cristata, Monstrose — як мутація від звичайної версії; описки в назвах батьків.',
-      originsText: 'Звірити батьків, природні види й ареали з довідковими сайтами (worldofsucculents.com та інші).',
+      formsText: 'Variegata, Cristata, Monstrose — як мутація від звичайної версії; описки в назвах батьків; перевірка походження з довідковими сайтами.',
       thumbs: 'Мініатюри фото',
       thumbsText: 'Маленькі копії старих фото для карток — каталог відкривається швидше. Нові фото отримують їх самі.',
       thumbsWorking: 'Готую мініатюри… це може тривати кілька хвилин',

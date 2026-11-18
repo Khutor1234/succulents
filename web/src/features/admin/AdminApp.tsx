@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router'
+import { Navigate, Route, Routes } from 'react-router'
 import { AdminHome } from './AdminHome'
 import { AdminLayout } from './AdminLayout'
 import { CategoriesPage } from './CategoriesPage'
@@ -7,7 +7,6 @@ import { CustomersPage } from './CustomersPage'
 import { FormFixesPage } from './FormFixesPage'
 import { ImportPage } from './ImportPage'
 import { OrdersPage } from './OrdersPage'
-import { OriginCheckPage } from './OriginCheckPage'
 import { PedigreesPage } from './PedigreesPage'
 import { ProductFormPage } from './ProductFormPage'
 import { ProductListPage } from './ProductListPage'
@@ -24,7 +23,8 @@ export default function AdminApp() {
         <Route path="products/:id" element={<ProductFormPage />} />
         <Route path="import" element={<ImportPage />} />
         <Route path="forms" element={<FormFixesPage />} />
-        <Route path="origins" element={<OriginCheckPage />} />
+        {/* «Перевірка походження» тепер вкладка «Виправити форми» — стара адреса веде туди */}
+        <Route path="origins" element={<Navigate to="/admin/forms?tab=origins" replace />} />
         <Route path="orders" element={<OrdersPage />} />
         <Route path="categories" element={<CategoriesPage />} />
         <Route path="customers" element={<CustomersPage />} />

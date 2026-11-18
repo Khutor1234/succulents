@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { httpsCallable } from 'firebase/functions'
-import { BarChart3, ChevronRight, ClipboardList, FileSpreadsheet, GitFork, Images, LayoutGrid, Plus, SearchCheck, Sparkles, Tags, Users, type LucideIcon } from 'lucide-react'
+import { BarChart3, ChevronRight, ClipboardList, FileSpreadsheet, GitFork, Images, LayoutGrid, Plus, Sparkles, Tags, Users, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -54,7 +54,6 @@ export function AdminHome() {
       <Group title={t('admin.home.tools')} hint={t('admin.home.toolsHint')}>
         <Tile to="/admin/import" icon={FileSpreadsheet} title={t('admin.importFromSheet')} text={t('admin.home.importText')} />
         <Tile to="/admin/forms" icon={Sparkles} title={t('admin.formFixes.title')} text={t('admin.home.formsText')} />
-        <Tile to="/admin/origins" icon={SearchCheck} title={t('admin.originCheck.title')} text={t('admin.home.originsText')} />
         <ThumbsTile />
       </Group>
     </div>
