@@ -69,8 +69,7 @@ export function CategoriesPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="font-display text-3xl font-extrabold text-brand-600">{t('admin.categories')}</h1>
-      <p className="mt-2 mb-6 text-sand-700">{t('admin.categoriesHint')}</p>
+      <p className="mb-6 text-sand-700">{t('admin.categoriesHint')}</p>
 
       <ul className="space-y-2">
         {items.map((c, i) => {

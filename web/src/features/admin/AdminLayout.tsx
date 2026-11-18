@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardList, GitFork, LayoutDashboard, Tags, Users } from 'lucide-react'
+import { BarChart3, ClipboardList, LayoutDashboard, LayoutGrid, Users, Wrench } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet } from 'react-router'
 import { ICON } from '../../shared/icon'
@@ -6,10 +6,10 @@ import { useOrders } from './api'
 
 const TABS = [
   { to: '/admin', label: 'admin.home.tab', Icon: LayoutDashboard },
-  { to: '/admin/categories', label: 'admin.categories', Icon: Tags },
+  { to: '/admin/products', label: 'admin.list.title', Icon: LayoutGrid },
   { to: '/admin/customers', label: 'admin.customers.title', Icon: Users },
   { to: '/admin/analytics', label: 'analytics.title', Icon: BarChart3 },
-  { to: '/admin/pedigrees', label: 'admin.pedigrees.title', Icon: GitFork },
+  { to: '/admin/tools', label: 'admin.home.tools', Icon: Wrench },
 ] as const
 
 const tab = ({ isActive }: { isActive: boolean }) =>
@@ -18,8 +18,8 @@ const tab = ({ isActive }: { isActive: boolean }) =>
   }`
 
 /**
- * Каркас адмінки. Комп'ютер: вкладки зліва (огляд, категорії, покупці, аналітика), «Замовлення» праворуч (у магазин — логотипом або кнопкою «Каталог» у шапці).
- * Товари — у магазині (кнопки продавця на картках), окремого списку тут немає.
+ * Каркас адмінки. Комп'ютер: вкладки зліва (огляд, товари, покупці, аналітика, інструменти), «Замовлення» праворуч (у магазин — логотипом або кнопкою «Каталог» у шапці).
+ * Товари керуються й прямо в магазині (кнопки продавця на картках).
  * Телефон: верхніх вкладок немає — усі розділи в нижньому меню (app/BottomNav, однакове з магазином).
  */
 export function AdminLayout() {

@@ -1,13 +1,14 @@
 import { ArrowDown, ArrowRight, Layers, Network, Plus, UsersRound, X, type LucideIcon } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useSearchParams } from 'react-router'
+import { Link } from 'react-router'
 import type { Product } from '../../lib/types'
 import { nameKey } from '../../lib/plantName'
 import { PLANT_CATEGORY } from '../../lib/plants'
 import { useHere } from '../../shared/navigation'
 import { useAllProducts } from './api'
 import { buildPedigrees, type PlantNode } from './pedigrees'
+import { useTab } from './TabBar'
 
 // «Батько й дитина» прибрано: ті самі пари вже є в «Нащадках» (батько і всі його діти)
 const TABS = ['trios', 'families', 'forms'] as const
@@ -17,14 +18,13 @@ const TAB_ICONS: Record<Tab, LucideIcon> = { trios: UsersRound, families: Networ
 const FAMILY_CARD = 'w-28 shrink-0 sm:w-32'
 
 /**
- * «Родоводи» (лише продавець): підбірки з колекції — мама × тато → дитина,
- * рослина-батько → усі її діти, та сама рослина в різних формах. Вкладка — в адресі (?tab=families).
+ * «Родоводи» — вкладка «Аналітики» (/admin/analytics?tab=pedigrees): підбірки з колекції — мама × тато → дитина,
+ * рослина-батько → усі її діти, та сама рослина в різних формах. Вкладка всередині — в адресі (?view=families).
  */
 export function PedigreesPage() {
   const { t } = useTranslation()
   const { data, isLoading, isError } = useAllProducts()
-  const [params, setParams] = useSearchParams()
-  const tab: Tab = TABS.find((x) => x === params.get('tab')) ?? 'trios'
+  const [tab, setTab] = useTab<Tab>(TABS, 'view')
   const [search, setSearch] = useState('')
   const all = useMemo(() => buildPedigrees(data ?? []), [data])
 
@@ -37,10 +37,7 @@ export function PedigreesPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="font-display text-3xl font-extrabold text-brand-600">{t('admin.pedigrees.title')}</h1>
-        <p className="mt-1 text-sand-700">{t('admin.pedigrees.intro')}</p>
-      </div>
+      <p className="text-sand-700">{t('admin.pedigrees.intro')}</p>
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex w-full rounded-2xl bg-sand-200 p-1 sm:w-auto" role="tablist" aria-label={t('admin.pedigrees.title')}>
@@ -51,7 +48,7 @@ export function PedigreesPage() {
                 key={id}
                 role="tab"
                 aria-selected={tab === id}
-                onClick={() => setParams(id === 'trios' ? {} : { tab: id }, { replace: true, preventScrollReset: true })}
+                onClick={() => setTab(id)}
                 className={`inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 text-center text-sm leading-tight font-bold transition-colors sm:flex-none sm:px-4 ${
                   tab === id ? 'bg-brand-600 text-sand-50 shadow-sm' : 'text-sand-700 hover:text-ink'
                 }`}

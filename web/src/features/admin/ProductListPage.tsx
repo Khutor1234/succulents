@@ -1,4 +1,4 @@
-import { EyeOff, Pencil, Plus } from 'lucide-react'
+import { EyeOff, List, Pencil, Plus, Tags } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -14,6 +14,11 @@ import { useProgressive } from '../../shared/useProgressive'
 import { useCategories } from '../catalog/categories'
 import { CopyName, CuttingToggle, DeleteButton, ForSaleButton, HomePin, SellerStock, VisibilityButton } from '../catalog/ProductCard'
 import { useAllProducts } from './api'
+import { CategoriesPage } from './CategoriesPage'
+import { TabBar, useTab } from './TabBar'
+
+const TABS = ['list', 'categories'] as const
+const TAB_ICONS = { list: List, categories: Tags }
 
 /** Фільтр «Показати»: усі, лише в наявності, у продажу, не продаються, видимі покупцям, приховані. */
 const SHOWS = ['all', 'inStock', 'forSale', 'notForSale', 'visible', 'hidden'] as const
@@ -41,9 +46,11 @@ const COMPARE: Record<Sort, (a: Product, b: Product) => number> = {
 /**
  * Товари списком (лише продавець, плитка «Каталог» в адмінці): вузькі рядки — мала фотка, назва, ціна, кількість «− N +»
  * і ті самі швидкі кнопки, що й на картках у магазині. Щоб на екран влазило багато товарів одразу.
+ * Друга вкладка — «Категорії» (?tab=categories, CategoriesPage.tsx): які категорії видно в меню магазину.
  */
 export function ProductListPage() {
   const { t } = useTranslation()
+  const [tab, setTab] = useTab(TABS)
   const { data, isLoading, isError } = useAllProducts()
   const { all: categories, nameOf } = useCategories()
   const [category, setCategory] = useState('')
@@ -70,7 +77,17 @@ export function ProductListPage() {
           {t('admin.addProduct')}
         </Link>
       </div>
+      <TabBar
+        label={t('admin.list.title')}
+        active={tab}
+        onChange={setTab}
+        tabs={TABS.map((id) => ({ id, label: t(`admin.list.tabs.${id}`), Icon: TAB_ICONS[id] }))}
+      />
 
+      {tab === 'categories' ? (
+        <CategoriesPage />
+      ) : (
+        <>
       <div className="flex flex-wrap items-center gap-3">
         <input
           type="search"
@@ -118,6 +135,8 @@ export function ProductListPage() {
         ))}
       </ul>
       {sentinel}
+        </>
+      )}
     </div>
   )
 }

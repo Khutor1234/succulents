@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 import { db } from '../../firebase/config'
 import { Button } from '../../shared/ui'
 import { useAllProducts } from './api'
-import { BackLink } from './BackLink'
 import { parseSheet, planImport, type ImportPlan, type ProductUpdate } from './sheetImport'
 
 /** Firestore приймає до 500 записів за раз — ділимо з запасом. */
@@ -47,6 +46,7 @@ const renameKey = (id: string) => `rename:${id}`
 const createKey = (id: string) => `create:${id}`
 const updateKey = (id: string) => `update:${id}`
 
+/** «Імпорт з таблиці» — перша вкладка «Інструментів» (/admin/tools). */
 export function ImportPage() {
   const { t } = useTranslation()
   const { data: products, isLoading } = useAllProducts()
@@ -83,9 +83,7 @@ export function ImportPage() {
   const fieldValue = (field: string, value: string) => (field === 'origin' && value ? t(`admin.fields.origins.${value}`) : value)
 
   return (
-    <div className="max-w-4xl">
-      <BackLink />
-      <h1 className="mb-4 font-display text-3xl font-extrabold text-brand-600">{t('admin.import.title')}</h1>
+    <div>
       <p className="mb-3 text-sand-800">{t('admin.import.hint')}</p>
       <textarea
         value={text}

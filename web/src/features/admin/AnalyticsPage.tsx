@@ -15,9 +15,10 @@ import {
   UserPlus,
   Wallet,
   Leaf,
+  GitFork,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useLang } from '../../i18n'
 import { formatPrice, pick } from '../../lib/format'
@@ -26,7 +27,9 @@ import type { Order } from '../../lib/types'
 import { ProductImage } from '../../shared/ui'
 import { useAllProducts, useOrders } from './api'
 import { Bar, Card, Fact, RankList, Tile } from './analyticsUi'
+import { PedigreesPage } from './PedigreesPage'
 import { PlantAnalytics } from './PlantAnalytics'
+import { useTab } from './TabBar'
 
 const PERIODS = [7, 30, 90, 0] as const // 0 — увесь час
 type Period = (typeof PERIODS)[number]
@@ -388,20 +391,22 @@ function RevenueChart({ buckets, weekly }: { buckets: Bucket[]; weekly: boolean 
 }
 
 
-const TABS = ['sales', 'plants'] as const
+const TABS = ['sales', 'plants', 'pedigrees'] as const
 type Tab = (typeof TABS)[number]
 
-/** Аналітика: дві вкладки — продажі (замовлення) і рослини (що є в асортименті). Вкладка — в адресі (?tab=plants). */
+/**
+ * Аналітика: вкладки — продажі (замовлення), рослини (що є в асортименті) і «Родоводи» (PedigreesPage.tsx).
+ * Вкладка — в адресі (?tab=plants, ?tab=pedigrees; вкладка всередині «Родоводів» — ?view=).
+ */
 export function AnalyticsPage() {
   const { t } = useTranslation()
-  const [params, setParams] = useSearchParams()
-  const tab: Tab = params.get('tab') === 'plants' ? 'plants' : 'sales'
-  const TAB_ICONS = { sales: Receipt, plants: Leaf }
+  const [tab, setTab] = useTab<Tab>(TABS)
+  const TAB_ICONS = { sales: Receipt, plants: Leaf, pedigrees: GitFork }
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="mr-auto font-display text-3xl font-extrabold text-brand-600">{t('analytics.title')}</h1>
-        <div className="flex rounded-2xl bg-sand-200 p-1" role="tablist" aria-label={t('analytics.title')}>
+        <div className="flex w-full rounded-2xl bg-sand-200 p-1 sm:w-auto" role="tablist" aria-label={t('analytics.title')}>
           {TABS.map((id) => {
             const Icon = TAB_ICONS[id]
             return (
@@ -409,8 +414,8 @@ export function AnalyticsPage() {
                 key={id}
                 role="tab"
                 aria-selected={tab === id}
-                onClick={() => setParams(id === 'sales' ? {} : { tab: id }, { replace: true, preventScrollReset: true })}
-                className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-bold transition-colors ${
+                onClick={() => setTab(id)}
+                className={`inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-bold transition-colors sm:flex-none sm:px-4 ${
                   tab === id ? 'bg-brand-600 text-sand-50 shadow-sm' : 'text-sand-700 hover:text-ink'
                 }`}
               >
@@ -421,7 +426,7 @@ export function AnalyticsPage() {
           })}
         </div>
       </div>
-      {tab === 'sales' ? <SalesAnalytics /> : <PlantAnalytics />}
+      {tab === 'sales' ? <SalesAnalytics /> : tab === 'plants' ? <PlantAnalytics /> : <PedigreesPage />}
     </div>
   )
 }

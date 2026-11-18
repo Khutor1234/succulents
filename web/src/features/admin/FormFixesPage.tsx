@@ -1,14 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { doc, serverTimestamp, writeBatch } from 'firebase/firestore'
-import { ArrowRight, Quote, SearchCheck, Sparkles, SpellCheck } from 'lucide-react'
+import { ArrowRight, FileSpreadsheet, Quote, SearchCheck, Sparkles, SpellCheck } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useSearchParams } from 'react-router'
+import { Link } from 'react-router'
 import { db } from '../../firebase/config'
 import type { Product } from '../../lib/types'
 import { Button } from '../../shared/ui'
 import { useAllProducts, useOriginChecks } from './api'
 import { BackLink } from './BackLink'
+import { ImportPage } from './ImportPage'
+import { TabBar, useTab } from './TabBar'
 import { planFormFixes, type FormFix } from './formFixes'
 import { planCultivarFixes, type CultivarFix } from './cultivarFixes'
 import { planNameFixes, type NameFix } from './nameFixes'
@@ -34,75 +36,68 @@ export function useApplyFixes<T extends { id: string }>(patch: (fix: T) => Recor
   })
 }
 
-const TABS = ['forms', 'names', 'cultivars', 'origins'] as const
+const TABS = ['import', 'forms', 'names', 'cultivars', 'origins'] as const
 type Tab = (typeof TABS)[number]
-const TAB_ICONS = { forms: Sparkles, names: SpellCheck, cultivars: Quote, origins: SearchCheck }
+const TAB_ICONS = { import: FileSpreadsheet, forms: Sparkles, names: SpellCheck, cultivars: Quote, origins: SearchCheck }
 
 /**
- * /admin/forms — вкладки:
- * - «Виправити форми»: варієгати, кристати й монстрози стають «Відбір або мутація» від звичайної версії;
- * - «Виправити назви» (?tab=names): батьки, записані не так, як рослина в магазині (описка, лапки, регістр).
- * - «Культивари» (?tab=cultivars); «Перевірка походження» (?tab=origins, OriginCheckPage.tsx) — звірка з довідковими сайтами.
+ * /admin/tools — «Інструменти»: зміни одразу в багатьох товарах, вкладки (?tab=…):
+ * - «Імпорт з таблиці» (ImportPage.tsx) — перша, без параметра;
+ * - «Форми» (forms): варієгати, кристати й монстрози стають «Відбір або мутація» від звичайної версії;
+ * - «Назви батьків» (names): батьки, записані не так, як рослина в магазині (описка, лапки, регістр);
+ * - «Культивари» (cultivars); «Перевірка походження» (origins, OriginCheckPage.tsx) — звірка з довідковими сайтами.
  * Спершу список «було → стане», кожен рядок можна зняти галочкою; записується лише після «Застосувати».
  */
 export function FormFixesPage() {
   const { t } = useTranslation()
-  const [params, setParams] = useSearchParams()
-  const tab: Tab = TABS.find((x) => x === params.get('tab')) ?? 'forms'
+  const [tab, setTab] = useTab(TABS)
   const { data: products, isLoading } = useAllProducts()
   const { data: checks } = useOriginChecks()
   // Скільки рослин можна виправити на кожній вкладці — у дужках біля назви вкладки
   const counts = useMemo(
-    () =>
-      products && {
-        forms: planFormFixes(products).fixes.length,
-        names: planNameFixes(products).length,
-        cultivars: planCultivarFixes(products).length,
-        origins: planOriginFixes(products, (checks ?? []).map((c) => rowFromCells(c.cells))).fixes.length,
-      },
+    (): Partial<Record<Tab, number>> =>
+      products
+        ? {
+            forms: planFormFixes(products).fixes.length,
+            names: planNameFixes(products).length,
+            cultivars: planCultivarFixes(products).length,
+            origins: planOriginFixes(products, (checks ?? []).map((c) => rowFromCells(c.cells))).fixes.length,
+          }
+        : {},
     [products, checks],
   )
 
   return (
     <div className="max-w-4xl">
-      <BackLink fallback="/admin/import" />
-      <h1 className="mb-4 font-display text-3xl font-extrabold text-brand-600">{t(`admin.fixes.title.${tab}`)}</h1>
-      <div className="mb-4 grid grid-cols-2 rounded-2xl bg-sand-200 p-1 sm:flex sm:w-fit" role="tablist" aria-label={t('admin.fixes.tabsLabel')}>
-        {TABS.map((id) => {
-          const Icon = TAB_ICONS[id]
-          return (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={tab === id}
-              onClick={() => setParams(id === 'forms' ? {} : { tab: id }, { replace: true, preventScrollReset: true })}
-              className={`inline-flex min-h-10 items-center justify-center gap-1 rounded-xl px-1.5 text-sm font-bold whitespace-nowrap transition-colors sm:gap-1.5 sm:px-4 ${
-                tab === id ? 'bg-brand-600 text-sand-50 shadow-sm' : 'text-sand-700 hover:text-ink'
-              }`}
-            >
-              {/* На телефоні без значків і з короткими назвами — так вкладки з кількістю вміщаються по дві в рядок */}
-              <Icon size={16} strokeWidth={2.25} className="hidden sm:block" aria-hidden />
-              <span className="hidden sm:inline">{t(`admin.fixes.tabs.${id}`)}</span>
-              <span className="sm:hidden">{t(`admin.fixes.tabsShort.${id}`)}</span>
-              {counts && <span className={tab === id ? 'font-semibold opacity-80' : 'font-semibold'}>({counts[id]})</span>}
-            </button>
-          )
-        })}
+      <BackLink fallback="/admin" />
+      <h1 className="mb-4 font-display text-3xl font-extrabold text-brand-600">{t('admin.home.tools')}</h1>
+      <div className="mb-4">
+        <TabBar
+          label={t('admin.home.tools')}
+          active={tab}
+          onChange={setTab}
+          tabs={TABS.map((id) => ({ id, label: t(`admin.fixes.tabs.${id}`), short: t(`admin.fixes.tabsShort.${id}`), Icon: TAB_ICONS[id], count: counts[id] }))}
+        />
       </div>
 
-      {isLoading && <p className="text-sand-700">{t('loading')}</p>}
       {/* key: при перемиканні вкладок галочки й повідомлення «Готово» починаються заново */}
-      {products &&
-        (tab === 'names' ? (
-          <NamesTab key="names" products={products} />
-        ) : tab === 'origins' ? (
-          <OriginsTab key="origins" />
-        ) : tab === 'cultivars' ? (
-          <CultivarsTab key="cultivars" products={products} />
-        ) : (
-          <FormsTab key="forms" products={products} />
-        ))}
+      {tab === 'import' ? (
+        <ImportPage key="import" />
+      ) : tab === 'origins' ? (
+        <OriginsTab key="origins" />
+      ) : (
+        <>
+          {isLoading && <p className="text-sand-700">{t('loading')}</p>}
+          {products &&
+            (tab === 'names' ? (
+              <NamesTab key="names" products={products} />
+            ) : tab === 'cultivars' ? (
+              <CultivarsTab key="cultivars" products={products} />
+            ) : (
+              <FormsTab key="forms" products={products} />
+            ))}
+        </>
+      )}
     </div>
   )
 }

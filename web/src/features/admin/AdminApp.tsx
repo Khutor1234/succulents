@@ -1,19 +1,28 @@
-import { Navigate, Route, Routes } from 'react-router'
+import { Navigate, Route, Routes, useSearchParams } from 'react-router'
 import { AdminHome } from './AdminHome'
 import { AdminLayout } from './AdminLayout'
-import { CategoriesPage } from './CategoriesPage'
 import { AnalyticsPage } from './AnalyticsPage'
 import { CustomersPage } from './CustomersPage'
 import { FormFixesPage } from './FormFixesPage'
-import { ImportPage } from './ImportPage'
 import { OrdersPage } from './OrdersPage'
-import { PedigreesPage } from './PedigreesPage'
 import { ProductFormPage } from './ProductFormPage'
 import { ProductListPage } from './ProductListPage'
 
+/**
+ * Колишня окрема сторінка стала вкладкою іншого розділу — стара адреса (закладка, історія браузера) веде туди.
+ * `keep` — під яким параметром нова сторінка чекає вкладку, що була в старій адресі (?tab=…).
+ */
+function Moved({ to, keep, fallback }: { to: string; keep?: string; fallback?: string }) {
+  const [params] = useSearchParams()
+  const old = params.get('tab') ?? fallback
+  const url = new URL(to, 'http://x')
+  if (keep && old) url.searchParams.set(keep, old)
+  return <Navigate to={url.pathname + url.search} replace />
+}
+
 // Цей модуль вантажиться ліниво (див. app/router.tsx) — покупці не завантажують код адмінки.
-// Товари керуються і прямо в магазині (кнопки продавця на картках, «Вибрати» для масових дій, «Додати» в каталозі),
-// і тут — компактним списком (/admin/products, плитка «Каталог»), щоб бачити багато товарів одразу.
+// Розділи: Замовлення, Товари (з вкладкою «Категорії»), Покупці, Аналітика (з «Родоводами»), Інструменти (імпорт і виправлення).
+// Товари керуються і прямо в магазині (кнопки продавця на картках, «Вибрати» для масових дій, «Додати» в каталозі).
 export default function AdminApp() {
   return (
     <Routes>
@@ -21,15 +30,16 @@ export default function AdminApp() {
         <Route index element={<AdminHome />} />
         <Route path="products" element={<ProductListPage />} />
         <Route path="products/:id" element={<ProductFormPage />} />
-        <Route path="import" element={<ImportPage />} />
-        <Route path="forms" element={<FormFixesPage />} />
-        {/* «Перевірка походження» тепер вкладка «Виправити форми» — стара адреса веде туди */}
-        <Route path="origins" element={<Navigate to="/admin/forms?tab=origins" replace />} />
+        <Route path="tools" element={<FormFixesPage />} />
         <Route path="orders" element={<OrdersPage />} />
-        <Route path="categories" element={<CategoriesPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
-        <Route path="pedigrees" element={<PedigreesPage />} />
+        {/* Старі адреси */}
+        <Route path="categories" element={<Moved to="/admin/products?tab=categories" />} />
+        <Route path="pedigrees" element={<Moved to="/admin/analytics?tab=pedigrees" keep="view" />} />
+        <Route path="import" element={<Moved to="/admin/tools" />} />
+        <Route path="forms" element={<Moved to="/admin/tools" keep="tab" fallback="forms" />} />
+        <Route path="origins" element={<Moved to="/admin/tools?tab=origins" />} />
       </Route>
     </Routes>
   )

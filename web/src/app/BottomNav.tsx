@@ -1,8 +1,6 @@
 import {
   BarChart3,
   ClipboardList,
-  FileSpreadsheet,
-  GitFork,
   Home,
   LayoutDashboard,
   LayoutGrid,
@@ -10,9 +8,9 @@ import {
   MoreHorizontal,
   Search,
   ShoppingBag,
-  Sparkles,
+  List,
   Store,
-  Tags,
+  Wrench,
   User,
   Users,
   X,
@@ -151,12 +149,10 @@ function BuyerNav() {
 // Продавцю під «Ще» — решта розділів магазину й адмінки
 const MORE: { to: string; label: string; Icon: LucideIcon }[] = [
   { to: '/search', label: 'nav.search', Icon: Search },
-  { to: '/admin/analytics', label: 'analytics.title', Icon: BarChart3 },
-  { to: '/admin/pedigrees', label: 'admin.pedigrees.title', Icon: GitFork },
-  { to: '/admin/categories', label: 'admin.categories', Icon: Tags },
+  { to: '/admin/products', label: 'admin.list.title', Icon: List },
   { to: '/admin/customers', label: 'admin.customers.title', Icon: Users },
-  { to: '/admin/import', label: 'admin.importFromSheet', Icon: FileSpreadsheet },
-  { to: '/admin/forms', label: 'admin.formFixes.title', Icon: Sparkles },
+  { to: '/admin/analytics', label: 'analytics.title', Icon: BarChart3 },
+  { to: '/admin/tools', label: 'admin.home.tools', Icon: Wrench },
 ]
 
 function SellerNav() {
