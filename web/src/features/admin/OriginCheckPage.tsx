@@ -1,4 +1,4 @@
-import { ArrowRight, Check, CircleCheck, ClipboardCopy, ExternalLink, Plus, Save } from 'lucide-react'
+import { ArrowRight, Check, CircleCheck, ClipboardCopy, ExternalLink, Plus, Save, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -7,7 +7,7 @@ import { useHere } from '../../shared/navigation'
 import { nameKey } from '../../lib/plantName'
 import { slugify } from '../../lib/slug'
 import { Select, Textarea } from '../../shared/ui'
-import { useAllProducts, useOriginChecks, useSaveOriginChecks } from './api'
+import { useAllProducts, useDeleteOriginCheck, useOriginChecks, useSaveOriginChecks } from './api'
 import { FixList, Hint, useApplyFixes } from './FormFixesPage'
 import { checkablePlants, parseCells, planOriginFixes, rowFromCells, toTsv, type CheckRow, type OriginFix } from './originCheck'
 
@@ -34,7 +34,7 @@ export function OriginsTab() {
   }, [plants])
   const { data: checks } = useOriginChecks()
   const saveChecks = useSaveOriginChecks()
-  const rows = useMemo(() => (checks ?? []).map((c) => rowFromCells(c.cells)), [checks])
+  const rows = useMemo(() => (checks ?? []).map((c) => ({ ...rowFromCells(c.cells), checkId: c.id })), [checks])
   const plan = useMemo(() => planOriginFixes(products ?? [], rows), [products, rows])
   const [genus, setGenus] = useState('')
   const [onlyNew, setOnlyNew] = useState(true)
@@ -167,6 +167,7 @@ export function OriginsTab() {
                     {f.source && <SourceLink url={f.source} />}
                   </span>
                 )}
+                aside={(f) => <DeleteCheck id={f.checkId} name={f.name} />}
               />
               {plan.ok > 0 && <p className="text-sm text-sand-700">{t('admin.originCheck.ok', { count: plan.ok })}</p>}
               {plan.unknown.length > 0 && (
@@ -178,6 +179,34 @@ export function OriginsTab() {
         </>
       )}
     </div>
+  )
+}
+
+/**
+ * Видалити запропоновану правку: стирає збережену перевірку рослини (рядок зникає звідусіль,
+ * а рослина знову стає «неперевіреною» — її можна скопіювати й перевірити заново).
+ */
+function DeleteCheck({ id, name, small }: { id?: string; name: string; small?: boolean }) {
+  const { t } = useTranslation()
+  const remove = useDeleteOriginCheck()
+  if (!id) return null
+  const label = t('admin.originCheck.deleteCheck', { name })
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      disabled={remove.isPending}
+      onClick={(e) => {
+        // Кнопка лежить у рядку з галочкою — натискання не має її ставити
+        e.preventDefault()
+        e.stopPropagation()
+        remove.mutate(id)
+      }}
+      className={`flex shrink-0 items-center justify-center rounded-full text-sand-700 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-50 ${small ? 'h-7 w-7' : 'h-9 w-9'}`}
+    >
+      <Trash2 size={small ? 15 : 18} strokeWidth={2.25} aria-hidden />
+    </button>
   )
 }
 
@@ -205,10 +234,11 @@ function Leftovers({ title, rows }: { title: string; rows: CheckRow[] }) {
       <summary className="cursor-pointer text-sm font-bold text-sand-800">{title}</summary>
       <ul className="mt-2 space-y-1 text-sm">
         {rows.map((r) => (
-          <li key={r.name}>
+          <li key={r.name} className="flex flex-wrap items-center gap-x-1">
             <span className="font-semibold">{r.name}</span>
             {r.note && <span className="text-sand-700"> — {r.note}</span>}
             {r.source && <SourceLink url={r.source} />}
+            <DeleteCheck id={r.checkId} name={r.name} small />
           </li>
         ))}
       </ul>
@@ -259,6 +289,7 @@ function Missing({ rows }: { rows: CheckRow[] }) {
               >
                 <Plus size={18} strokeWidth={3} aria-hidden />
               </Link>
+              <DeleteCheck id={r.checkId} name={name} />
             </li>
           )
         })}

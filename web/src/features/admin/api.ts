@@ -212,6 +212,15 @@ export function useOriginChecks() {
   })
 }
 
+/** Видалити збережену перевірку однієї рослини — її правка зникає, а рослина знову «неперевірена». */
+export function useDeleteOriginCheck() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => deleteDoc(doc(db, 'originChecks', id)),
+    onSuccess: (_, id) => qc.setQueryData<SavedCheck[]>(['admin', 'originChecks'], (old) => old?.filter((c) => c.id !== id)),
+  })
+}
+
 /** Зберегти рядки перевірки: та сама рослина (за назвою) — перезаписується новими даними. */
 export function useSaveOriginChecks() {
   const qc = useQueryClient()

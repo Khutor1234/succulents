@@ -49,6 +49,8 @@ function parseOrigin(text: string): PlantOrigin | null | undefined {
 }
 
 export interface CheckRow {
+  /** Документ перевірки в базі (originChecks) — щоб її можна було видалити */
+  checkId?: string
   name: string
   /** Як правильно записати назву (порожньо — і так правильно) */
   fixedName: string
@@ -104,6 +106,8 @@ export interface OriginFix {
   patch: Record<string, unknown>
   source: string
   note: string
+  /** Документ перевірки, з якої ця правка */
+  checkId?: string
 }
 
 export interface OriginPlan {
@@ -155,7 +159,7 @@ export function planOriginFixes(products: Product[], rows: CheckRow[]): OriginPl
     seen.add(p.id)
     plan.checked.add(p.id)
     const fix = (changes: FieldChange[], patch: Record<string, unknown>) =>
-      plan.fixes.push({ id: p.id, slug: p.slug, name: p.name.uk, changes, patch, source: row.source, note: row.note })
+      plan.fixes.push({ id: p.id, slug: p.slug, name: p.name.uk, changes, patch, source: row.source, note: row.note, checkId: row.checkId })
 
     // Назва записана неправильно (лапки, регістр, описка) — виправляємо, навіть якщо про походження нічого не знайдено
     const rename = row.fixedName && row.fixedName !== p.name.uk.trim() ? row.fixedName : ''

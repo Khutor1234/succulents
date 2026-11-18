@@ -118,10 +118,13 @@ export function FixList<T extends { id: string; slug: string; name: string }>({
   fixes,
   apply,
   row,
+  aside,
 }: {
   fixes: T[]
   apply: ReturnType<typeof useApplyFixes<T>>
   row: (fix: T) => React.ReactNode
+  /** Кнопка праворуч у рядку (напр. «Видалити правку») — натискання не ставить галочку */
+  aside?: (fix: T) => React.ReactNode
 }) {
   const { t } = useTranslation()
   // Вибрані галочками (за замовчуванням — жодного)
@@ -167,6 +170,7 @@ export function FixList<T extends { id: string; slug: string; name: string }>({
                     </Link>
                     {row(f)}
                   </span>
+                  {aside?.(f)}
                 </label>
               </li>
             ))}
