@@ -1,4 +1,4 @@
-import { CircleCheck, EyeOff, List, Pencil, Plus, Tags } from 'lucide-react'
+import { EyeOff, List, Pencil, Plus, Tags } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -12,8 +12,8 @@ import { useHere } from '../../shared/navigation'
 import { Select, SmallImage, SucculentIcon } from '../../shared/ui'
 import { useProgressive } from '../../shared/useProgressive'
 import { useCategories } from '../catalog/categories'
-import { CopyName, CuttingToggle, DeleteButton, ForSaleButton, HomePin, SellerStock, VisibilityButton } from '../catalog/ProductCard'
-import { useAllProducts, useToggleVerified } from './api'
+import { CopyName, CuttingToggle, DeleteButton, ForSaleButton, HomePin, SellerStock, VerifiedToggle, VisibilityButton } from '../catalog/ProductCard'
+import { useAllProducts } from './api'
 import { CategoriesPage } from './CategoriesPage'
 import { TabBar, useTab } from './TabBar'
 
@@ -140,32 +140,6 @@ export function ProductListPage() {
         </>
       )}
     </div>
-  )
-}
-
-/**
- * «Перевірено вручну»: галочка, яку продавець ставить сама, коли перевірила рослину (назву, походження, фото…).
- * Зелена й зафарбована — перевірено; сіра — ні (за замовчуванням).
- */
-function VerifiedToggle({ product }: { product: Product }) {
-  const { t } = useTranslation()
-  const toggle = useToggleVerified()
-  const on = !!product.verified
-  const label = t(on ? 'admin.list.verifiedOn' : 'admin.list.verifiedOff')
-  return (
-    <button
-      type="button"
-      onClick={() => toggle.mutate({ id: product.id, verified: !on })}
-      disabled={toggle.isPending}
-      aria-pressed={on}
-      aria-label={label}
-      title={label}
-      className={`-my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors active:scale-95 disabled:opacity-60 ${
-        on ? 'text-brand-600 hover:bg-brand-100' : 'text-sand-400 hover:bg-sand-200 hover:text-sand-700'
-      }`}
-    >
-      <CircleCheck size={19} strokeWidth={on ? 2.75 : 2} className={on ? 'fill-brand-100' : ''} aria-hidden />
-    </button>
   )
 }
 

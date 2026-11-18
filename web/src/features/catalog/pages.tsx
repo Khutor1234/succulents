@@ -46,6 +46,7 @@ import {
 } from "./usePlantFilters";
 import {
   CopyName,
+  VerifiedToggle,
   CuttingToggle,
   DeleteButton,
   ForSaleButton,
@@ -644,6 +645,7 @@ export function ProductPage() {
           {isSeller && (
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
               <CopyName name={name} />
+              <VerifiedToggle product={product} />
               <SellerStock product={product} compact />
               <Link
                 to={`/admin/products/${product.id}`}

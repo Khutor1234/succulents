@@ -22,6 +22,8 @@ export interface NameChange {
 
 export interface NameFix {
   id: string
+  /** Мале фото рослини в списку правок */
+  image?: string
   slug: string
   name: string
   changes: NameChange[]
@@ -31,7 +33,7 @@ export interface NameFix {
   base?: Product['base']
 }
 
-type Plant = Pick<Product, 'id' | 'slug' | 'name' | 'category' | 'parents' | 'base'>
+type Plant = Pick<Product, 'id' | 'slug' | 'name' | 'category' | 'parents' | 'base'> & { images?: string[] }
 
 /** `chosen` — вибране продавцем правильне написання для рослин, яких немає в магазині (ключ — nameKey). */
 export function planNameFixes(products: Plant[], chosen: ReadonlyMap<string, string> = new Map()): NameFix[] {
@@ -94,6 +96,7 @@ export function planNameFixes(products: Plant[], chosen: ReadonlyMap<string, str
       id: p.id,
       slug: p.slug,
       name: p.name.uk,
+      image: p.images?.[0],
       changes,
       parents,
       ...(p.base && baseParents ? { base: { ...p.base, parents: baseParents } } : {}),

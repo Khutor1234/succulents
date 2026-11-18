@@ -119,6 +119,10 @@ export function FixList<T extends { id: string; slug: string; name: string; imag
   apply,
   row,
   aside,
+  selection,
+  selectable,
+  alsoChosen,
+  onApplied,
 }: {
   fixes: T[]
   apply: ReturnType<typeof useApplyFixes<T>>
@@ -126,18 +130,29 @@ export function FixList<T extends { id: string; slug: string; name: string; imag
   row: (fix: T, chosen: boolean) => React.ReactNode
   /** Кнопка праворуч у рядку (напр. «Видалити правку») — натискання не ставить галочку */
   aside?: (fix: T) => React.ReactNode
+  /** Галочки рядків ззовні (коли сторінці треба знати, що вибрано) */
+  selection?: [Set<string>, (s: Set<string>) => void]
+  /** Чи є в рядку що вибирати галочкою рядка (немає — галочки немає) */
+  selectable?: (fix: T) => boolean
+  /** Рядок треба застосувати й без галочки рядка (напр. вибрано лише опис) */
+  alsoChosen?: (fix: T) => boolean
+  /** Після «Застосувати» — напр. зняти й інші галочки сторінки */
+  onApplied?: () => void
 }) {
   const { t } = useTranslation()
   // Вибрані галочками (за замовчуванням — жодного)
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const chosen = fixes.filter((f) => selected.has(f.id))
+  const own = useState<Set<string>>(new Set())
+  const [selected, setSelected] = selection ?? own
+  const canSelect = (f: T) => selectable?.(f) ?? true
+  const chosen = fixes.filter((f) => selected.has(f.id) || alsoChosen?.(f))
   const toggle = (id: string) => {
     const next = new Set(selected)
     if (next.has(id)) next.delete(id)
     else next.add(id)
     setSelected(next)
   }
-  const allChosen = fixes.length > 0 && chosen.length === fixes.length
+  const pickable = fixes.filter(canSelect)
+  const allChosen = pickable.length > 0 && pickable.every((f) => selected.has(f.id))
   return (
     <>
       {apply.isSuccess && <p className="rounded-xl bg-brand-100 p-3 font-bold text-brand-700">{t('admin.formFixes.done', { count: apply.data })}</p>}
@@ -149,7 +164,7 @@ export function FixList<T extends { id: string; slug: string; name: string; imag
             <p className="font-bold">{t('admin.formFixes.found', { count: fixes.length })}</p>
             <button
               type="button"
-              onClick={() => setSelected(allChosen ? new Set() : new Set(fixes.map((f) => f.id)))}
+              onClick={() => setSelected(allChosen ? new Set() : new Set(pickable.map((f) => f.id)))}
               className="text-sm font-bold text-brand-600 underline"
             >
               {allChosen ? t('admin.formFixes.selectNone') : t('admin.formFixes.selectAll')}
@@ -160,10 +175,14 @@ export function FixList<T extends { id: string; slug: string; name: string; imag
               <li key={f.id}>
                 <label
                   className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-3 transition-colors ${
-                    selected.has(f.id) ? 'border-brand-600 bg-brand-100/40' : 'border-sand-200 bg-sand-50 hover:border-brand-500/40'
+                    selected.has(f.id) || alsoChosen?.(f) ? 'border-brand-600 bg-brand-100/40' : 'border-sand-200 bg-sand-50 hover:border-brand-500/40'
                   }`}
                 >
-                  <input type="checkbox" checked={selected.has(f.id)} onChange={() => toggle(f.id)} className="mt-1 h-5 w-5 shrink-0 accent-brand-600" />
+                  {canSelect(f) ? (
+                    <input type="checkbox" checked={selected.has(f.id)} onChange={() => toggle(f.id)} className="mt-1 h-5 w-5 shrink-0 accent-brand-600" />
+                  ) : (
+                    <span className="w-5 shrink-0" aria-hidden />
+                  )}
                   {/* Мале фото — щоб одразу було видно, про яку рослину правка */}
                   {f.image && (
                     <Link to={`/product/${f.slug}`} onClick={(e) => e.stopPropagation()} className="shrink-0">
@@ -183,7 +202,12 @@ export function FixList<T extends { id: string; slug: string; name: string; imag
             ))}
           </ul>
           <div className="sticky bottom-[var(--bottom-nav-h,0px)] z-30 -mx-4 border-t-2 border-sand-200 bg-sand-100/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
-            <Button onClick={() => apply.mutate(chosen, { onSuccess: () => setSelected(new Set()) })} disabled={apply.isPending || chosen.length === 0}>
+            <Button onClick={() => apply.mutate(chosen, {
+                onSuccess: () => {
+                  setSelected(new Set())
+                  onApplied?.()
+                },
+              })} disabled={apply.isPending || chosen.length === 0}>
               {apply.isPending
                 ? t('admin.import.applying')
                 : chosen.length === 0

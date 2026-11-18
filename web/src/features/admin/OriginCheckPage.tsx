@@ -79,19 +79,22 @@ export function OriginsTab() {
     () => localStorage.getItem(STORAGE_KEY) ?? "",
   );
   const pasted = useMemo(() => parseCells(text), [text]);
-  // Опис у картці правки: текст можна відредагувати (правка зберігається в перевірці, не загубиться)
-  // і окремою галочкою вирішити, чи записувати його (за замовчуванням — так)
+  // У картці дві окремі галочки: галочка рослини — загальні правки (назва, батьки, походження…),
+  // «Застосувати опис» — лише опис. Можна вибрати одне з двох або обидва; за замовчуванням нічого.
+  // Текст опису можна відредагувати (правка зберігається в перевірці, не загубиться).
+  const rowSelection = useState<Set<string>>(new Set());
+  const [rowsOn] = rowSelection;
   const [descEdits, setDescEdits] = useState<Record<string, string>>({});
-  const [descOff, setDescOff] = useState<Set<string>>(new Set());
+  const [descOn, setDescOn] = useState<Set<string>>(new Set());
   const descText = (f: OriginFix) => descEdits[f.id] ?? f.description?.to ?? "";
   const apply = useApplyFixes<OriginFix>((f) => ({
-    ...f.patch,
-    ...(f.description && !descOff.has(f.id) && descText(f).trim()
+    ...(rowsOn.has(f.id) ? f.patch : {}),
+    ...(f.description && descOn.has(f.id) && descText(f).trim()
       ? { "description.uk": descText(f).trim() }
       : {}),
   }));
   function toggleDesc(id: string) {
-    setDescOff((s) => {
+    setDescOn((s) => {
       const next = new Set(s);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -261,10 +264,15 @@ export function OriginsTab() {
           {rows.length > 0 && (
             <section className="space-y-4">
               <h2 className="font-bold">{t("admin.originCheck.step3")}</h2>
+              <p className="text-sm text-sand-700">{t("admin.originCheck.step3Hint")}</p>
               <FixList
                 fixes={plan.fixes}
                 apply={apply}
-                row={(f, chosen) => (
+                selection={rowSelection}
+                selectable={(f) => f.changes.length > 0}
+                alsoChosen={(f) => !!f.description && descOn.has(f.id)}
+                onApplied={() => setDescOn(new Set())}
+                row={(f) => (
                   <span className="mt-1 block space-y-1 text-sm">
                     {f.changes.map((c) => (
                       <span
@@ -294,7 +302,7 @@ export function OriginsTab() {
                       </span>
                     )}
                     {f.description && (
-                      // Опис — своя галочка: натискання тут не ставить і не знімає галочку всієї рослини
+                      // Опис — своя галочка, окремо від галочки рослини (та — лише для загальних змін)
                       <span
                         className="mt-2 block space-y-2 rounded-xl bg-sand-100 p-2.5"
                         onClick={(e) => e.stopPropagation()}
@@ -302,20 +310,13 @@ export function OriginsTab() {
                         <span className="flex items-center gap-2">
                           <input
                             type="checkbox"
-                            checked={chosen && !descOff.has(f.id)}
-                            disabled={!chosen}
+                            checked={descOn.has(f.id)}
                             onChange={() => toggleDesc(f.id)}
                             onClick={(e) => e.stopPropagation()}
                             aria-label={t("admin.originCheck.applyDescription")}
-                            className="h-4 w-4 shrink-0 accent-brand-600 disabled:opacity-40"
+                            className="h-4 w-4 shrink-0 accent-brand-600"
                           />
-                          <span
-                            className={
-                              chosen
-                                ? "font-semibold"
-                                : "font-semibold text-sand-700 opacity-60"
-                            }
-                          >
+                          <span className="font-semibold">
                             {t("admin.originCheck.applyDescription")}
                           </span>
                         </span>
@@ -339,7 +340,6 @@ export function OriginsTab() {
                           }
                           onBlur={() => keepDescEdit(f)}
                           onClick={(e) => e.preventDefault()}
-                          disabled={descOff.has(f.id)}
                           rows={4}
                           aria-label={t("admin.originCheck.descriptionNew", {
                             name: f.name,

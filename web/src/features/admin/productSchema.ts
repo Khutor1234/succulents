@@ -26,6 +26,8 @@ export const productFormSchema = z.object({
   isActive: z.boolean(),
   /** Продається: вимкнено — покупці бачать «немає в наявності», продавець — справжній залишок. */
   forSale: z.boolean(),
+  /** Продавець сама перевірила рослину вручну (та сама галочка, що й у швидких кнопках). */
+  verified: z.boolean(),
   /** '' — вид не вказано (напр. для ґрунту чи інструменту). */
   genus: z.string(),
   /** Лише у формі: сорт/назва рослини без виду й форм («Lola»). Повна назва складається з виду, сорту й форм. */
@@ -68,6 +70,7 @@ export function toFormValues(p: Product | null, defaultCategory: string): Produc
     // Новий товар спершу прихований і не на продаж — продавець вмикає, коли все готово.
     isActive: p?.isActive ?? false,
     forSale: p ? p.forSale !== false : false,
+    verified: !!p?.verified,
     // Нова рослина одразу з видом Echeveria; у вже існуючого товару лишаємо те, що збережено.
     genus: p ? (p.genus ?? '') : newPlant ? DEFAULT_GENUS : '',
     tags: p?.tags ?? [],

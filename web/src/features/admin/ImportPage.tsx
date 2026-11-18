@@ -3,7 +3,7 @@ import { doc, serverTimestamp, writeBatch } from 'firebase/firestore'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { db } from '../../firebase/config'
-import { Button } from '../../shared/ui'
+import { Button, SmallImage } from '../../shared/ui'
 import { useAllProducts } from './api'
 import { parseSheet, planImport, type ImportPlan, type ProductUpdate } from './sheetImport'
 
@@ -80,6 +80,8 @@ export function ImportPage() {
     updates: plan?.updates.filter((u) => !skipped.has(updateKey(u.id))) ?? [],
   }
   const hasChanges = chosen.renames.length + chosen.creates.length + chosen.updates.length > 0
+  // Мале фото рослини, що вже є в магазині — щоб було видно, про яку рослину рядок
+  const imageOf = (id: string) => products?.find((p) => p.id === id)?.images?.[0]
   const fieldValue = (field: string, value: string) => (field === 'origin' && value ? t(`admin.fields.origins.${value}`) : value)
 
   return (
@@ -108,6 +110,7 @@ export function ImportPage() {
             title={t('admin.import.renames', { count: plan.renames.length })}
             items={plan.renames.map((r) => ({
               key: renameKey(r.id),
+              image: imageOf(r.id),
               content: <WasWill was={r.from} will={r.to} />,
             }))}
             skipped={skipped}
@@ -139,6 +142,7 @@ export function ImportPage() {
             hint={t('admin.import.updatesHint')}
             items={plan.updates.map((u) => ({
               key: updateKey(u.id),
+              image: imageOf(u.id),
               content: (
                 <>
                   <span className="block text-base font-bold">{u.name}</span>
@@ -204,7 +208,7 @@ function ChoiceSection({
 }: {
   title: string
   hint?: string
-  items: { key: string; content: ReactNode }[]
+  items: { key: string; content: ReactNode; image?: string }[]
   skipped: Set<string>
   onToggle: (key: string) => void
   onAll: (keys: string[], on: boolean) => void
@@ -228,7 +232,7 @@ function ChoiceSection({
         </button>
       </div>
       <ul className="mt-2 max-h-[32rem] space-y-2 overflow-y-auto">
-        {items.map(({ key, content }) => {
+        {items.map(({ key, content, image }) => {
           const on = !skipped.has(key)
           return (
             <li key={key}>
@@ -236,6 +240,7 @@ function ChoiceSection({
                 className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 bg-sand-50 p-3 transition-colors ${on ? 'border-brand-500/50' : 'border-sand-200 opacity-60'}`}
               >
                 <input type="checkbox" checked={on} onChange={() => onToggle(key)} className="mt-1 h-5 w-5 shrink-0 accent-brand-600" />
+                {image && <SmallImage src={image} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" />}
                 <span className="min-w-0 flex-1 text-sm">{content}</span>
               </label>
             </li>

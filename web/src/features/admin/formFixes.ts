@@ -12,6 +12,8 @@ import type { PlantOrigin, Product } from '../../lib/types'
 
 export interface FormFix {
   id: string
+  /** Мале фото рослини в списку правок */
+  image?: string
   /** Адреса сторінки рослини — назва в списку веде туди */
   slug: string
   name: string
@@ -30,7 +32,7 @@ export interface FormFixPlan {
   ok: number
 }
 
-type Plant = Pick<Product, 'id' | 'slug' | 'name' | 'category' | 'tags' | 'origin' | 'parents' | 'isActive' | 'genus'>
+type Plant = Pick<Product, 'id' | 'slug' | 'name' | 'category' | 'tags' | 'origin' | 'parents' | 'isActive' | 'genus'> & { images?: string[] }
 
 // Назва без форм, лапок і різниці в регістрі/пробілах: «Graptoveria 'Debbie' variegata» → «graptoveriadebbie»
 // («hybrid» лишається: «Orion hybrid variegata» — від «Orion hybrid», а «Orion variegata» — від «Orion»)
@@ -65,7 +67,7 @@ export function planFormFixes(products: Plant[]): FormFixPlan {
       plan.ok++
       return
     }
-    plan.fixes.push({ id: p.id, slug: p.slug, name: p.name.uk, source, sourceInShop: !!inShop, kind: 'selection', before: { origin: p.origin, parents } })
+    plan.fixes.push({ id: p.id, slug: p.slug, name: p.name.uk, image: p.images?.[0], source, sourceInShop: !!inShop, kind: 'selection', before: { origin: p.origin, parents } })
   }
   for (const p of plants) {
     const forms = formsOf(p)
@@ -90,7 +92,7 @@ export function planFormFixes(products: Plant[]): FormFixPlan {
       plan.ok++
       continue
     }
-    plan.fixes.push({ id: p.id, slug: p.slug, name: p.name.uk, source, sourceInShop: !!inShop, kind: 'form', before: { origin: p.origin, parents } })
+    plan.fixes.push({ id: p.id, slug: p.slug, name: p.name.uk, image: p.images?.[0], source, sourceInShop: !!inShop, kind: 'form', before: { origin: p.origin, parents } })
   }
   plan.fixes.sort((a, b) => a.name.localeCompare(b.name))
   return plan

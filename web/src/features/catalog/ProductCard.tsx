@@ -1,4 +1,4 @@
-import { Ban, Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Pin, Plus, Scissors, Tag, Trash2 } from 'lucide-react'
+import { Ban, Check, CheckSquare, CircleCheck, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Pin, Plus, Scissors, Tag, Trash2 } from 'lucide-react'
 import { useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -11,7 +11,7 @@ import { ProductImage } from '../../shared/ui'
 import { useHere } from '../../shared/navigation'
 import { useProgressive } from '../../shared/useProgressive'
 import { useAuth } from '../auth/authStore'
-import { useDeleteProduct, useSetStock, useToggleCutting, useToggleForSale, useToggleOnHome, useToggleProductActive } from '../admin/api'
+import { useDeleteProduct, useSetStock, useToggleCutting, useToggleForSale, useToggleOnHome, useToggleProductActive, useToggleVerified } from '../admin/api'
 import { BulkBar } from '../admin/BulkBar'
 import { AddToCart } from '../cart/AddToCart'
 import { FavoriteButton } from '../favorites/FavoriteButton'
@@ -155,6 +155,7 @@ export function ProductCard({
             на початку рядка вона на всіх картках на одному місці, хоч які довгі назви */}
         <div className="flex min-w-0 items-start gap-1">
           {isSeller && <CopyName name={name} className="-ml-1.5" />}
+          {isSeller && <VerifiedToggle product={product} />}
           <h3 className="leading-snug font-bold">
             <Link to={`/product/${product.slug}`} className="hover:text-brand-600">
               {withCuttingMark(name, product.tags?.includes('cutting'), t('product.cuttingMark'))}
@@ -424,6 +425,33 @@ export function CuttingToggle({ product, name, className = '', compact = false }
 }
 
 /** Копіює назву рослини в буфер обміну; на мить показує галочку «Скопійовано». */
+/**
+ * «Перевірено вручну»: галочка, яку продавець ставить сама, коли перевірила рослину (назву, походження, фото…).
+ * Зелена й зафарбована — перевірено; світла — ні (за замовчуванням). Стоїть одразу після «скопіювати назву»:
+ * на картці, на сторінці товару й у списку товарів адмінки.
+ */
+export function VerifiedToggle({ product, className = '' }: { product: Product; className?: string }) {
+  const { t } = useTranslation()
+  const toggle = useToggleVerified()
+  const on = !!product.verified
+  const label = t(on ? 'admin.list.verifiedOn' : 'admin.list.verifiedOff')
+  return (
+    <button
+      type="button"
+      onClick={() => toggle.mutate({ id: product.id, verified: !on })}
+      disabled={toggle.isPending}
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
+      className={`-my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors active:scale-95 disabled:opacity-60 ${
+        on ? 'text-brand-600 hover:bg-brand-100' : 'text-sand-400 hover:bg-sand-200 hover:text-sand-700'
+      } ${className}`}
+    >
+      <CircleCheck size={19} strokeWidth={on ? 2.75 : 2} className={on ? 'fill-brand-100' : ''} aria-hidden />
+    </button>
+  )
+}
+
 export function CopyName({ name, className = '' }: { name: string; className?: string }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)

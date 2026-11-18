@@ -716,6 +716,13 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
             <span className="block text-sm text-sand-700">{t('admin.fields.forSaleHint')}</span>
           </span>
         </label>
+        <label className="flex items-start gap-2">
+          <input type="checkbox" className="mt-1" {...register('verified')} />
+          <span>
+            {t('admin.fields.verified')}
+            <span className="block text-sm text-sand-700">{t('admin.fields.verifiedHint')}</span>
+          </span>
+        </label>
       </Section>
       </div>
 
