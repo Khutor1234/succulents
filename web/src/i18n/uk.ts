@@ -827,6 +827,7 @@ export const uk = {
     cultivarHint: 'Від',
     hybridOfHint: 'Гібрид від',
     sourceParents: 'Батьки {{name}}:',
+    parentsOf: 'Батьки {{name}}',
     sourceNatural: '{{name}} — природний вид',
     sourceCultivar: '{{name}} — відбір або мутація від',
     openPlant: 'Відкрити «{{name}}»',

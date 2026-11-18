@@ -1,4 +1,4 @@
-import { GitFork, Leaf, MapPin, Plus, Sprout, Sparkles } from 'lucide-react'
+import { CornerDownRight, GitFork, Leaf, MapPin, Plus, Sprout, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useAuth } from '../auth/authStore'
@@ -41,7 +41,7 @@ function Chip({
   icon?: React.ReactNode
   children: string
 }) {
-  const className = `${pillBase(big)} ${plain ? PILL_MISSING : PILL_LINK} ${grow ? 'flex-1 basis-0' : ''}`
+  const className = `${pillBase(big)} ${plain ? PILL_MISSING : PILL_LINK} ${grow ? 'min-w-0 flex-1 basis-0 [overflow-wrap:anywhere]' : ''}`
   // На картці довга назва переноситься щонайбільше на два рядки; `full` — повністю, скільки б рядків не зайняла
   const label = <span className={big || full ? 'break-words' : 'line-clamp-2 break-words'}>{children}</span>
   if (plain)
@@ -95,7 +95,7 @@ function AddPlantLink({ name, known, grow }: { name: string; known?: Product['ba
       state={{ from: here }}
       title={label}
       aria-label={label}
-      className={`group/add ${pillBase(true)} ${PILL_MISSING} transition-colors hover:border-solid hover:border-brand-600 hover:text-brand-700 ${grow ? 'flex-1 basis-0' : ''}`}
+      className={`group/add ${pillBase(true)} ${PILL_MISSING} transition-colors hover:border-solid hover:border-brand-600 hover:text-brand-700 ${grow ? 'min-w-0 flex-1 basis-0 [overflow-wrap:anywhere]' : ''}`}
     >
       <span className="break-words">{name}</span>
       <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sand-50 transition-transform group-hover/add:scale-110">
@@ -138,29 +138,25 @@ function FromRow({ lead, name, base }: { lead: string; name: string; base?: Prod
         {t('search.unknownParent')}
       </span>
     )
+  // Підпис блоку — одразу видно, що це про ту рослину, від якої ця («Батьки Echeveria Orion»)
+  let caption = ''
   let rest: React.ReactNode = null
-  if (info?.origin === 'natural')
-    rest = (
+  if (info?.origin === 'natural') {
+    caption = t('search.sourceNatural', { name })
+    rest = info.habitat ? (
       <>
-        <span className="inline-flex items-center gap-1.5 font-semibold">
-          <Leaf size={14} strokeWidth={2.5} aria-hidden />
-          {t('search.natural')}
-        </span>
         {info.habitat && (
           <Chip to={info.habitat} title={t('search.findParent', { name: info.habitat })} big icon={<MapPin size={14} strokeWidth={2.5} aria-hidden />}>
             {info.habitat}
           </Chip>
         )}
       </>
-    )
-  else if (info?.origin === 'cultivar' && parents[0])
-    rest = (
-      <>
-        <span className="shrink-0 font-semibold">{t('search.from')}</span>
-        <PlantChip name={parents[0]} big />
-      </>
-    )
-  else if (parents.length > 0)
+    ) : null
+  } else if (info?.origin === 'cultivar' && parents[0]) {
+    caption = t('search.sourceCultivar', { name })
+    rest = <PlantChip name={parents[0]} big />
+  } else if (parents.length > 0) {
+    caption = t('search.parentsOf', { name })
     rest = (
       <>
         {tile(parents[0])}
@@ -168,17 +164,21 @@ function FromRow({ lead, name, base }: { lead: string; name: string; base?: Prod
         {tile(parents[1])}
       </>
     )
-  // Телефон: «Від [рослина]», під ним «= її батьки»; ширше — усе в один рядок
+  }
+  // «Від [рослина]», під ним стрілка вниз з підписом «Батьки [рослини]», а під підписом на фоні — самі батьки
   return (
-    <div className="mt-3 flex flex-col gap-2 text-sm text-sand-700 sm:flex-row sm:items-center">
+    <div className="mt-3 text-sm text-sand-700">
       <div className="flex items-center gap-2">
         <span className="shrink-0 font-semibold">{lead}</span>
         <PlantChip name={name} big known={base ?? undefined} />
       </div>
-      {rest && (
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <Sign>=</Sign>
-          {rest}
+      {caption && (
+        <div className="mt-1.5 flex gap-1.5 pl-1">
+          <CornerDownRight size={22} strokeWidth={2.5} className="shrink-0 text-sunset-600" aria-hidden />
+          <div className="min-w-0 flex-1 sm:max-w-md">
+            <p className="pt-0.5 text-xs font-semibold">{caption}</p>
+            {rest && <div className="mt-1.5 flex min-w-0 items-center gap-1.5 rounded-2xl bg-sand-100 p-2 sm:gap-2">{rest}</div>}
+          </div>
         </div>
       )}
     </div>
