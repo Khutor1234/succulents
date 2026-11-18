@@ -1,5 +1,5 @@
-import { ArrowDown, ArrowRight, Layers, Network, Plus, UsersRound, X, type LucideIcon } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { ArrowDown, ArrowRight, Layers, Network, Plus, UsersRound, X, Equal, type LucideIcon } from 'lucide-react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { SmallImage } from '../../shared/ui'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -18,7 +18,6 @@ const TAB_ICONS: Record<Tab, LucideIcon> = { trios: UsersRound, families: Networ
 // «Нащадки»: ширина картки — однакова для рослини-батька і кожної дитини
 // Розмір фото рослини — однаковий на всіх трьох вкладках (--w задано на всю сторінку «Родоводів»)
 const FAMILY_CARD = 'w-(--w) shrink-0'
-// У «Трійках» --w менше (задано на списку трійок) — так на комп'ютері вміщається по три трійки в ряд
 
 /**
  * «Родоводи» — вкладка «Аналітики» (/admin/analytics?tab=pedigrees): підбірки з колекції — мама × тато → дитина,
@@ -90,24 +89,34 @@ export function PedigreesPage() {
       )}
 
       {tab === 'trios' && (
-        <ul className="grid gap-3 [--w:7.5rem] sm:[--w:8rem] md:grid-cols-2 xl:grid-cols-3">
-          {trios.map(({ key, child, parents }) => (
-            <li key={key} className="rounded-3xl border-2 border-sand-200 bg-sand-50 p-2.5">
-              {/*
-                Три фото однакового розміру, назва — під фото (не закриває рослину), до 2 рядків:
-                батьки один під одним, дитина праворуч посередині. Змінні: --w фото, --n місце під назву, --g проміжок між батьками.
-                Середина фото дитини — точно посередині між фото батьків: туди сходяться лінії.
-              */}
-              <div className="mx-auto grid max-w-[calc(var(--w)*2+5rem)] grid-cols-[var(--w)_minmax(2.75rem,1fr)_var(--w)] items-center [--g:0.375rem] [--n:2.5rem]">
-                <div className="flex flex-col gap-(--g)">
-                  <TrioNode n={parents[0]} />
-                  <TrioNode n={parents[1]} />
+        <ul className="grid gap-3 lg:grid-cols-2">
+          {trios.map(({ key, child, parents }) => {
+            const create = [parents[0].name, parents[1].name] as [string, string]
+            return (
+              <li key={key} className="rounded-3xl border-2 border-sand-200 bg-sand-50 p-2.5 sm:p-3">
+                {/*
+                  В один ряд: дитина = батько × батько. Фото — розміру --w (як у «Нащадках» і «Формах»), а якщо в ширину
+                  не вміщаються — трохи менші. Два рядки сітки: фото зі знаками (знаки — точно посередині фото) і назви під фото.
+                */}
+                <div className="grid grid-cols-[minmax(0,var(--w))_auto_minmax(0,var(--w))_auto_minmax(0,var(--w))] items-center gap-x-1.5 gap-y-1 sm:gap-x-2">
+                  <TrioPhoto n={child} child parents={create} />
+                  <Sign>
+                    <Equal size={15} strokeWidth={3} />
+                  </Sign>
+                  <TrioPhoto n={parents[0]} />
+                  <Sign>
+                    <X size={15} strokeWidth={3} />
+                  </Sign>
+                  <TrioPhoto n={parents[1]} />
+                  <TrioName n={child} parents={create} />
+                  <span />
+                  <TrioName n={parents[0]} />
+                  <span />
+                  <TrioName n={parents[1]} />
                 </div>
-                <Cross />
-                <TrioNode n={child} child parents={[parents[0].name, parents[1].name]} />
-              </div>
-            </li>
-          ))}
+              </li>
+            )
+          })}
         </ul>
       )}
 
@@ -164,68 +173,49 @@ export function PedigreesPage() {
   )
 }
 
-/**
- * Схрещування між фото: дві плавні лінії від середини фото батьків сходяться в кружечку «×»,
- * далі — лінія зі стрілкою до фото дитини. Займає висоту від середини першого фото до середини другого.
- */
-function Cross() {
+/** Знак між фото в трійці: «=» (дитина = …) і «×» (схрещування) — у зеленому кружечку. */
+function Sign({ children }: { children: ReactNode }) {
   return (
-    <div className="relative self-stretch" aria-hidden>
-      <div className="absolute inset-x-0 top-[calc(var(--w)/2)] h-[calc(var(--w)+var(--n)+var(--g))]">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full overflow-visible text-brand-500/60" fill="none">
-          <path d="M0 0 C 30 0, 30 50, 50 50 M0 100 C 30 100, 30 50, 50 50 M50 50 L 96 50" stroke="currentColor" strokeWidth="2" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-        </svg>
-        {/* Наконечник стрілки — окремо, щоб не розтягувався разом з лініями */}
-        <svg viewBox="0 0 10 12" className="absolute top-1/2 right-0 h-3 w-2.5 -translate-y-1/2 text-brand-500/60" fill="currentColor">
-          <path d="M0 0 L10 6 L0 12 Z" />
-        </svg>
-        <span className="absolute top-1/2 left-1/2 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-brand-600 text-sand-50 shadow-sm ring-4 ring-sand-50">
-          <X size={15} strokeWidth={3} />
-        </span>
-      </div>
-    </div>
+    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-sand-50 shadow-sm" aria-hidden>
+      {children}
+    </span>
   )
 }
 
-/**
- * Рослина в трійці — фото (--w × --w) і назва під ним (місце --n, до 3 рядків). Дитина — у зеленій рамці.
- * Такої рослини в магазині немає — пунктирний квадрат з плюсиком «Створити картку»
- * (для дитини — одразу з походженням «Гібрид» і батьками).
- */
-function TrioNode({ n, child, parents }: { n: PlantNode; child?: boolean; parents?: [string, string] }) {
+/** Куди веде рослина трійки: товар — його сторінка; немає в магазині — нова картка (для дитини — одразу «Гібрид» і батьки). */
+function useTrioLink(n: PlantNode, parents?: [string, string]) {
+  const { t } = useTranslation()
+  if (n.product) return { to: `/product/${n.product.slug}`, title: n.name }
+  const params = new URLSearchParams({ category: PLANT_CATEGORY, name: n.name })
+  if (parents) {
+    params.set('origin', 'hybrid')
+    params.set('p1', parents[0])
+    params.set('p2', parents[1])
+  }
+  return { to: `/admin/products/new?${params}`, title: t('search.addPlant', { name: n.name }) }
+}
+
+/** Фото рослини в трійці (квадрат). Дитина — у зеленій рамці; немає в магазині — пунктир з плюсиком. */
+function TrioPhoto({ n, child, parents }: { n: PlantNode; child?: boolean; parents?: [string, string] }) {
   const { t } = useTranslation()
   const here = useHere()
+  const link = useTrioLink(n, parents)
   const p = n.product
-  // Назва — під фото, на висоту --n (до 2 рядків; повна — у підказці при наведенні)
-  const name = (
-    <span className="mt-1 line-clamp-2 h-[calc(var(--n)-0.25rem)] text-[11px] leading-[1.05rem] font-semibold break-words group-hover:text-brand-600 sm:text-xs">
-      {n.name}
-    </span>
-  )
   if (!p) {
-    const params = new URLSearchParams({ category: PLANT_CATEGORY, name: n.name })
-    if (parents) {
-      params.set('origin', 'hybrid')
-      params.set('p1', parents[0])
-      params.set('p2', parents[1])
-    }
-    const label = t('search.addPlant', { name: n.name })
     return (
-      <Link to={`/admin/products/new?${params}`} state={{ from: here }} title={label} aria-label={label} className="group block w-(--w) text-sand-700">
-        {/* Немає в магазині: пунктирний квадрат з плюсиком і «Немає в магазині», назва — під ним */}
-        <span className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-sand-300 p-1 text-center transition-colors group-hover:border-brand-500">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-sand-50 transition-transform group-hover:scale-110">
+      <Link {...link} state={{ from: here }} aria-label={link.title} className="group block">
+        <span className="flex aspect-square flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-sand-300 p-1 text-center text-sand-700 transition-colors group-hover:border-brand-500">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sand-50 transition-transform group-hover:scale-110 sm:h-9 sm:w-9">
             <Plus size={18} strokeWidth={3} aria-hidden />
           </span>
-          <span className="text-[10px] leading-tight font-bold sm:text-[11px]">{t('admin.pedigrees.notInShop')}</span>
+          <span className="text-[10px] leading-tight font-bold sm:text-xs">{t('admin.pedigrees.notInShop')}</span>
         </span>
-        {name}
       </Link>
     )
   }
   const img = p.images?.[0]
   return (
-    <Link to={`/product/${p.slug}`} title={p.name.uk} className="group block w-(--w)">
+    <Link {...link} className="group block">
       <span
         className={`relative block aspect-square overflow-hidden rounded-2xl border-2 bg-sand-100 ${
           !p.isActive ? 'border-dashed border-lavender-400' : child ? 'border-brand-500' : 'border-transparent'
@@ -242,12 +232,26 @@ function TrioNode({ n, child, parents }: { n: PlantNode; child?: boolean; parent
           </span>
         )}
         {p.isActive && p.stock === 0 && (
-          <span className="absolute inset-x-1 top-1 truncate rounded-full bg-sunset-600/90 px-1.5 py-0.5 text-center text-[10px] font-bold text-sand-50">
+          <span className="absolute inset-x-1 bottom-1 truncate rounded-full bg-sunset-600/90 px-1.5 py-0.5 text-center text-[10px] font-bold text-sand-50">
             {t('admin.pedigrees.noStock')}
           </span>
         )}
       </span>
-      {name}
+    </Link>
+  )
+}
+
+/** Назва під фото в трійці — веде туди ж, куди й фото. */
+function TrioName({ n, parents }: { n: PlantNode; parents?: [string, string] }) {
+  const here = useHere()
+  const link = useTrioLink(n, parents)
+  return (
+    <Link
+      {...link}
+      state={n.product ? undefined : { from: here }}
+      className={`self-start text-xs leading-snug font-semibold break-words hover:text-brand-600 sm:text-sm ${n.product ? '' : 'text-sand-700'}`}
+    >
+      {n.name}
     </Link>
   )
 }
