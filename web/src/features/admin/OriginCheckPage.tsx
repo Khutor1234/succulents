@@ -1,20 +1,43 @@
-import { ArrowRight, Check, CircleCheck, ClipboardCopy, ExternalLink, Plus, Save, Trash2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
-import { PLANT_CATEGORY } from '../../lib/plants'
-import { useHere } from '../../shared/navigation'
-import { nameKey } from '../../lib/plantName'
-import { slugify } from '../../lib/slug'
-import { Select, Textarea } from '../../shared/ui'
-import { useAllProducts, useDeleteOriginCheck, useOriginChecks, useSaveOriginChecks } from './api'
-import { FixList, Hint, useApplyFixes } from './FormFixesPage'
-import { checkablePlants, COLUMNS, parseCells, planOriginFixes, rowFromCells, toTsv, type CheckRow, type DescriptionFix, type OriginFix } from './originCheck'
+import {
+  ArrowRight,
+  Check,
+  CircleCheck,
+  ClipboardCopy,
+  ExternalLink,
+  Plus,
+  Save,
+  Trash2,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
+import { PLANT_CATEGORY } from "../../lib/plants";
+import { useHere } from "../../shared/navigation";
+import { nameKey } from "../../lib/plantName";
+import { slugify } from "../../lib/slug";
+import { Select, Textarea } from "../../shared/ui";
+import {
+  useAllProducts,
+  useDeleteOriginCheck,
+  useOriginChecks,
+  useSaveOriginChecks,
+} from "./api";
+import { FixList, Hint, useApplyFixes } from "./FormFixesPage";
+import {
+  checkablePlants,
+  COLUMNS,
+  parseCells,
+  planOriginFixes,
+  rowFromCells,
+  toTsv,
+  type CheckRow,
+  type OriginFix,
+} from "./originCheck";
 
 // Ще не збережена вставка лежить у браузері — не загубиться, якщо сторінку оновили
-const STORAGE_KEY = 'succulents.originCheck'
+const STORAGE_KEY = "succulents.originCheck";
 // Документ перевірки — за назвою рослини: повторна перевірка тієї самої рослини перезаписує стару
-const checkId = (name: string) => slugify(nameKey(name)).slice(0, 200) || 'row'
+const checkId = (name: string) => slugify(nameKey(name)).slice(0, 200) || "row";
 
 /**
  * «Перевірка походження» — вкладка «Виправити форми» (/admin/forms?tab=origins):
@@ -24,72 +47,108 @@ const checkId = (name: string) => slugify(nameKey(name)).slice(0, 200) || 'row'
  * Копіювати можна лише неперевірені рослини — напр. нові, щойно додані.
  */
 export function OriginsTab() {
-  const { t } = useTranslation()
-  const { data: products, isLoading } = useAllProducts()
-  const plants = useMemo(() => checkablePlants(products ?? []), [products])
+  const { t } = useTranslation();
+  const { data: products, isLoading } = useAllProducts();
+  const plants = useMemo(() => checkablePlants(products ?? []), [products]);
   const genera = useMemo(() => {
-    const count = new Map<string, number>()
-    for (const p of plants) count.set(p.genus || '—', (count.get(p.genus || '—') ?? 0) + 1)
-    return [...count].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-  }, [plants])
-  const { data: checks } = useOriginChecks()
-  const saveChecks = useSaveOriginChecks()
-  const rows = useMemo(() => (checks ?? []).map((c) => ({ ...rowFromCells(c.cells), checkId: c.id })), [checks])
-  const plan = useMemo(() => planOriginFixes(products ?? [], rows), [products, rows])
-  const [genus, setGenus] = useState('')
-  const [onlyNew, setOnlyNew] = useState(true)
-  const inGenus = genus ? plants.filter((p) => (p.genus || '—') === genus) : plants
-  const unchecked = inGenus.filter((p) => !plan.checked.has(p.id))
-  const list = onlyNew ? unchecked : inGenus
-  const [copied, setCopied] = useState(false)
-  const [text, setText] = useState(() => localStorage.getItem(STORAGE_KEY) ?? '')
-  const pasted = useMemo(() => parseCells(text), [text])
-  const apply = useApplyFixes<OriginFix>((f) => f.patch)
-  // Описи: текст можна відредагувати перед «Застосувати»; правка зберігається в перевірці (не загубиться)
-  const [descEdits, setDescEdits] = useState<Record<string, string>>({})
-  const descText = (f: DescriptionFix) => descEdits[f.id] ?? f.to
-  const applyDesc = useApplyFixes<DescriptionFix>((f) => ({ 'description.uk': descText(f).trim() }))
-  function keepDescEdit(f: DescriptionFix) {
-    const check = checks?.find((c) => c.id === f.checkId)
-    const text = descEdits[f.id]
-    if (!check || text === undefined || text === f.to) return
-    const cells = [...check.cells]
-    while (cells.length < COLUMNS.length) cells.push('')
-    cells[COLUMNS.indexOf('Опис')] = text.replace(/\s+/g, ' ').trim()
-    saveChecks.mutate([{ id: check.id, cells }])
+    const count = new Map<string, number>();
+    for (const p of plants)
+      count.set(p.genus || "—", (count.get(p.genus || "—") ?? 0) + 1);
+    return [...count].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [plants]);
+  const { data: checks } = useOriginChecks();
+  const saveChecks = useSaveOriginChecks();
+  const rows = useMemo(
+    () =>
+      (checks ?? []).map((c) => ({ ...rowFromCells(c.cells), checkId: c.id })),
+    [checks],
+  );
+  const plan = useMemo(
+    () => planOriginFixes(products ?? [], rows),
+    [products, rows],
+  );
+  const [genus, setGenus] = useState("");
+  const [onlyNew, setOnlyNew] = useState(true);
+  const inGenus = genus
+    ? plants.filter((p) => (p.genus || "—") === genus)
+    : plants;
+  const unchecked = inGenus.filter((p) => !plan.checked.has(p.id));
+  const list = onlyNew ? unchecked : inGenus;
+  const [copied, setCopied] = useState(false);
+  const [text, setText] = useState(
+    () => localStorage.getItem(STORAGE_KEY) ?? "",
+  );
+  const pasted = useMemo(() => parseCells(text), [text]);
+  // Опис у картці правки: текст можна відредагувати (правка зберігається в перевірці, не загубиться)
+  // і окремою галочкою вирішити, чи записувати його (за замовчуванням — так)
+  const [descEdits, setDescEdits] = useState<Record<string, string>>({});
+  const [descOff, setDescOff] = useState<Set<string>>(new Set());
+  const descText = (f: OriginFix) => descEdits[f.id] ?? f.description?.to ?? "";
+  const apply = useApplyFixes<OriginFix>((f) => ({
+    ...f.patch,
+    ...(f.description && !descOff.has(f.id) && descText(f).trim()
+      ? { "description.uk": descText(f).trim() }
+      : {}),
+  }));
+  function toggleDesc(id: string) {
+    setDescOff((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function keepDescEdit(f: OriginFix) {
+    const check = checks?.find((c) => c.id === f.checkId);
+    const text = descEdits[f.id];
+    if (!check || text === undefined || text === f.description?.to) return;
+    const cells = [...check.cells];
+    while (cells.length < COLUMNS.length) cells.push("");
+    cells[COLUMNS.indexOf("Опис")] = text.replace(/\s+/g, " ").trim();
+    saveChecks.mutate([{ id: check.id, cells }]);
   }
 
   function edit(value: string) {
-    setText(value)
-    if (value) localStorage.setItem(STORAGE_KEY, value)
-    else localStorage.removeItem(STORAGE_KEY)
+    setText(value);
+    if (value) localStorage.setItem(STORAGE_KEY, value);
+    else localStorage.removeItem(STORAGE_KEY);
   }
 
   async function save() {
     // Та сама рослина двічі в одній таблиці — лишається останній рядок
-    const byId = new Map(pasted.map((cells) => [checkId(cells[0]), cells]))
-    await saveChecks.mutateAsync([...byId].map(([id, cells]) => ({ id, cells })))
-    edit('')
+    const byId = new Map(pasted.map((cells) => [checkId(cells[0]), cells]));
+    await saveChecks.mutateAsync(
+      [...byId].map(([id, cells]) => ({ id, cells })),
+    );
+    edit("");
   }
 
   async function copy() {
-    await navigator.clipboard.writeText(toTsv(list))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    await navigator.clipboard.writeText(toTsv(list));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   return (
     <div className="space-y-6">
-      <Hint>{t('admin.originCheck.hint')}</Hint>
-      {isLoading && <p className="text-sand-700">{t('loading')}</p>}
+      <Hint>{t("admin.originCheck.hint")}</Hint>
+      {isLoading && <p className="text-sand-700">{t("loading")}</p>}
 
       {products && (
         <>
           <section className="space-y-3 rounded-3xl border-2 border-sand-200 bg-sand-50 p-4">
-            <h2 className="font-bold">{t('admin.originCheck.step1')}</h2>
+            <h2 className="font-bold">{t("admin.originCheck.step1")}</h2>
             <div className="flex flex-wrap items-end gap-3">
-              <Select label={t('catalog.genus')} current={genus} value={genus} onChange={(e) => setGenus(e.target.value)} className="min-w-48">
-                <option value="">{t('admin.originCheck.allGenera', { count: plants.length })}</option>
+              <Select
+                label={t("catalog.genus")}
+                current={genus}
+                value={genus}
+                onChange={(e) => setGenus(e.target.value)}
+                className="min-w-48"
+              >
+                <option value="">
+                  {t("admin.originCheck.allGenera", { count: plants.length })}
+                </option>
                 {genera.map(([g, n]) => (
                   <option key={g} value={g}>
                     {g} ({n})
@@ -97,8 +156,13 @@ export function OriginsTab() {
                 ))}
               </Select>
               <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold">
-                <input type="checkbox" checked={onlyNew} onChange={(e) => setOnlyNew(e.target.checked)} className="h-5 w-5 accent-brand-600" />
-                {t('admin.originCheck.onlyNew', { count: unchecked.length })}
+                <input
+                  type="checkbox"
+                  checked={onlyNew}
+                  onChange={(e) => setOnlyNew(e.target.checked)}
+                  className="h-5 w-5 accent-brand-600"
+                />
+                {t("admin.originCheck.onlyNew", { count: unchecked.length })}
               </label>
               <button
                 type="button"
@@ -106,23 +170,47 @@ export function OriginsTab() {
                 disabled={list.length === 0}
                 className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-colors hover:bg-brand-700 disabled:opacity-50"
               >
-                {copied ? <Check size={18} strokeWidth={2.5} aria-hidden /> : <ClipboardCopy size={18} strokeWidth={2.25} aria-hidden />}
-                {copied ? t('admin.originCheck.copied') : t('admin.originCheck.copy', { count: list.length })}
+                {copied ? (
+                  <Check size={18} strokeWidth={2.5} aria-hidden />
+                ) : (
+                  <ClipboardCopy size={18} strokeWidth={2.25} aria-hidden />
+                )}
+                {copied
+                  ? t("admin.originCheck.copied")
+                  : t("admin.originCheck.copy", { count: list.length })}
               </button>
             </div>
             {/* Що зараз записано — коротко, щоб було видно, що саме піде на перевірку */}
             <details>
-              <summary className="cursor-pointer text-sm font-bold text-brand-600">{t('admin.originCheck.showList', { count: list.length })}</summary>
+              <summary className="cursor-pointer text-sm font-bold text-brand-600">
+                {t("admin.originCheck.showList", { count: list.length })}
+              </summary>
               <ul className="mt-2 divide-y divide-sand-200 text-sm">
                 {list.map((p) => (
-                  <li key={p.id} className="flex flex-wrap items-center gap-x-2 py-1.5">
+                  <li
+                    key={p.id}
+                    className="flex flex-wrap items-center gap-x-2 py-1.5"
+                  >
                     {plan.checked.has(p.id) && (
-                      <CircleCheck size={16} strokeWidth={2.5} className="shrink-0 text-brand-600" aria-label={t('admin.originCheck.checked')} />
+                      <CircleCheck
+                        size={16}
+                        strokeWidth={2.5}
+                        className="shrink-0 text-brand-600"
+                        aria-label={t("admin.originCheck.checked")}
+                      />
                     )}
                     <span className="font-semibold">{p.name.uk}</span>
                     <span className="text-sand-700">
-                      {p.origin ? t(`admin.fields.origins.${p.origin}`) : t('admin.formFixes.noOrigin')}
-                      {p.origin === 'natural' ? (p.habitat ? `: ${p.habitat}` : '') : p.parents?.filter(Boolean).length ? `: ${p.parents.filter(Boolean).join(' × ')}` : ''}
+                      {p.origin
+                        ? t(`admin.fields.origins.${p.origin}`)
+                        : t("admin.formFixes.noOrigin")}
+                      {p.origin === "natural"
+                        ? p.habitat
+                          ? `: ${p.habitat}`
+                          : ""
+                        : p.parents?.filter(Boolean).length
+                          ? `: ${p.parents.filter(Boolean).join(" × ")}`
+                          : ""}
                     </span>
                   </li>
                 ))}
@@ -131,9 +219,9 @@ export function OriginsTab() {
           </section>
 
           <section className="space-y-3 rounded-3xl border-2 border-sand-200 bg-sand-50 p-4">
-            <h2 className="font-bold">{t('admin.originCheck.step2')}</h2>
+            <h2 className="font-bold">{t("admin.originCheck.step2")}</h2>
             <Textarea
-              label={t('admin.originCheck.paste')}
+              label={t("admin.originCheck.paste")}
               value={text}
               onChange={(e) => edit(e.target.value)}
               rows={5}
@@ -149,72 +237,134 @@ export function OriginsTab() {
                   className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-colors hover:bg-brand-700 disabled:opacity-50"
                 >
                   <Save size={18} strokeWidth={2.25} aria-hidden />
-                  {t('admin.originCheck.save', { count: pasted.length })}
+                  {t("admin.originCheck.save", { count: pasted.length })}
                 </button>
-                <button type="button" onClick={() => edit('')} className="text-sm font-bold text-sand-700 underline">
-                  {t('admin.originCheck.clear')}
+                <button
+                  type="button"
+                  onClick={() => edit("")}
+                  className="text-sm font-bold text-sand-700 underline"
+                >
+                  {t("admin.originCheck.clear")}
                 </button>
               </div>
             )}
-            {saveChecks.isError && <p className="text-sm text-sunset-600">{t('admin.originCheck.saveError')}</p>}
-            <p className="text-sm text-sand-700">{t('admin.originCheck.saved', { count: rows.length })}</p>
+            {saveChecks.isError && (
+              <p className="text-sm text-sunset-600">
+                {t("admin.originCheck.saveError")}
+              </p>
+            )}
+            <p className="text-sm text-sand-700">
+              {t("admin.originCheck.saved", { count: rows.length })}
+            </p>
           </section>
 
           {rows.length > 0 && (
             <section className="space-y-4">
-              <h2 className="font-bold">{t('admin.originCheck.step3')}</h2>
+              <h2 className="font-bold">{t("admin.originCheck.step3")}</h2>
               <FixList
                 fixes={plan.fixes}
                 apply={apply}
-                row={(f) => (
+                row={(f, chosen) => (
                   <span className="mt-1 block space-y-1 text-sm">
                     {f.changes.map((c) => (
-                      <span key={c.field} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                        <span className="text-sand-700">{t(`admin.originCheck.fields.${c.field}`)}:</span>
-                        <span className="text-sand-700 line-through">{c.from || t('admin.originCheck.empty')}</span>
-                        <ArrowRight size={14} strokeWidth={2.5} className="shrink-0 text-sand-700" aria-hidden />
-                        <span className="font-bold text-brand-700">{c.to || t('admin.originCheck.empty')}</span>
+                      <span
+                        key={c.field}
+                        className="flex flex-wrap items-center gap-x-2 gap-y-0.5"
+                      >
+                        <span className="text-sand-700">
+                          {t(`admin.originCheck.fields.${c.field}`)}:
+                        </span>
+                        <span className="text-sand-700 line-through">
+                          {c.from || t("admin.originCheck.empty")}
+                        </span>
+                        <ArrowRight
+                          size={14}
+                          strokeWidth={2.5}
+                          className="shrink-0 text-sand-700"
+                          aria-hidden
+                        />
+                        <span className="font-bold text-brand-700">
+                          {c.to || t("admin.originCheck.empty")}
+                        </span>
                       </span>
                     ))}
-                    {f.note && <span className="block text-xs text-sunset-600">{f.note}</span>}
+                    {f.note && (
+                      <span className="block text-xs text-sunset-600">
+                        {f.note}
+                      </span>
+                    )}
+                    {f.description && (
+                      // Опис — своя галочка: натискання тут не ставить і не знімає галочку всієї рослини
+                      <span
+                        className="mt-2 block space-y-2 rounded-xl bg-sand-100 p-2.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={chosen && !descOff.has(f.id)}
+                            disabled={!chosen}
+                            onChange={() => toggleDesc(f.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={t("admin.originCheck.applyDescription")}
+                            className="h-4 w-4 shrink-0 accent-brand-600 disabled:opacity-40"
+                          />
+                          <span
+                            className={
+                              chosen
+                                ? "font-semibold"
+                                : "font-semibold text-sand-700 opacity-60"
+                            }
+                          >
+                            {t("admin.originCheck.applyDescription")}
+                          </span>
+                        </span>
+                        {f.description.from && (
+                          <span className="block">
+                            <span className="text-sand-700">
+                              {t("admin.originCheck.descriptionWas")}:{" "}
+                            </span>
+                            <span className="text-sand-700 line-through">
+                              {f.description.from}
+                            </span>
+                          </span>
+                        )}
+                        <textarea
+                          value={descText(f)}
+                          onChange={(e) =>
+                            setDescEdits((d) => ({
+                              ...d,
+                              [f.id]: e.target.value,
+                            }))
+                          }
+                          onBlur={() => keepDescEdit(f)}
+                          onClick={(e) => e.preventDefault()}
+                          disabled={descOff.has(f.id)}
+                          rows={4}
+                          aria-label={t("admin.originCheck.descriptionNew", {
+                            name: f.name,
+                          })}
+                          className="block w-full rounded-xl border-2 border-sand-200 bg-sand-50 px-3 py-2 leading-relaxed text-ink focus:border-brand-500 focus:outline-none disabled:opacity-50"
+                        />
+                      </span>
+                    )}
                     {f.source && <SourceLink url={f.source} />}
                   </span>
                 )}
                 aside={(f) => <DeleteCheck id={f.checkId} name={f.name} />}
               />
-              {(plan.descriptions.length > 0 || applyDesc.isSuccess) && (
-                <section className="space-y-2">
-                  <h2 className="font-bold">{t('admin.originCheck.descriptions', { count: plan.descriptions.length })}</h2>
-                  <p className="text-sm text-sand-700">{t('admin.originCheck.descriptionsHint')}</p>
-                  <FixList
-                    fixes={plan.descriptions}
-                    apply={applyDesc}
-                    row={(f) => (
-                      <span className="mt-1 block space-y-2 text-sm">
-                        {f.from && (
-                          <span className="block">
-                            <span className="text-sand-700">{t('admin.originCheck.descriptionWas')}: </span>
-                            <span className="text-sand-700 line-through">{f.from}</span>
-                          </span>
-                        )}
-                        <textarea
-                          value={descText(f)}
-                          onChange={(e) => setDescEdits((d) => ({ ...d, [f.id]: e.target.value }))}
-                          onBlur={() => keepDescEdit(f)}
-                          onClick={(e) => e.preventDefault()}
-                          rows={4}
-                          aria-label={t('admin.originCheck.descriptionNew', { name: f.name })}
-                          className="block w-full rounded-xl border-2 border-sand-200 bg-sand-50 px-3 py-2 leading-relaxed text-ink focus:border-brand-500 focus:outline-none"
-                        />
-                        {f.source && <SourceLink url={f.source} />}
-                      </span>
-                    )}
-                  />
-                </section>
+              {plan.ok > 0 && (
+                <p className="text-sm text-sand-700">
+                  {t("admin.originCheck.ok", { count: plan.ok })}
+                </p>
               )}
-              {plan.ok > 0 && <p className="text-sm text-sand-700">{t('admin.originCheck.ok', { count: plan.ok })}</p>}
               {plan.unknown.length > 0 && (
-                <Leftovers title={t('admin.originCheck.unknown', { count: plan.unknown.length })} rows={plan.unknown} />
+                <Leftovers
+                  title={t("admin.originCheck.unknown", {
+                    count: plan.unknown.length,
+                  })}
+                  rows={plan.unknown}
+                />
               )}
               {plan.missing.length > 0 && <Missing rows={plan.missing} />}
             </section>
@@ -222,18 +372,26 @@ export function OriginsTab() {
         </>
       )}
     </div>
-  )
+  );
 }
 
 /**
  * Видалити запропоновану правку: стирає збережену перевірку рослини (рядок зникає звідусіль,
  * а рослина знову стає «неперевіреною» — її можна скопіювати й перевірити заново).
  */
-function DeleteCheck({ id, name, small }: { id?: string; name: string; small?: boolean }) {
-  const { t } = useTranslation()
-  const remove = useDeleteOriginCheck()
-  if (!id) return null
-  const label = t('admin.originCheck.deleteCheck', { name })
+function DeleteCheck({
+  id,
+  name,
+  small,
+}: {
+  id?: string;
+  name: string;
+  small?: boolean;
+}) {
+  const { t } = useTranslation();
+  const remove = useDeleteOriginCheck();
+  if (!id) return null;
+  const label = t("admin.originCheck.deleteCheck", { name });
   return (
     <button
       type="button"
@@ -242,20 +400,21 @@ function DeleteCheck({ id, name, small }: { id?: string; name: string; small?: b
       disabled={remove.isPending}
       onClick={(e) => {
         // Кнопка лежить у рядку з галочкою — натискання не має її ставити
-        e.preventDefault()
-        e.stopPropagation()
-        remove.mutate(id)
+        e.preventDefault();
+        e.stopPropagation();
+        remove.mutate(id);
       }}
-      className={`flex shrink-0 items-center justify-center rounded-full text-sand-700 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-50 ${small ? 'h-7 w-7' : 'h-9 w-9'}`}
+      className={`flex shrink-0 items-center justify-center rounded-full text-sand-700 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-50 ${small ? "h-7 w-7" : "h-9 w-9"}`}
     >
       <Trash2 size={small ? 15 : 18} strokeWidth={2.25} aria-hidden />
     </button>
-  )
+  );
 }
 
 function SourceLink({ url }: { url: string }) {
-  const { t } = useTranslation()
-  if (!/^https?:\/\//.test(url)) return <span className="block text-xs text-sand-700">{url}</span>
+  const { t } = useTranslation();
+  if (!/^https?:\/\//.test(url))
+    return <span className="block text-xs text-sand-700">{url}</span>;
   return (
     <a
       href={url}
@@ -265,16 +424,20 @@ function SourceLink({ url }: { url: string }) {
       className="inline-flex items-center gap-1 text-xs font-bold text-brand-600 underline"
     >
       <ExternalLink size={12} strokeWidth={2.5} aria-hidden />
-      {t('admin.originCheck.source', { host: new URL(url).hostname.replace(/^www\./, '') })}
+      {t("admin.originCheck.source", {
+        host: new URL(url).hostname.replace(/^www\./, ""),
+      })}
     </a>
-  )
+  );
 }
 
 /** Рослини, яких не знайдено на сайтах — просто перелік із приміткою. */
 function Leftovers({ title, rows }: { title: string; rows: CheckRow[] }) {
   return (
     <details className="rounded-2xl bg-sand-100 p-3">
-      <summary className="cursor-pointer text-sm font-bold text-sand-800">{title}</summary>
+      <summary className="cursor-pointer text-sm font-bold text-sand-800">
+        {title}
+      </summary>
       <ul className="mt-2 space-y-1 text-sm">
         {rows.map((r) => (
           <li key={r.name} className="flex flex-wrap items-center gap-x-1">
@@ -286,7 +449,7 @@ function Leftovers({ title, rows }: { title: string; rows: CheckRow[] }) {
         ))}
       </ul>
     </details>
-  )
+  );
 }
 
 /**
@@ -294,49 +457,71 @@ function Leftovers({ title, rows }: { title: string; rows: CheckRow[] }) {
  * і плюсик «Створити картку» з усім цим уже вписаним (картка буде прихованою, поки її не покажете).
  */
 function Missing({ rows }: { rows: CheckRow[] }) {
-  const { t } = useTranslation()
-  const here = useHere()
+  const { t } = useTranslation();
+  const here = useHere();
   return (
     <section className="space-y-2">
-      <h2 className="font-bold">{t('admin.originCheck.missing', { count: rows.length })}</h2>
-      <p className="text-sm text-sand-700">{t('admin.originCheck.missingHint')}</p>
+      <h2 className="font-bold">
+        {t("admin.originCheck.missing", { count: rows.length })}
+      </h2>
+      <p className="text-sm text-sand-700">
+        {t("admin.originCheck.missingHint")}
+      </p>
       <ul className="space-y-2">
         {rows.map((r) => {
-          const name = r.fixedName || r.name
-          const params = new URLSearchParams({ category: PLANT_CATEGORY, name })
-          if (r.origin) params.set('origin', r.origin)
-          r.parents.forEach((p, i) => params.set(`p${i + 1}`, p))
-          if (r.habitat) params.set('habitat', r.habitat)
-          if (r.breeder) params.set('breeder', r.breeder)
-          if (r.aliases.length) params.set('aliases', r.aliases.join(', '))
+          const name = r.fixedName || r.name;
+          const params = new URLSearchParams({
+            category: PLANT_CATEGORY,
+            name,
+          });
+          if (r.origin) params.set("origin", r.origin);
+          r.parents.forEach((p, i) => params.set(`p${i + 1}`, p));
+          if (r.habitat) params.set("habitat", r.habitat);
+          if (r.breeder) params.set("breeder", r.breeder);
+          if (r.aliases.length) params.set("aliases", r.aliases.join(", "));
           const info = [
-            r.origin ? t(`admin.fields.origins.${r.origin}`) : '',
-            r.origin === 'natural' ? r.habitat : r.parents.join(' × '),
-            r.breeder ? `${t('admin.originCheck.fields.breeder')}: ${r.breeder}` : '',
-            r.aliases.length ? `${t('admin.originCheck.fields.aliases')}: ${r.aliases.join(', ')}` : '',
-          ].filter(Boolean)
+            r.origin ? t(`admin.fields.origins.${r.origin}`) : "",
+            r.origin === "natural" ? r.habitat : r.parents.join(" × "),
+            r.breeder
+              ? `${t("admin.originCheck.fields.breeder")}: ${r.breeder}`
+              : "",
+            r.aliases.length
+              ? `${t("admin.originCheck.fields.aliases")}: ${r.aliases.join(", ")}`
+              : "",
+          ].filter(Boolean);
           return (
-            <li key={r.name} className="flex items-start gap-3 rounded-2xl border-2 border-dashed border-sand-300 bg-sand-50 p-3">
+            <li
+              key={r.name}
+              className="flex items-start gap-3 rounded-2xl border-2 border-dashed border-sand-300 bg-sand-50 p-3"
+            >
               <span className="min-w-0 flex-1 text-sm">
                 <span className="block font-bold">{name}</span>
-                {info.length > 0 && <span className="block text-sand-700">{info.join(' · ')}</span>}
-                {r.note && <span className="block text-xs text-sunset-600">{r.note}</span>}
+                {info.length > 0 && (
+                  <span className="block text-sand-700">
+                    {info.join(" · ")}
+                  </span>
+                )}
+                {r.note && (
+                  <span className="block text-xs text-sunset-600">
+                    {r.note}
+                  </span>
+                )}
                 {r.source && <SourceLink url={r.source} />}
               </span>
               <Link
                 to={`/admin/products/new?${params}`}
                 state={{ from: here }}
-                title={t('search.addPlant', { name })}
-                aria-label={t('search.addPlant', { name })}
+                title={t("search.addPlant", { name })}
+                aria-label={t("search.addPlant", { name })}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sand-50 transition-transform hover:scale-110"
               >
                 <Plus size={18} strokeWidth={3} aria-hidden />
               </Link>
               <DeleteCheck id={r.checkId} name={name} />
             </li>
-          )
+          );
         })}
       </ul>
     </section>
-  )
+  );
 }

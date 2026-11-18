@@ -115,24 +115,14 @@ export interface OriginFix {
   note: string
   /** Документ перевірки, з якої ця правка */
   checkId?: string
-}
-
-/** Запропонований опис рослини — окремо від походження: своя галочка, текст можна відредагувати. */
-export interface DescriptionFix {
-  id: string
-  slug: string
-  name: string
-  /** Нинішній опис у магазині */
-  from: string
-  /** Запропонований */
-  to: string
-  source: string
-  checkId?: string
+  /** Фото рослини (мале) — щоб одразу було видно, про яку рослину правка */
+  image?: string
+  /** Запропонований опис (from — нинішній у магазині): застосовується своєю галочкою, текст можна відредагувати */
+  description?: { from: string; to: string }
 }
 
 export interface OriginPlan {
   fixes: OriginFix[]
-  descriptions: DescriptionFix[]
   /** Усе збігається */
   ok: number
   /** Нічого не знайдено — з приміткою */
@@ -168,7 +158,7 @@ export function planOriginFixes(products: Product[], rows: CheckRow[]): OriginPl
     const keys = names.filter(Boolean).map(nameKey)
     return keys.map((k) => byKey.get(k)).find(Boolean) ?? keys.map((k) => byAlias.get(k)).find(Boolean)
   }
-  const plan: OriginPlan = { fixes: [], descriptions: [], ok: 0, unknown: [], missing: [], checked: new Set() }
+  const plan: OriginPlan = { fixes: [], ok: 0, unknown: [], missing: [], checked: new Set() }
   const seen = new Set<string>()
   for (const row of rows) {
     const p = find([row.name, row.fixedName, ...row.aliases])
@@ -179,12 +169,11 @@ export function planOriginFixes(products: Product[], rows: CheckRow[]): OriginPl
     if (seen.has(p.id)) continue
     seen.add(p.id)
     plan.checked.add(p.id)
-    // Опис — окремою правкою, лише якщо запропоновано інший, ніж уже записано
+    // Опис — у тій самій картці правки, лише якщо запропоновано інший, ніж уже записано
     const wasText = (p.description?.uk ?? '').trim()
-    if (row.description && row.description !== wasText)
-      plan.descriptions.push({ id: p.id, slug: p.slug, name: p.name.uk, from: wasText, to: row.description, source: row.source, checkId: row.checkId })
+    const description = row.description && row.description !== wasText ? { from: wasText, to: row.description } : undefined
     const fix = (changes: FieldChange[], patch: Record<string, unknown>) =>
-      plan.fixes.push({ id: p.id, slug: p.slug, name: p.name.uk, changes, patch, source: row.source, note: row.note, checkId: row.checkId })
+      plan.fixes.push({ id: p.id, slug: p.slug, name: p.name.uk, changes, patch, source: row.source, note: row.note, checkId: row.checkId, image: p.images?.[0], description })
 
     // Назва записана неправильно (лапки, регістр, описка) — виправляємо, навіть якщо про походження нічого не знайдено
     const rename = row.fixedName && row.fixedName !== p.name.uk.trim() ? row.fixedName : ''
@@ -199,7 +188,7 @@ export function planOriginFixes(products: Product[], rows: CheckRow[]): OriginPl
       named.aliases = [...was, ...added]
     }
     if (row.origin === null || (row.origin === undefined && row.parents.length === 0 && !row.habitat && !row.breeder)) {
-      if (changes.length) fix(changes, named)
+      if (changes.length || description) fix(changes, named)
       else plan.unknown.push(row)
       continue
     }
@@ -220,7 +209,9 @@ export function planOriginFixes(products: Product[], rows: CheckRow[]): OriginPl
     if (!sameText(habitat, wasHabitat)) changes.push({ field: 'habitat', from: wasHabitat, to: habitat })
     if (!sameText(breeder, wasBreeder)) changes.push({ field: 'breeder', from: wasBreeder, to: breeder })
     if (changes.length === 0) {
-      plan.ok++
+      // Походження збігається — правка лише з описом
+      if (description) fix([], {})
+      else plan.ok++
       continue
     }
     // Записуємо все походження разом — так само, як зберігає форма товару

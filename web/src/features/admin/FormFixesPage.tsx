@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { db } from '../../firebase/config'
 import type { Product } from '../../lib/types'
-import { Button } from '../../shared/ui'
+import { Button, SmallImage } from '../../shared/ui'
 import { useAllProducts, useOriginChecks } from './api'
 import { ImportPage } from './ImportPage'
 import { TabBar, useTab } from './TabBar'
@@ -114,7 +114,7 @@ export function Hint({ children }: { children: string }) {
  * Спершу нічого не вибрано: продавець сам ставить галочки на тих, кого виправити.
  * Після «Застосувати» список перераховується — у ньому лишаються невибрані рядки, а галочки знову зняті.
  */
-export function FixList<T extends { id: string; slug: string; name: string }>({
+export function FixList<T extends { id: string; slug: string; name: string; image?: string }>({
   fixes,
   apply,
   row,
@@ -122,7 +122,8 @@ export function FixList<T extends { id: string; slug: string; name: string }>({
 }: {
   fixes: T[]
   apply: ReturnType<typeof useApplyFixes<T>>
-  row: (fix: T) => React.ReactNode
+  /** Вміст рядка; chosen — чи стоїть галочка на цій рослині */
+  row: (fix: T, chosen: boolean) => React.ReactNode
   /** Кнопка праворуч у рядку (напр. «Видалити правку») — натискання не ставить галочку */
   aside?: (fix: T) => React.ReactNode
 }) {
@@ -163,12 +164,18 @@ export function FixList<T extends { id: string; slug: string; name: string }>({
                   }`}
                 >
                   <input type="checkbox" checked={selected.has(f.id)} onChange={() => toggle(f.id)} className="mt-1 h-5 w-5 shrink-0 accent-brand-600" />
+                  {/* Мале фото — щоб одразу було видно, про яку рослину правка */}
+                  {f.image && (
+                    <Link to={`/product/${f.slug}`} onClick={(e) => e.stopPropagation()} className="shrink-0">
+                      <SmallImage src={f.image} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                    </Link>
+                  )}
                   <span className="min-w-0 flex-1">
                     {/* Назва — на сторінку самої рослини (там є й «Редагувати») */}
                     <Link to={`/product/${f.slug}`} className="font-bold hover:text-brand-600" onClick={(e) => e.stopPropagation()}>
                       {f.name}
                     </Link>
-                    {row(f)}
+                    {row(f, selected.has(f.id))}
                   </span>
                   {aside?.(f)}
                 </label>
