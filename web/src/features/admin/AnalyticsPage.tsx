@@ -405,7 +405,7 @@ export function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="mr-auto font-display text-3xl font-extrabold text-brand-600">{t('analytics.title')}</h1>
+        <h1 className="sr-only">{t('analytics.title')}</h1>
         <div className="flex w-full rounded-2xl bg-sand-200 p-1 sm:w-auto" role="tablist" aria-label={t('analytics.title')}>
           {TABS.map((id) => {
             const Icon = TAB_ICONS[id]

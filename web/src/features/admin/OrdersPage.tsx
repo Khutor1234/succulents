@@ -54,7 +54,7 @@ export function OrdersPage() {
 
   return (
     <div>
-      <h1 className="mb-4 font-display text-3xl font-extrabold text-brand-600">{t('admin.orders')}</h1>
+      <h1 className="sr-only">{t('admin.orders')}</h1>
 
       {/* На телефоні фільтри гортаються вбік одним рядком */}
       <div className="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">

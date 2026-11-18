@@ -1,38 +1,77 @@
-import { ArrowLeft, ArrowRight, BookOpen, CarTaxiFront, Eye, EyeOff, Gift, Info, Pencil, Truck, X } from 'lucide-react'
-import { lazy, Suspense } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Link, Navigate, NavLink, useNavigate, useParams, useSearchParams } from 'react-router'
-import { canGoBack, useHere } from '../../shared/navigation'
-import { ICON } from '../../shared/icon'
-import { useLang } from '../../i18n'
-import { formatPrice, pick } from '../../lib/format'
-import { PageTitle, Select } from '../../shared/ui'
-import { useBonusBalance } from '../account/api'
-import { SellerOrdersPanel } from '../admin/SellerOrdersPanel'
-import { useAuth } from '../auth/authStore'
-import { AddToCart } from '../cart/AddToCart'
-import { FavoriteButton } from '../favorites/FavoriteButton'
-import { forBuyer, useHomePicks, useProduct, useProducts } from './api'
-import { PLANT_CATEGORY } from '../../lib/plants'
-import type { Product } from '../../lib/types'
-import { withCuttingMark } from '../../lib/plantName'
-import { useCategories } from './categories'
-import { ParentsLinks } from './ParentsLinks'
-import { PlantFilters, TagBadges } from './PlantFilters'
-import { SELLER_SORTS, SORTS, usePlantFilters, type SortOrder } from './usePlantFilters'
-import { CopyName, CuttingToggle, DeleteButton, ForSaleButton, HomePin, ProductGrid, SellerStock, VisibilityButton } from './ProductCard'
-import { ProductGallery } from './ProductGallery'
-import { RelatedPlants } from './RelatedPlants'
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  CarTaxiFront,
+  Eye,
+  EyeOff,
+  Gift,
+  Info,
+  Pencil,
+  Truck,
+  X,
+} from "lucide-react";
+import { lazy, Suspense } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Link,
+  Navigate,
+  NavLink,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router";
+import { canGoBack, useHere } from "../../shared/navigation";
+import { ICON } from "../../shared/icon";
+import { useLang } from "../../i18n";
+import { formatPrice, pick } from "../../lib/format";
+import { PageTitle, Select } from "../../shared/ui";
+import { useBonusBalance } from "../account/api";
+import { SellerOrdersPanel } from "../admin/SellerOrdersPanel";
+import { useAuth } from "../auth/authStore";
+import { AddToCart } from "../cart/AddToCart";
+import { FavoriteButton } from "../favorites/FavoriteButton";
+import { forBuyer, useHomePicks, useProduct, useProducts } from "./api";
+import { PLANT_CATEGORY } from "../../lib/plants";
+import type { Product } from "../../lib/types";
+import { withCuttingMark } from "../../lib/plantName";
+import { useCategories } from "./categories";
+import { ParentsLinks } from "./ParentsLinks";
+import { PlantFilters, TagBadges } from "./PlantFilters";
+import {
+  SELLER_SORTS,
+  SORTS,
+  usePlantFilters,
+  type SortOrder,
+} from "./usePlantFilters";
+import {
+  CopyName,
+  CuttingToggle,
+  DeleteButton,
+  ForSaleButton,
+  HomePin,
+  ProductGrid,
+  SellerStock,
+  VisibilityButton,
+} from "./ProductCard";
+import { ProductGallery } from "./ProductGallery";
+import { RelatedPlants } from "./RelatedPlants";
 
 // Статті на головній довантажуються окремо — щоб тексти блогу не гальмували перше відкриття сайту
-const HomeArticles = lazy(() => import('../blog/HomeArticles'))
+const HomeArticles = lazy(() => import("../blog/HomeArticles"));
 // Скільки новинок показати на головній і зі скількох найновіших вибирати (покупцю частину відсіюємо: немає в наявності)
 
-function Status({ isLoading, isError }: { isLoading: boolean; isError: boolean }) {
-  const { t } = useTranslation()
-  if (isLoading) return <p className="text-sand-700">{t('loading')}</p>
-  if (isError) return <p className="text-red-700">{t('errors.loading')}</p>
-  return null
+function Status({
+  isLoading,
+  isError,
+}: {
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  const { t } = useTranslation();
+  if (isLoading) return <p className="text-sand-700">{t("loading")}</p>;
+  if (isError) return <p className="text-red-700">{t("errors.loading")}</p>;
+  return null;
 }
 
 /**
@@ -47,7 +86,7 @@ const STARS = [
   [128, 52, 1],
   [186, 62, 1.3],
   [40, 70, 0.9],
-] as const
+] as const;
 
 function DesertIllustration() {
   return (
@@ -65,7 +104,12 @@ function DesertIllustration() {
       <path d="M112 82h10c6 0 8-4 8-10V58c0-8 10-8 10 0v16c0 12-8 20-18 20h-10" />
       <path d="M100 96H88c-10 0-16-8-16-18V66c0-8 10-8 10 0v10c0 6 2 9 8 9h10" />
       <path d="M0 132c40-14 70-14 100-4s70 8 100-6" />
-      <circle cx="160" cy="30" r="14" className="fill-sunset-200 stroke-sunset-500 dark:fill-ink/90 dark:stroke-ink/90" />
+      <circle
+        cx="160"
+        cy="30"
+        r="14"
+        className="fill-sunset-200 stroke-sunset-500 dark:fill-ink/90 dark:stroke-ink/90"
+      />
       {/* Пташки — лише вдень: три «галочки», що повільно пропливають небом */}
       <g className="animate-glide stroke-ink/60 dark:hidden" strokeWidth="1.8">
         <path d="M30 34q4-5 8 0q4-5 8 0" />
@@ -75,16 +119,30 @@ function DesertIllustration() {
       {/* Зорі — лише вночі (темна тема): тихо мерехтять, кожна у своєму ритмі; зрідка пролітає падаюча зірка */}
       <g className="hidden fill-ink stroke-none dark:inline">
         {STARS.map(([cx, cy, r], i) => (
-          <circle key={i} cx={cx} cy={cy} r={r} className="animate-twinkle" style={{ animationDelay: `${i * 0.7}s`, animationDuration: `${2.6 + (i % 3) * 0.9}s` }} />
+          <circle
+            key={i}
+            cx={cx}
+            cy={cy}
+            r={r}
+            className="animate-twinkle"
+            style={{
+              animationDelay: `${i * 0.7}s`,
+              animationDuration: `${2.6 + (i % 3) * 0.9}s`,
+            }}
+          />
         ))}
       </g>
-      <path d="M44 8l-16 9" className="hidden animate-shooting stroke-ink dark:inline" strokeWidth="1.5" />
+      <path
+        d="M44 8l-16 9"
+        className="hidden animate-shooting stroke-ink dark:inline"
+        strokeWidth="1.5"
+      />
     </svg>
-  )
+  );
 }
 
 export function CategoryPills() {
-  const { visible, nameOf } = useCategories()
+  const { visible, nameOf } = useCategories();
   return (
     // Телефон: один рядок, що гортається пальцем убік (не три рядки кнопок над товарами); ширше — переноситься
     <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:gap-2.5 sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
@@ -93,14 +151,14 @@ export function CategoryPills() {
           key={c}
           to={`/c/${c}`}
           className={({ isActive }) =>
-            `shrink-0 rounded-full px-4 py-2.5 font-bold whitespace-nowrap sm:px-5 sm:py-3 ${isActive ? 'bg-brand-600 text-sand-50' : 'bg-sand-200 hover:bg-sand-300'}`
+            `shrink-0 rounded-full px-4 py-2.5 font-bold whitespace-nowrap sm:px-5 sm:py-3 ${isActive ? "bg-brand-600 text-sand-50" : "bg-sand-200 hover:bg-sand-300"}`
           }
         >
           {nameOf(c)}
         </NavLink>
       ))}
     </nav>
-  )
+  );
 }
 
 /**
@@ -109,34 +167,37 @@ export function CategoryPills() {
  * підтвердження пошти — про це окрема смужка під шапкою), тож йому лише про 10% і його баланс.
  */
 function BonusPromo({ compact = false }: { compact?: boolean }) {
-  const { t } = useTranslation()
-  const lang = useLang()
-  const user = useAuth((s) => s.user)
-  const isSeller = useAuth((s) => s.role === 'seller')
-  const { balance } = useBonusBalance()
+  const { t } = useTranslation();
+  const lang = useLang();
+  const user = useAuth((s) => s.user);
+  const isSeller = useAuth((s) => s.role === "seller");
+  const { balance } = useBonusBalance();
 
   // Продавець не купує — бонусна програма йому ні до чого
-  if (isSeller) return null
+  if (isSeller) return null;
 
   // Компактна смужка — для сторінок категорій, щоб не відсувати товари вниз.
   if (compact) {
     const text = user
       ? balance > 0
-        ? t('welcome.stripBalance', { amount: formatPrice(balance, lang) })
-        : t('welcome.cashbackTitle')
-      : t('welcome.stripGuest')
+        ? t("welcome.stripBalance", { amount: formatPrice(balance, lang) })
+        : t("welcome.cashbackTitle")
+      : t("welcome.stripGuest");
     return (
       <Link
-        to={user ? '/account' : '/login?mode=signup'}
+        to={user ? "/account" : "/login?mode=signup"}
         className="group flex items-center gap-3 rounded-2xl border-2 border-dashed border-sunset-500 bg-sand-50 px-4 py-3 transition-colors hover:bg-sand-200"
       >
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sunset-600 text-sand-50">
           <Gift {...ICON} />
         </span>
         <span className="flex-1 text-sm font-bold">{text}</span>
-        <ArrowRight {...ICON} className="shrink-0 text-sunset-600 transition-transform group-hover:translate-x-1" />
+        <ArrowRight
+          {...ICON}
+          className="shrink-0 text-sunset-600 transition-transform group-hover:translate-x-1"
+        />
       </Link>
-    )
+    );
   }
 
   if (user) {
@@ -147,49 +208,75 @@ function BonusPromo({ compact = false }: { compact?: boolean }) {
           10%
         </span>
         <div className="min-w-60 flex-1">
-          <p className="font-display text-2xl font-extrabold text-brand-600">{t('welcome.cashbackTitle')}</p>
+          <p className="font-display text-2xl font-extrabold text-brand-600">
+            {t("welcome.cashbackTitle")}
+          </p>
           <p className="mt-1 text-sand-700">
-            {balance > 0 ? t('welcome.cashbackBalance', { amount: formatPrice(balance, lang) }) : t('welcome.cashbackText')}
+            {balance > 0
+              ? t("welcome.cashbackBalance", {
+                  amount: formatPrice(balance, lang),
+                })
+              : t("welcome.cashbackText")}
           </p>
         </div>
-        <Link to="/account" className="rounded-xl bg-sand-200 px-6 py-3.5 font-bold hover:bg-sand-300">
-          {t('welcome.toAccount')}
+        <Link
+          to="/account"
+          className="rounded-xl bg-sand-200 px-6 py-3.5 font-bold hover:bg-sand-300"
+        >
+          {t("welcome.toAccount")}
         </Link>
       </section>
-    )
+    );
   }
 
   return (
     <section className="flex flex-wrap items-center gap-x-8 gap-y-4 rounded-[32px] border-2 border-dashed border-sunset-500 bg-sand-50 px-6 py-6 sm:px-8">
       <div className="flex items-baseline gap-3">
-        <Gift size={40} strokeWidth={2} aria-hidden className="self-center text-sunset-600" />
-        <span className="font-display text-5xl font-extrabold text-sunset-600">100 ₴</span>
-        <span className="font-display text-3xl font-extrabold text-brand-600">+10%</span>
+        <Gift
+          size={40}
+          strokeWidth={2}
+          aria-hidden
+          className="self-center text-sunset-600"
+        />
+        <span className="font-display text-5xl font-extrabold text-sunset-600">
+          100 ₴
+        </span>
+        <span className="font-display text-3xl font-extrabold text-brand-600">
+          +10%
+        </span>
       </div>
       <div className="min-w-60 flex-1">
-        <p className="font-display text-2xl font-extrabold text-brand-600">{t('welcome.promoTitle')}</p>
-        <p className="mt-1 text-sand-700">{t('welcome.promoText')}</p>
+        <p className="font-display text-2xl font-extrabold text-brand-600">
+          {t("welcome.promoTitle")}
+        </p>
+        <p className="mt-1 text-sand-700">{t("welcome.promoText")}</p>
       </div>
-      <Link to="/login?mode=signup" className="rounded-xl bg-sunset-600 px-6 py-3.5 font-bold text-sand-50 hover:bg-sunset-700">
-        {t('welcome.promoCta')}
+      <Link
+        to="/login?mode=signup"
+        className="rounded-xl bg-sunset-600 px-6 py-3.5 font-bold text-sand-50 hover:bg-sunset-700"
+      >
+        {t("welcome.promoCta")}
       </Link>
     </section>
-  )
+  );
 }
 
-const millis = (t?: { toMillis(): number }) => t?.toMillis() ?? Number.MAX_SAFE_INTEGER
+const millis = (t?: { toMillis(): number }) =>
+  t?.toMillis() ?? Number.MAX_SAFE_INTEGER;
 
 export function HomePage() {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
   // «Нові надходження» на головній — лише рослини, позначені продавцем шпилькою «на головну», скільки б їх не було,
   // у тому порядку, як їх позначали. Вітрина: і продавець бачить її як покупець (asBuyer) — лише те, що можна купити.
-  const isSeller = useAuth((s) => s.role === 'seller')
-  const picks = useHomePicks()
-  const { visible, isVisible } = useCategories()
-  const firstCategory = visible[0] ?? 'plants'
-  const available = (p: Product) => isVisible(p.category) && p.stock > 0
+  const isSeller = useAuth((s) => s.role === "seller");
+  const picks = useHomePicks();
+  const { visible, isVisible } = useCategories();
+  const firstCategory = visible[0] ?? "plants";
+  const available = (p: Product) => isVisible(p.category) && p.stock > 0;
   // onHome — щоб щойно відкріплена шпилькою рослина одразу зникла з початку списку
-  const shown = picks.data?.filter((p) => p.onHome && available(p)).sort((a, b) => millis(a.onHomeAt) - millis(b.onHomeAt))
+  const shown = picks.data
+    ?.filter((p) => p.onHome && available(p))
+    .sort((a, b) => millis(a.onHomeAt) - millis(b.onHomeAt));
   // Нічого не позначено (чи все позначене закінчилось) — покупцю блок не показуємо, продавцю — підказку
 
   return (
@@ -197,22 +284,27 @@ export function HomePage() {
       <SellerOrdersPanel />
       <section className="grid gap-5 md:grid-cols-2">
         <div className="flex min-h-[420px] flex-col justify-between gap-8 rounded-[32px] bg-sunset-600 p-8 text-sand-50 sm:p-10">
-          <p className="text-[15px] font-bold">{t('home.eyebrow')}</p>
-          <h1 className="font-display text-5xl leading-[0.98] font-extrabold sm:text-6xl">{t('home.title')}</h1>
+          <p className="text-[15px] font-bold">{t("home.eyebrow")}</p>
+          <h1 className="font-display text-5xl leading-[0.98] font-extrabold sm:text-6xl">
+            {t("home.title")}
+          </h1>
           <div className="flex flex-wrap gap-3">
             <Link
               to={`/c/${firstCategory}`}
               className="group inline-flex items-center gap-2 rounded-xl bg-sand-50 px-6 py-3.5 font-bold text-ink transition-transform hover:bg-sand-100 active:scale-[0.97]"
             >
-              {t('home.toCatalog')}
-              <ArrowRight {...ICON} className="transition-transform group-hover:translate-x-1" />
+              {t("home.toCatalog")}
+              <ArrowRight
+                {...ICON}
+                className="transition-transform group-hover:translate-x-1"
+              />
             </Link>
             <Link
               to="/blog"
               className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97]"
             >
               <BookOpen {...ICON} />
-              {t('blog.title')}
+              {t("blog.title")}
             </Link>
           </div>
         </div>
@@ -225,15 +317,25 @@ export function HomePage() {
           <div className="rounded-3xl bg-brand-600 px-6 py-5 text-sand-100 dark:bg-sand-50 dark:text-ink">
             <ul className="divide-y divide-sand-100/25 font-display dark:divide-sand-300 text-xl leading-tight font-extrabold">
               <li className="flex items-center gap-3 pb-2.5">
-                <Truck size={26} strokeWidth={2} aria-hidden className="shrink-0 text-sand-300 dark:text-brand-600" />
-                {t('home.deliveryTitle')}
+                <Truck
+                  size={26}
+                  strokeWidth={2}
+                  aria-hidden
+                  className="shrink-0 text-sand-300 dark:text-brand-600"
+                />
+                {t("home.deliveryTitle")}
               </li>
               <li className="flex items-center gap-3 pt-2.5">
-                <CarTaxiFront size={26} strokeWidth={2} aria-hidden className="shrink-0 text-sand-300 dark:text-brand-600" />
-                {t('home.taxiTitle')}
+                <CarTaxiFront
+                  size={26}
+                  strokeWidth={2}
+                  aria-hidden
+                  className="shrink-0 text-sand-300 dark:text-brand-600"
+                />
+                {t("home.taxiTitle")}
               </li>
             </ul>
-            <p className="mt-3 dark:text-sand-700">{t('home.deliveryText')}</p>
+            <p className="mt-3 dark:text-sand-700">{t("home.deliveryText")}</p>
           </div>
         </div>
       </section>
@@ -245,15 +347,25 @@ export function HomePage() {
       {(isSeller || picks.isLoading || picks.isError || !!shown?.length) && (
         <section>
           <div className="mb-5 flex flex-wrap items-baseline gap-4">
-            <h2 className="font-display text-4xl font-extrabold text-brand-600">{t('home.newArrivals')}</h2>
-            <Link to={`/c/${firstCategory}`} className="group ml-auto inline-flex items-center gap-1.5 font-bold text-brand-600 hover:underline">
-              {t('home.allProductsShort')}
-              <ArrowRight {...ICON} className="transition-transform group-hover:translate-x-1" />
+            <h2 className="font-display text-4xl font-extrabold text-brand-600">
+              {t("home.newArrivals")}
+            </h2>
+            <Link
+              to={`/c/${firstCategory}`}
+              className="group ml-auto inline-flex items-center gap-1.5 font-bold text-brand-600 hover:underline"
+            >
+              {t("home.allProductsShort")}
+              <ArrowRight
+                {...ICON}
+                className="transition-transform group-hover:translate-x-1"
+              />
             </Link>
           </div>
           <Status isLoading={picks.isLoading} isError={picks.isError} />
           {isSeller && shown?.length === 0 && (
-            <p className="rounded-2xl border-2 border-dashed border-sand-300 px-4 py-3 text-sand-700">{t('home.noPicks')}</p>
+            <p className="rounded-2xl border-2 border-dashed border-sand-300 px-4 py-3 text-sand-700">
+              {t("home.noPicks")}
+            </p>
           )}
           {shown && <ProductGrid products={shown} asBuyer keepOrder />}
         </section>
@@ -262,10 +374,18 @@ export function HomePage() {
       {/* Блог: три свіжі статті про догляд */}
       <section>
         <div className="mb-5 flex flex-wrap items-baseline gap-4">
-          <h2 className="font-display text-4xl font-extrabold text-brand-600">{t('blog.homeTitle')}</h2>
-          <Link to="/blog" className="group ml-auto inline-flex items-center gap-1.5 font-bold text-brand-600 hover:underline">
-            {t('blog.all')}
-            <ArrowRight {...ICON} className="transition-transform group-hover:translate-x-1" />
+          <h2 className="font-display text-4xl font-extrabold text-brand-600">
+            {t("blog.homeTitle")}
+          </h2>
+          <Link
+            to="/blog"
+            className="group ml-auto inline-flex items-center gap-1.5 font-bold text-brand-600 hover:underline"
+          >
+            {t("blog.all")}
+            <ArrowRight
+              {...ICON}
+              className="transition-transform group-hover:translate-x-1"
+            />
           </Link>
         </div>
         <Suspense fallback={null}>
@@ -273,78 +393,102 @@ export function HomePage() {
         </Suspense>
       </section>
     </div>
-  )
+  );
 }
 
 export function CategoryPage() {
-  const { t } = useTranslation()
-  const { category } = useParams()
-  const { isVisible, nameOf, isLoading: settingsLoading } = useCategories()
-  const realSeller = useAuth((s) => s.role === 'seller')
+  const { t } = useTranslation();
+  const { category } = useParams();
+  const { isVisible, nameOf, isLoading: settingsLoading } = useCategories();
+  const realSeller = useAuth((s) => s.role === "seller");
   // Продавцю — перемикач «Як бачить покупець» (?view=buyer): сторінка точно така, як у покупця — лише показані рослини,
   // наявність без тих, що не продаються, звичайні картки (лише зі шпилькою «на головну»)
-  const [params, setParams] = useSearchParams()
-  const buyerView = realSeller && params.get('view') === 'buyer'
-  const isSeller = realSeller && !buyerView
+  const [params, setParams] = useSearchParams();
+  const buyerView = realSeller && params.get("view") === "buyer";
+  const isSeller = realSeller && !buyerView;
   const setBuyerView = (on: boolean) => {
-    const p = new URLSearchParams(params)
-    if (on) p.set('view', 'buyer')
-    else p.delete('view')
-    setParams(p, { replace: true, preventScrollReset: true })
-  }
-  const products = useProducts(category ?? '', realSeller)
-  const filters = usePlantFilters()
+    const p = new URLSearchParams(params);
+    if (on) p.set("view", "buyer");
+    else p.delete("view");
+    setParams(p, { replace: true, preventScrollReset: true });
+  };
+  const products = useProducts(category ?? "", realSeller);
+  const filters = usePlantFilters();
 
-  if (!category || (!settingsLoading && !isVisible(category))) return <Navigate to="/" replace />
+  if (!category || (!settingsLoading && !isVisible(category)))
+    return <Navigate to="/" replace />;
 
   // «Як бачить покупець»: з даних продавця робимо покупцеву версію — те саме, що завантажив би покупець
-  const list = buyerView ? products.data?.filter((p) => p.isActive).map(forBuyer) : products.data
-  const shown = list ? filters.apply(list) : undefined
+  const list = buyerView
+    ? products.data?.filter((p) => p.isActive).map(forBuyer)
+    : products.data;
+  const shown = list ? filters.apply(list) : undefined;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="mr-auto">
-          <PageTitle>{nameOf(category)}</PageTitle>
-        </div>
-        {realSeller && !buyerView && (
-          <button
-            type="button"
-            onClick={() => setBuyerView(true)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-sand-300 bg-sand-50 px-4 font-bold text-ink transition-colors hover:border-brand-600"
-          >
-            <Eye size={18} strokeWidth={2.25} aria-hidden />
-            {t('catalog.buyerView')}
-          </button>
-        )}
-      </div>
+      {/* Назва категорії вже на вибраній плашці категорій — заголовок лише для читалок екрана */}
+      <h1 className="sr-only">{nameOf(category)}</h1>
       {buyerView && (
-        <div className="-mt-4 flex flex-wrap items-center gap-3 rounded-2xl border-2 border-lavender-400 bg-lavender-50 px-4 py-3">
-          <Eye size={20} strokeWidth={2.25} className="shrink-0 text-lavender-700" aria-hidden />
-          <p className="min-w-0 flex-1 text-sm font-bold text-ink">{t('catalog.buyerViewOn')}</p>
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-lavender-400 bg-lavender-50 px-4 py-3">
+          <Eye
+            size={20}
+            strokeWidth={2.25}
+            className="shrink-0 text-lavender-700"
+            aria-hidden
+          />
+          <p className="min-w-0 flex-1 text-sm font-bold text-ink">
+            {t("catalog.buyerViewOn")}
+          </p>
           <button
             type="button"
             onClick={() => setBuyerView(false)}
             className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-lavender-700 px-3 text-sm font-bold text-sand-50 hover:bg-ink"
           >
             <X size={16} strokeWidth={2.5} aria-hidden />
-            {t('catalog.buyerViewOff')}
+            {t("catalog.buyerViewOff")}
           </button>
         </div>
       )}
-      <CategoryPills />
+      {/* Категорії; продавцю в тому ж рядку — «Як бачить покупець» */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0 basis-full sm:flex-1 sm:basis-auto">
+          <CategoryPills />
+        </div>
+        {realSeller && !buyerView && (
+          <button
+            type="button"
+            onClick={() => setBuyerView(true)}
+            className="ml-auto inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-sand-300 bg-sand-50 px-4 font-bold text-ink transition-colors hover:border-brand-600"
+          >
+            <Eye size={18} strokeWidth={2.25} aria-hidden />
+            {t("catalog.buyerView")}
+          </button>
+        )}
+      </div>
       <BonusPromo compact />
       <Status isLoading={products.isLoading} isError={products.isError} />
-      {products.data?.length === 0 && <p className="text-sand-700">{t('catalog.empty')}</p>}
-      {list && list.length > 0 && <PlantFilters products={list} filters={filters} category={category} />}
+      {products.data?.length === 0 && (
+        <p className="text-sand-700">{t("catalog.empty")}</p>
+      )}
+      {list && list.length > 0 && (
+        <PlantFilters products={list} filters={filters} category={category} />
+      )}
       {shown && list!.length > 0 && (
         <div className="flex flex-wrap items-center gap-3">
           <p className="font-bold">
-            {t(category === PLANT_CATEGORY ? 'catalog.found' : 'catalog.foundProducts', { count: shown.length })}
+            {t(
+              category === PLANT_CATEGORY
+                ? "catalog.found"
+                : "catalog.foundProducts",
+              { count: shown.length },
+            )}
           </p>
           {filters.active && (
-            <button onClick={filters.reset} className="min-h-10 rounded-xl px-3 font-bold text-brand-600 underline hover:bg-sand-200">
-              {t('catalog.resetFilters')}
+            <button
+              onClick={filters.reset}
+              className="min-h-10 rounded-xl px-3 font-bold text-brand-600 underline hover:bg-sand-200"
+            >
+              {t("catalog.resetFilters")}
             </button>
           )}
           {/* «Лише в наявності» — сховати рослини, яких зараз немає (за замовчуванням вони просто йдуть у кінці) */}
@@ -355,21 +499,29 @@ export function CategoryPage() {
               onChange={(e) => filters.setInStock(e.target.checked)}
               className="h-5 w-5 accent-brand-600"
             />
-            {t('catalog.inStockOnly')}
+            {t("catalog.inStockOnly")}
           </label>
           <label className="flex items-center gap-2 text-sm font-bold text-sand-700">
-            {t('catalog.sort')}
-            <Select compact value={filters.sort} onChange={(e) => filters.setSort(e.target.value as SortOrder)}>
-              {SORTS.filter((s) => isSeller || !SELLER_SORTS.includes(s)).map((s) => (
-                <option key={s} value={s}>
-                  {t(`catalog.sorts.${s}`)}
-                </option>
-              ))}
+            {t("catalog.sort")}
+            <Select
+              compact
+              value={filters.sort}
+              onChange={(e) => filters.setSort(e.target.value as SortOrder)}
+            >
+              {SORTS.filter((s) => isSeller || !SELLER_SORTS.includes(s)).map(
+                (s) => (
+                  <option key={s} value={s}>
+                    {t(`catalog.sorts.${s}`)}
+                  </option>
+                ),
+              )}
             </Select>
           </label>
         </div>
       )}
-      {shown && shown.length === 0 && products.data!.length > 0 && <p className="text-sand-700">{t('catalog.noMatches')}</p>}
+      {shown && shown.length === 0 && products.data!.length > 0 && (
+        <p className="text-sand-700">{t("catalog.noMatches")}</p>
+      )}
       {/* Продавцю — «Вибрати» (масові дії) і «Додати»; своє сортування (за фото) — без поділу на групи */}
       {shown && (
         <ProductGrid
@@ -380,42 +532,50 @@ export function CategoryPage() {
         />
       )}
     </div>
-  )
+  );
 }
 
-const BACK = 'group inline-flex min-h-11 items-center gap-1.5 font-bold text-brand-600 hover:underline'
+const BACK =
+  "group inline-flex min-h-11 items-center gap-1.5 font-bold text-brand-600 hover:underline";
 
 export function ProductPage() {
-  const { t } = useTranslation()
-  const lang = useLang()
-  const { slug = '' } = useParams()
-  const isSeller = useAuth((s) => s.role === 'seller')
+  const { t } = useTranslation();
+  const lang = useLang();
+  const { slug = "" } = useParams();
+  const isSeller = useAuth((s) => s.role === "seller");
   // Продавець відкриває й приховані товари (напр. з пошуку) — покупцям вони «не знайдено».
-  const { data: product, isLoading, isError } = useProduct(slug, isSeller)
-  const { isVisible, nameOf } = useCategories()
-  const navigate = useNavigate()
-  const here = useHere()
+  const { data: product, isLoading, isError } = useProduct(slug, isSeller);
+  const { isVisible, nameOf } = useCategories();
+  const navigate = useNavigate();
+  const here = useHere();
 
-  if (isLoading || isError) return <Status isLoading={isLoading} isError={isError} />
+  if (isLoading || isError)
+    return <Status isLoading={isLoading} isError={isError} />;
   // Товар прибрали чи приховали (напр. посилання збережене раніше) — пропонуємо, куди піти далі.
   if (!product || (!isSeller && !isVisible(product.category))) {
     return (
       <div className="py-8 text-center">
-        <PageTitle>{t('product.notFound')}</PageTitle>
-        <p className="-mt-2 text-sand-700">{t('product.notFoundHint')}</p>
+        <PageTitle>{t("product.notFound")}</PageTitle>
+        <p className="-mt-2 text-sand-700">{t("product.notFoundHint")}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link to="/c/plants" className="rounded-xl bg-brand-600 px-6 py-3.5 font-bold text-sand-50 hover:bg-brand-700">
-            {t('home.toCatalog')}
+          <Link
+            to="/c/plants"
+            className="rounded-xl bg-brand-600 px-6 py-3.5 font-bold text-sand-50 hover:bg-brand-700"
+          >
+            {t("home.toCatalog")}
           </Link>
-          <Link to="/search" className="rounded-xl bg-sand-200 px-6 py-3.5 font-bold hover:bg-sand-300">
-            {t('search.title')}
+          <Link
+            to="/search"
+            className="rounded-xl bg-sand-200 px-6 py-3.5 font-bold hover:bg-sand-300"
+          >
+            {t("search.title")}
           </Link>
         </div>
       </div>
-    )
+    );
   }
 
-  const name = pick(product.name, lang)
+  const name = pick(product.name, lang);
 
   return (
     <div>
@@ -424,13 +584,19 @@ export function ProductPage() {
             Відкрили сторінку напряму — ведемо в каталог її категорії. */}
         {canGoBack() ? (
           <button type="button" onClick={() => navigate(-1)} className={BACK}>
-            <ArrowLeft {...ICON} className="transition-transform group-hover:-translate-x-1" />
-            {t('admin.back')}
+            <ArrowLeft
+              {...ICON}
+              className="transition-transform group-hover:-translate-x-1"
+            />
+            {t("admin.back")}
           </button>
         ) : (
           <Link to={`/c/${product.category}`} className={BACK}>
-            <ArrowLeft {...ICON} className="transition-transform group-hover:-translate-x-1" />
-            {t('product.backShort')}
+            <ArrowLeft
+              {...ICON}
+              className="transition-transform group-hover:-translate-x-1"
+            />
+            {t("product.backShort")}
           </Link>
         )}
         {/* Продавець бачить товар як покупець, але може одразу перейти до редагування */}
@@ -441,21 +607,23 @@ export function ProductPage() {
             className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-transform hover:bg-brand-700 active:scale-[0.97]"
           >
             <Pencil {...ICON} />
-            {t('admin.edit')}
+            {t("admin.edit")}
           </Link>
         )}
       </div>
       {!product.isActive && (
         <p className="mt-4 flex items-center gap-2 rounded-xl bg-sand-200 px-4 py-3 font-bold text-sand-800">
           <EyeOff {...ICON} />
-          {t('product.hiddenNotice')}
+          {t("product.hiddenNotice")}
         </p>
       )}
       <div className="mt-5 grid gap-8 md:grid-cols-2">
         <ProductGallery images={product.images} alt={name} />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-block rounded-full bg-sand-200 px-4 py-1.5 text-sm font-bold">{nameOf(product.category)}</span>
+            <span className="inline-block rounded-full bg-sand-200 px-4 py-1.5 text-sm font-bold">
+              {nameOf(product.category)}
+            </span>
             {product.genus && (
               <Link
                 to={`/c/${product.category}?genus=${encodeURIComponent(product.genus)}`}
@@ -466,7 +634,11 @@ export function ProductPage() {
             )}
           </div>
           <h1 className="mt-4 font-display text-4xl leading-tight font-extrabold text-brand-600 sm:text-5xl">
-            {withCuttingMark(name, product.tags?.includes('cutting'), t('product.cuttingMark'))}
+            {withCuttingMark(
+              name,
+              product.tags?.includes("cutting"),
+              t("product.cuttingMark"),
+            )}
           </h1>
           {/* Продавцю — ті самі швидкі кнопки, що й на картці: кількість, редагувати, показати, у продажу, на головну, видалити */}
           {isSeller && (
@@ -476,8 +648,8 @@ export function ProductPage() {
               <Link
                 to={`/admin/products/${product.id}`}
                 state={{ from: here }}
-                aria-label={t('admin.editNamed', { name })}
-                title={t('admin.edit')}
+                aria-label={t("admin.editNamed", { name })}
+                title={t("admin.edit")}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-sand-50 transition-colors hover:bg-brand-700"
               >
                 <Pencil size={18} strokeWidth={2.25} aria-hidden />
@@ -485,28 +657,44 @@ export function ProductPage() {
               <VisibilityButton product={product} name={name} compact />
               <ForSaleButton product={product} name={name} compact />
               <HomePin product={product} name={name} compact />
-              {product.category === PLANT_CATEGORY && <CuttingToggle product={product} name={name} compact />}
+              {product.category === PLANT_CATEGORY && (
+                <CuttingToggle product={product} name={name} compact />
+              )}
               <DeleteButton
                 product={product}
                 name={name}
                 compact
-                onDeleted={() => (canGoBack() ? navigate(-1) : navigate(`/c/${product.category}`, { replace: true }))}
+                onDeleted={() =>
+                  canGoBack()
+                    ? navigate(-1)
+                    : navigate(`/c/${product.category}`, { replace: true })
+                }
               />
             </div>
           )}
           <TagBadges tags={product.tags} className="mt-3" />
           {/* Спершу те, що потрібно для покупки (ціна, наявність, кошик) — на телефоні це видно одразу під фото;
               інші назви й походження — нижче, разом з описом */}
-          <p className="mt-3 font-display text-3xl font-extrabold text-sunset-600">{formatPrice(product.price, lang)}</p>
+          <p className="mt-3 font-display text-3xl font-extrabold text-sunset-600">
+            {formatPrice(product.price, lang)}
+          </p>
           <p className="mt-1 text-sm text-sand-700">
-            {product.stock > 0 ? t('product.inStock', { count: product.stock }) : t('product.outOfStock')}
+            {product.stock > 0
+              ? t("product.inStock", { count: product.stock })
+              : t("product.outOfStock")}
           </p>
           {/* Живець: покупець має знати, що отримає одну маленьку розетку, а не те, що може здатися з фото */}
-          {product.tags?.includes('cutting') && (
+          {product.tags?.includes("cutting") && (
             <p className="mt-4 flex gap-2.5 rounded-2xl border-2 border-sunset-500/40 bg-sunset-100/60 p-4 text-sm leading-relaxed">
-              <Info size={18} strokeWidth={2.25} className="mt-0.5 shrink-0 text-sunset-600" aria-hidden />
+              <Info
+                size={18}
+                strokeWidth={2.25}
+                className="mt-0.5 shrink-0 text-sunset-600"
+                aria-hidden
+              />
               <span>
-                <strong>{t('product.cuttingTitle')}</strong> {t('product.cuttingNote')}
+                <strong>{t("product.cuttingTitle")}</strong>{" "}
+                {t("product.cuttingNote")}
               </span>
             </p>
           )}
@@ -517,7 +705,8 @@ export function ProductPage() {
           </div>
           {product.aliases && product.aliases.length > 0 && (
             <p className="mt-6 text-sand-700">
-              <span className="font-bold">{t('search.aliases')}:</span> {product.aliases.join(', ')}
+              <span className="font-bold">{t("search.aliases")}:</span>{" "}
+              {product.aliases.join(", ")}
             </p>
           )}
           <ParentsLinks
@@ -525,17 +714,28 @@ export function ProductPage() {
             origin={product.origin}
             habitat={product.habitat}
             breeder={product.breeder}
-            base={product.origin === 'cultivar' || product.tags?.includes('hybridName') ? (product.base ?? null) : undefined}
+            base={
+              product.origin === "cultivar" ||
+              product.tags?.includes("hybridName")
+                ? (product.base ?? null)
+                : undefined
+            }
             label
             className="mt-4"
           />
-          <p className="mt-8 leading-relaxed whitespace-pre-line">{pick(product.description, lang)}</p>
+          <p className="mt-8 leading-relaxed whitespace-pre-line">
+            {pick(product.description, lang)}
+          </p>
           {product.specs && product.specs.length > 0 && (
             <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border-2 border-sand-200 bg-sand-200 text-sm">
               {product.specs.map((spec, i) => (
                 <div key={i} className="contents">
-                  <dt className="bg-sand-50 px-4 py-3 text-sand-700">{pick(spec.label, lang)}</dt>
-                  <dd className="bg-sand-50 px-4 py-3 font-medium">{pick(spec.value, lang)}</dd>
+                  <dt className="bg-sand-50 px-4 py-3 text-sand-700">
+                    {pick(spec.label, lang)}
+                  </dt>
+                  <dd className="bg-sand-50 px-4 py-3 font-medium">
+                    {pick(spec.value, lang)}
+                  </dd>
                 </div>
               ))}
             </dl>
@@ -545,5 +745,5 @@ export function ProductPage() {
       {/* Батьки, «діти», інші форми й рослини зі спільним батьком — ті, що є в наявності */}
       <RelatedPlants product={product} />
     </div>
-  )
+  );
 }

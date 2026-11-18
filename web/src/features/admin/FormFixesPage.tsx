@@ -8,7 +8,6 @@ import { db } from '../../firebase/config'
 import type { Product } from '../../lib/types'
 import { Button } from '../../shared/ui'
 import { useAllProducts, useOriginChecks } from './api'
-import { BackLink } from './BackLink'
 import { ImportPage } from './ImportPage'
 import { TabBar, useTab } from './TabBar'
 import { planFormFixes, type FormFix } from './formFixes'
@@ -69,8 +68,7 @@ export function FormFixesPage() {
 
   return (
     <div className="max-w-4xl">
-      <BackLink fallback="/admin" />
-      <h1 className="mb-4 font-display text-3xl font-extrabold text-brand-600">{t('admin.home.tools')}</h1>
+      <h1 className="sr-only">{t('admin.home.tools')}</h1>
       <div className="mb-4">
         <TabBar
           label={t('admin.home.tools')}

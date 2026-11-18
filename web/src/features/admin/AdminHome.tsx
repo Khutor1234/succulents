@@ -36,14 +36,11 @@ export function AdminHome() {
     return orders.filter((o) => o.status !== 'cancelled' && (o.createdAt?.toMillis() ?? 0) >= start).reduce((sum, o) => sum + o.total, 0)
   }, [orders])
   const hidden = products?.filter((p) => !p.isActive).length ?? 0
-  const today = useMemo(() => new Intl.DateTimeFormat('uk-UA', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date()), [])
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h1 className="font-display text-3xl font-extrabold text-brand-600">{t('admin.home.title')}</h1>
-        <p className="text-sand-700 first-letter:uppercase">{today}</p>
-      </div>
+      {/* «Адмінка» вже видно в меню — заголовок лише для читалок екрана */}
+      <h1 className="sr-only">{t('admin.home.title')}</h1>
 
       {/* Замовлення — найбільша картка: велике число нових видно здалеку */}
       <Link

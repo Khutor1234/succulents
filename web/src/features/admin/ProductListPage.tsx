@@ -67,8 +67,14 @@ export function ProductListPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="mr-auto font-display text-3xl font-extrabold text-brand-600">{t('admin.list.title')}</h1>
+      <h1 className="sr-only">{t('admin.list.title')}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <TabBar
+          label={t('admin.list.title')}
+          active={tab}
+          onChange={setTab}
+          tabs={TABS.map((id) => ({ id, label: t(`admin.list.tabs.${id}`), Icon: TAB_ICONS[id] }))}
+        />
         <Link
           to={category ? `/admin/products/new?category=${category}` : '/admin/products/new'}
           className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-colors hover:bg-brand-700"
@@ -77,12 +83,6 @@ export function ProductListPage() {
           {t('admin.addProduct')}
         </Link>
       </div>
-      <TabBar
-        label={t('admin.list.title')}
-        active={tab}
-        onChange={setTab}
-        tabs={TABS.map((id) => ({ id, label: t(`admin.list.tabs.${id}`), Icon: TAB_ICONS[id] }))}
-      />
 
       {tab === 'categories' ? (
         <CategoriesPage />
