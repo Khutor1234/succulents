@@ -125,7 +125,7 @@ function renamePatch(p: Product, name: string): Record<string, unknown> {
   const patch: Record<string, unknown> = { 'name.uk': name }
   const genus = detectGenus(name) ?? name.split(' ')[0]
   if (genus && genus !== p.genus) patch.genus = genus
-  if (p.cultivarName) patch.cultivarName = name.match(/\S\s+['‘’"]([^'‘’"]+)['‘’"]$/u)?.[1] ?? ''
+  if (p.cultivarName) patch.cultivarName = name.match(/\S\s+['‘’"]((?:(?!['‘’"]\s).)+)['‘’"]$/u)?.[1] ?? ''
   return patch
 }
 

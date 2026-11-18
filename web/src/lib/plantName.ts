@@ -182,7 +182,7 @@ export function familyKey(name: string): string {
 
 /** Назва родини для показу: «Echeveria chihuahuaensis 'Ruby Blush' variegata» → «Echeveria chihuahuaensis». */
 export function familyName(name: string): string {
-  return parseForms(name).base.replace(/^(\S+\s+.*?\S)\s+['‘’"][^'‘’"]+['‘’"]$/u, '$1')
+  return parseForms(name).base.replace(/^(\S+\s+.*?\S)\s+['‘’"](?:(?!['‘’"]\s).)+['‘’"]$/u, '$1')
 }
 
 /** Відстань між двома рядками в буквах (скільки букв замінити, додати чи прибрати) — щоб знаходити описки. */

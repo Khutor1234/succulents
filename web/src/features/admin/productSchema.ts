@@ -134,7 +134,8 @@ export function splitAliases(text: string): string[] {
  * Лише коли перед лапками є вид чи назва — «'Lola'» сама по собі лишається назвою (це назва гібрида).
  */
 export function splitCultivar(rest: string): { cultivar: string; selection: string } {
-  const m = rest.trim().match(/^(.+?)\s+['‘’"]([^'‘’"]+)['‘’"]$/u)
+  // Усередині лапок може бути апостроф («ovata 'Hummel's Sunset'»): культивар закриває лише лапка в самому кінці
+  const m = rest.trim().match(/^(.+?)\s+['‘’"]((?:(?!['‘’"]\s).)+)['‘’"]$/u)
   return m ? { cultivar: m[1], selection: m[2].trim() } : { cultivar: rest, selection: '' }
 }
 
@@ -143,7 +144,7 @@ export const plantBase = (genus: string, cultivar: string, selection: string) =>
   [genus, cultivar.trim(), selection.trim() ? `'${selection.trim()}'` : ''].filter(Boolean).join(' ')
 
 /** Назва без культивару в лапках: «Echeveria agavoides 'Maria'» → «Echeveria agavoides». */
-export const withoutSelection = (name: string) => parseForms(name).base.replace(/\s*['‘’"][^'‘’"]+['‘’"]$/, '').trim()
+export const withoutSelection = (name: string) => parseForms(name).base.replace(/\s+['‘’"](?:(?!['‘’"]\s).)+['‘’"]$/u, '').trim()
 
 /**
  * Поля «Вид або назва» й «Культивар» для форми. Культивар — лише якщо його вже перенесли в поле (cultivarName у товарі,
