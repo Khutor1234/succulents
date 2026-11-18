@@ -9,7 +9,7 @@ import { slugify } from '../../lib/slug'
 import { Select, Textarea } from '../../shared/ui'
 import { useAllProducts, useDeleteOriginCheck, useOriginChecks, useSaveOriginChecks } from './api'
 import { FixList, Hint, useApplyFixes } from './FormFixesPage'
-import { checkablePlants, parseCells, planOriginFixes, rowFromCells, toTsv, type CheckRow, type OriginFix } from './originCheck'
+import { checkablePlants, COLUMNS, parseCells, planOriginFixes, rowFromCells, toTsv, type CheckRow, type DescriptionFix, type OriginFix } from './originCheck'
 
 // Ще не збережена вставка лежить у браузері — не загубиться, якщо сторінку оновили
 const STORAGE_KEY = 'succulents.originCheck'
@@ -45,6 +45,19 @@ export function OriginsTab() {
   const [text, setText] = useState(() => localStorage.getItem(STORAGE_KEY) ?? '')
   const pasted = useMemo(() => parseCells(text), [text])
   const apply = useApplyFixes<OriginFix>((f) => f.patch)
+  // Описи: текст можна відредагувати перед «Застосувати»; правка зберігається в перевірці (не загубиться)
+  const [descEdits, setDescEdits] = useState<Record<string, string>>({})
+  const descText = (f: DescriptionFix) => descEdits[f.id] ?? f.to
+  const applyDesc = useApplyFixes<DescriptionFix>((f) => ({ 'description.uk': descText(f).trim() }))
+  function keepDescEdit(f: DescriptionFix) {
+    const check = checks?.find((c) => c.id === f.checkId)
+    const text = descEdits[f.id]
+    if (!check || text === undefined || text === f.to) return
+    const cells = [...check.cells]
+    while (cells.length < COLUMNS.length) cells.push('')
+    cells[COLUMNS.indexOf('Опис')] = text.replace(/\s+/g, ' ').trim()
+    saveChecks.mutate([{ id: check.id, cells }])
+  }
 
   function edit(value: string) {
     setText(value)
@@ -169,6 +182,36 @@ export function OriginsTab() {
                 )}
                 aside={(f) => <DeleteCheck id={f.checkId} name={f.name} />}
               />
+              {(plan.descriptions.length > 0 || applyDesc.isSuccess) && (
+                <section className="space-y-2">
+                  <h2 className="font-bold">{t('admin.originCheck.descriptions', { count: plan.descriptions.length })}</h2>
+                  <p className="text-sm text-sand-700">{t('admin.originCheck.descriptionsHint')}</p>
+                  <FixList
+                    fixes={plan.descriptions}
+                    apply={applyDesc}
+                    row={(f) => (
+                      <span className="mt-1 block space-y-2 text-sm">
+                        {f.from && (
+                          <span className="block">
+                            <span className="text-sand-700">{t('admin.originCheck.descriptionWas')}: </span>
+                            <span className="text-sand-700 line-through">{f.from}</span>
+                          </span>
+                        )}
+                        <textarea
+                          value={descText(f)}
+                          onChange={(e) => setDescEdits((d) => ({ ...d, [f.id]: e.target.value }))}
+                          onBlur={() => keepDescEdit(f)}
+                          onClick={(e) => e.preventDefault()}
+                          rows={4}
+                          aria-label={t('admin.originCheck.descriptionNew', { name: f.name })}
+                          className="block w-full rounded-xl border-2 border-sand-200 bg-sand-50 px-3 py-2 leading-relaxed text-ink focus:border-brand-500 focus:outline-none"
+                        />
+                        {f.source && <SourceLink url={f.source} />}
+                      </span>
+                    )}
+                  />
+                </section>
+              )}
               {plan.ok > 0 && <p className="text-sm text-sand-700">{t('admin.originCheck.ok', { count: plan.ok })}</p>}
               {plan.unknown.length > 0 && (
                 <Leftovers title={t('admin.originCheck.unknown', { count: plan.unknown.length })} rows={plan.unknown} />

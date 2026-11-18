@@ -11,7 +11,8 @@ import { splitAliases } from './productSchema'
  * Рядки про рослини, яких у магазині немає (зазвичай батьки), показуються окремо з тим, що про них відомо, і плюсиком «Створити».
  */
 
-export const COLUMNS = ['Назва', 'Правильна назва', 'Походження', 'Батько 1', 'Батько 2', 'Ареал', 'Селекціонер', 'Інші назви', 'Джерело', 'Примітка'] as const
+// «Опис» — наприкінці, щоб старі збережені перевірки (без опису) читались як і раніше
+export const COLUMNS = ['Назва', 'Правильна назва', 'Походження', 'Батько 1', 'Батько 2', 'Ареал', 'Селекціонер', 'Інші назви', 'Джерело', 'Примітка', 'Опис'] as const
 
 const ORIGIN_WORDS: Record<PlantOrigin, string> = { natural: 'природний вид', hybrid: 'гібрид', cultivar: 'відбір або мутація' }
 
@@ -24,18 +25,21 @@ export function checkablePlants(products: Product[]): Product[] {
 
 const clean = (s?: string) => (s ?? '').replace(/[\t\r\n]+/g, ' ').trim()
 
-/** Таблиця для перевірки: що зараз записано в кожної рослини («Правильна назва» порожня — її заповнює перевірка). */
+/**
+ * Таблиця для перевірки: що зараз записано в кожної рослини («Правильна назва» порожня — її заповнює перевірка).
+ * Останні колонки — Джерело й Примітка (порожні) та нинішній опис: перевірка пропонує новий опис українською.
+ */
 export function toTsv(plants: Product[]): string {
   const rows = plants.map((p) => {
     const origin = p.origin ?? 'hybrid'
     const parents = origin === 'natural' ? [] : (p.parents ?? []).filter(Boolean)
     const fields = [p.name.uk, '', p.origin ? ORIGIN_WORDS[origin] : '', parents[0] ?? '', parents[1] ?? '', origin === 'natural' ? (p.habitat ?? '') : '']
-    return [...fields, p.breeder ?? '', (p.aliases ?? []).join(', ')]
+    return [...fields, p.breeder ?? '', (p.aliases ?? []).join(', '), '', '', p.description?.uk ?? '']
       .map(clean)
       .join('\t')
       .replace(/\t+$/, '')
   })
-  return [COLUMNS.slice(0, 8).join('\t'), ...rows].join('\n')
+  return [COLUMNS.join('\t'), ...rows].join('\n')
 }
 
 function parseOrigin(text: string): PlantOrigin | null | undefined {
@@ -63,6 +67,8 @@ export interface CheckRow {
   aliases: string[]
   source: string
   note: string
+  /** Запропонований опис рослини (порожньо — не пропонується) */
+  description: string
 }
 
 /** Читає вставлену таблицю (з табуляцією, як копіюється з Google-таблиці чи чату) у клітинки. Рядок із заголовками пропускає. */
@@ -75,7 +81,7 @@ export function parseCells(text: string): string[][] {
 }
 
 /** Рядок перевірки з клітинок таблиці (так він і зберігається в базі — originChecks). */
-export function rowFromCells([name, fixedName = '', origin = '', p1 = '', p2 = '', habitat = '', breeder = '', aliases = '', source = '', note = '']: string[]): CheckRow {
+export function rowFromCells([name, fixedName = '', origin = '', p1 = '', p2 = '', habitat = '', breeder = '', aliases = '', source = '', note = '', description = '']: string[]): CheckRow {
   return {
     name,
     fixedName,
@@ -86,6 +92,7 @@ export function rowFromCells([name, fixedName = '', origin = '', p1 = '', p2 = '
     aliases: splitAliases(aliases),
     source,
     note,
+    description,
   }
 }
 
@@ -110,8 +117,22 @@ export interface OriginFix {
   checkId?: string
 }
 
+/** Запропонований опис рослини — окремо від походження: своя галочка, текст можна відредагувати. */
+export interface DescriptionFix {
+  id: string
+  slug: string
+  name: string
+  /** Нинішній опис у магазині */
+  from: string
+  /** Запропонований */
+  to: string
+  source: string
+  checkId?: string
+}
+
 export interface OriginPlan {
   fixes: OriginFix[]
+  descriptions: DescriptionFix[]
   /** Усе збігається */
   ok: number
   /** Нічого не знайдено — з приміткою */
@@ -147,7 +168,7 @@ export function planOriginFixes(products: Product[], rows: CheckRow[]): OriginPl
     const keys = names.filter(Boolean).map(nameKey)
     return keys.map((k) => byKey.get(k)).find(Boolean) ?? keys.map((k) => byAlias.get(k)).find(Boolean)
   }
-  const plan: OriginPlan = { fixes: [], ok: 0, unknown: [], missing: [], checked: new Set() }
+  const plan: OriginPlan = { fixes: [], descriptions: [], ok: 0, unknown: [], missing: [], checked: new Set() }
   const seen = new Set<string>()
   for (const row of rows) {
     const p = find([row.name, row.fixedName, ...row.aliases])
@@ -158,6 +179,10 @@ export function planOriginFixes(products: Product[], rows: CheckRow[]): OriginPl
     if (seen.has(p.id)) continue
     seen.add(p.id)
     plan.checked.add(p.id)
+    // Опис — окремою правкою, лише якщо запропоновано інший, ніж уже записано
+    const wasText = (p.description?.uk ?? '').trim()
+    if (row.description && row.description !== wasText)
+      plan.descriptions.push({ id: p.id, slug: p.slug, name: p.name.uk, from: wasText, to: row.description, source: row.source, checkId: row.checkId })
     const fix = (changes: FieldChange[], patch: Record<string, unknown>) =>
       plan.fixes.push({ id: p.id, slug: p.slug, name: p.name.uk, changes, patch, source: row.source, note: row.note, checkId: row.checkId })
 
