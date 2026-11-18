@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowRight, Layers, Network, Plus, UsersRound, X, type LucideIcon } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
+import { SmallImage } from '../../shared/ui'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import type { Product } from '../../lib/types'
@@ -15,7 +16,9 @@ const TABS = ['trios', 'families', 'forms'] as const
 type Tab = (typeof TABS)[number]
 const TAB_ICONS: Record<Tab, LucideIcon> = { trios: UsersRound, families: Network, forms: Layers }
 // «Нащадки»: ширина картки — однакова для рослини-батька і кожної дитини
-const FAMILY_CARD = 'w-28 shrink-0 sm:w-32'
+// Розмір фото рослини — однаковий на всіх трьох вкладках (--w задано на всю сторінку «Родоводів»)
+const FAMILY_CARD = 'w-(--w) shrink-0'
+// У «Трійках» --w менше (задано на списку трійок) — так на комп'ютері вміщається по три трійки в ряд
 
 /**
  * «Родоводи» — вкладка «Аналітики» (/admin/analytics?tab=pedigrees): підбірки з колекції — мама × тато → дитина,
@@ -36,7 +39,8 @@ export function PedigreesPage() {
   const counts: Record<Tab, number> = { trios: trios.length, families: families.length, forms: forms.length }
 
   return (
-    <div className="space-y-5">
+    // --w — розмір фото рослини на всіх вкладках: телефон / планшет / комп'ютер (найбільший — як були «Форми»)
+    <div className="space-y-5 [--w:7.5rem] sm:[--w:9.5rem] lg:[--w:11rem]">
       <p className="text-sand-700">{t('admin.pedigrees.intro')}</p>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -86,15 +90,21 @@ export function PedigreesPage() {
       )}
 
       {tab === 'trios' && (
-        <ul className="grid gap-4 lg:grid-cols-2">
+        <ul className="grid gap-3 [--w:7.5rem] sm:[--w:8rem] md:grid-cols-2 xl:grid-cols-3">
           {trios.map(({ key, child, parents }) => (
-            <li key={key} className="rounded-3xl border-2 border-sand-200 bg-sand-50 p-3 sm:p-4">
-              <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-1.5 sm:gap-2">
-                <NodeCard n={parents[0]} />
-                <Sign><X size={18} strokeWidth={2.6} aria-label="×" /></Sign>
-                <NodeCard n={parents[1]} />
-                <Sign><ArrowRight size={18} strokeWidth={2.6} aria-hidden /></Sign>
-                <NodeCard n={child} highlight parents={[parents[0].name, parents[1].name]} />
+            <li key={key} className="rounded-3xl border-2 border-sand-200 bg-sand-50 p-2.5">
+              {/*
+                Три фото однакового розміру, назва — під фото (не закриває рослину), до 2 рядків:
+                батьки один під одним, дитина праворуч посередині. Змінні: --w фото, --n місце під назву, --g проміжок між батьками.
+                Середина фото дитини — точно посередині між фото батьків: туди сходяться лінії.
+              */}
+              <div className="mx-auto grid max-w-[calc(var(--w)*2+5rem)] grid-cols-[var(--w)_minmax(2.75rem,1fr)_var(--w)] items-center [--g:0.375rem] [--n:2.5rem]">
+                <div className="flex flex-col gap-(--g)">
+                  <TrioNode n={parents[0]} />
+                  <TrioNode n={parents[1]} />
+                </div>
+                <Cross />
+                <TrioNode n={child} child parents={[parents[0].name, parents[1].name]} />
               </div>
             </li>
           ))}
@@ -139,9 +149,11 @@ export function PedigreesPage() {
               <h2 className="mb-2 font-bold">
                 {g.name} <span className="font-normal text-sand-700">· {t('admin.pedigrees.formsCount', { count: g.items.length })}</span>
               </h2>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+              <div className="flex flex-wrap gap-2">
                 {g.items.map((p) => (
-                  <Mini key={p.id} p={p} />
+                  <div key={p.id} className={FAMILY_CARD}>
+                    <Mini p={p} />
+                  </div>
                 ))}
               </div>
             </li>
@@ -152,35 +164,90 @@ export function PedigreesPage() {
   )
 }
 
-function Sign({ children }: { children: ReactNode }) {
-  // Знак посередині фото (фото квадратні — тож вирівнюємо по верхній частині картки)
-  return <span className="mt-[calc(50%-0.75rem)] flex h-6 items-center text-sand-700 sm:mt-10">{children}</span>
+/**
+ * Схрещування між фото: дві плавні лінії від середини фото батьків сходяться в кружечку «×»,
+ * далі — лінія зі стрілкою до фото дитини. Займає висоту від середини першого фото до середини другого.
+ */
+function Cross() {
+  return (
+    <div className="relative self-stretch" aria-hidden>
+      <div className="absolute inset-x-0 top-[calc(var(--w)/2)] h-[calc(var(--w)+var(--n)+var(--g))]">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full overflow-visible text-brand-500/60" fill="none">
+          <path d="M0 0 C 30 0, 30 50, 50 50 M0 100 C 30 100, 30 50, 50 50 M50 50 L 96 50" stroke="currentColor" strokeWidth="2" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        </svg>
+        {/* Наконечник стрілки — окремо, щоб не розтягувався разом з лініями */}
+        <svg viewBox="0 0 10 12" className="absolute top-1/2 right-0 h-3 w-2.5 -translate-y-1/2 text-brand-500/60" fill="currentColor">
+          <path d="M0 0 L10 6 L0 12 Z" />
+        </svg>
+        <span className="absolute top-1/2 left-1/2 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-brand-600 text-sand-50 shadow-sm ring-4 ring-sand-50">
+          <X size={15} strokeWidth={3} />
+        </span>
+      </div>
+    </div>
+  )
 }
 
 /**
- * Рослина в трійці: товар — звичайна картка; такої рослини в магазині немає — пунктирна картка з назвою
- * і плюсиком «Створити картку» (для дитини — одразу з походженням «Гібрид» і батьками).
+ * Рослина в трійці — фото (--w × --w) і назва під ним (місце --n, до 3 рядків). Дитина — у зеленій рамці.
+ * Такої рослини в магазині немає — пунктирний квадрат з плюсиком «Створити картку»
+ * (для дитини — одразу з походженням «Гібрид» і батьками).
  */
-function NodeCard({ n, highlight, parents }: { n: PlantNode; highlight?: boolean; parents?: [string, string] }) {
+function TrioNode({ n, child, parents }: { n: PlantNode; child?: boolean; parents?: [string, string] }) {
   const { t } = useTranslation()
   const here = useHere()
-  if (n.product) return <Mini p={n.product} highlight={highlight} />
-  const params = new URLSearchParams({ category: PLANT_CATEGORY, name: n.name })
-  if (parents) {
-    params.set('origin', 'hybrid')
-    params.set('p1', parents[0])
-    params.set('p2', parents[1])
-  }
-  const label = t('search.addPlant', { name: n.name })
-  return (
-    <Link to={`/admin/products/new?${params}`} state={{ from: here }} title={label} aria-label={label} className="group block min-w-0">
-      <span className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-sand-300 p-1 text-center transition-colors group-hover:border-brand-500">
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sand-50 transition-transform group-hover:scale-110">
-          <Plus size={18} strokeWidth={3} aria-hidden />
+  const p = n.product
+  // Назва — під фото, на висоту --n (до 2 рядків; повна — у підказці при наведенні)
+  const name = (
+    <span className="mt-1 line-clamp-2 h-[calc(var(--n)-0.25rem)] text-[11px] leading-[1.05rem] font-semibold break-words group-hover:text-brand-600 sm:text-xs">
+      {n.name}
+    </span>
+  )
+  if (!p) {
+    const params = new URLSearchParams({ category: PLANT_CATEGORY, name: n.name })
+    if (parents) {
+      params.set('origin', 'hybrid')
+      params.set('p1', parents[0])
+      params.set('p2', parents[1])
+    }
+    const label = t('search.addPlant', { name: n.name })
+    return (
+      <Link to={`/admin/products/new?${params}`} state={{ from: here }} title={label} aria-label={label} className="group block w-(--w) text-sand-700">
+        {/* Немає в магазині: пунктирний квадрат з плюсиком і «Немає в магазині», назва — під ним */}
+        <span className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-sand-300 p-1 text-center transition-colors group-hover:border-brand-500">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-sand-50 transition-transform group-hover:scale-110">
+            <Plus size={18} strokeWidth={3} aria-hidden />
+          </span>
+          <span className="text-[10px] leading-tight font-bold sm:text-[11px]">{t('admin.pedigrees.notInShop')}</span>
         </span>
-        <span className="text-[10px] leading-tight font-bold text-sand-700 sm:text-xs">{t('admin.pedigrees.notInShop')}</span>
+        {name}
+      </Link>
+    )
+  }
+  const img = p.images?.[0]
+  return (
+    <Link to={`/product/${p.slug}`} title={p.name.uk} className="group block w-(--w)">
+      <span
+        className={`relative block aspect-square overflow-hidden rounded-2xl border-2 bg-sand-100 ${
+          !p.isActive ? 'border-dashed border-lavender-400' : child ? 'border-brand-500' : 'border-transparent'
+        }`}
+      >
+        {img ? (
+          <SmallImage src={img} alt="" className={`h-full w-full object-cover transition-transform group-hover:scale-105 ${p.isActive ? '' : 'opacity-80'}`} />
+        ) : (
+          <span className="flex h-full items-center justify-center text-xs text-sand-700">{t('admin.pedigrees.noPhoto')}</span>
+        )}
+        {!p.isActive && (
+          <span className="absolute inset-x-1 top-1 truncate rounded-full bg-lavender-700/90 px-1.5 py-0.5 text-center text-[10px] font-bold text-sand-50">
+            {t('product.hidden')}
+          </span>
+        )}
+        {p.isActive && p.stock === 0 && (
+          <span className="absolute inset-x-1 top-1 truncate rounded-full bg-sunset-600/90 px-1.5 py-0.5 text-center text-[10px] font-bold text-sand-50">
+            {t('admin.pedigrees.noStock')}
+          </span>
+        )}
       </span>
-      <span className="mt-1 block text-xs leading-snug font-semibold break-words text-sand-700 group-hover:text-brand-600 sm:text-sm">{n.name}</span>
+      {name}
     </Link>
   )
 }
