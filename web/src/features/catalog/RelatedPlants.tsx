@@ -7,9 +7,9 @@ import { useAllProducts } from './api'
 import { useCategories } from './categories'
 import { ProductCard } from './ProductCard'
 
-type Relation = 'form' | 'parent' | 'child' | 'sibling' | 'genus'
+type Relation = 'form' | 'parent' | 'child' | 'genus'
 
-const ORDER: Relation[] = ['form', 'parent', 'child', 'sibling', 'genus']
+const ORDER: Relation[] = ['form', 'parent', 'child', 'genus']
 const MAX = 8
 // Рідкісний рід — коли рослин цього роду на сайті не більше стількох (Aeonium, Cotyledon, Greenovia…):
 // тоді внизу показуємо й решту рослин цього роду. Ехеверій і граптоверій багато — їм це не треба.
@@ -21,8 +21,8 @@ const genusOf = (p: Product) => p.genus || p.name.uk.split(/\s+/)[0] || ''
  * Як інші рослини пов’язані з цією:
  * - інша форма тієї ж рослини (звичайна ↔ variegata/cristata), її культивари й «hybrid» (lib/plantName: familyKey);
  * - один із її батьків;
- * - гібрид, у якого вона — один із батьків;
- * - рослина зі спільним батьком.
+ * - гібрид, у якого вона — один із батьків.
+ * Блок «Спільний батько» прибрано на прохання власниці.
  */
 function relationOf(product: Product, other: Product, resolve: (name: string) => string): Relation | null {
   // Назви порівнюємо без лапок, регістру, форм, «hybrid» і культивару: «chihuahuaensis 'Ruby Blush'» — родина chihuahuaensis
@@ -35,9 +35,6 @@ function relationOf(product: Product, other: Product, resolve: (name: string) =>
   const otherParents = (other.parents ?? []).filter(Boolean).map(resolve)
   if (parents.includes(otherKey)) return 'parent'
   if (otherParents.includes(self)) return 'child'
-  // «Спільний батько» — лише між гібридами: мутація (напр. «lilacina monstrose») — це форма свого джерела,
-  // а не «брат» гібридам від lilacina, і навпаки
-  if (product.origin !== 'cultivar' && other.origin !== 'cultivar' && parents.some((p) => otherParents.includes(p))) return 'sibling'
   return null
 }
 
@@ -45,7 +42,6 @@ const BADGE: Record<Relation, string> = {
   form: 'bg-sunset-100 text-sunset-700',
   parent: 'bg-brand-600 text-sand-50',
   child: 'bg-brand-100 text-brand-700',
-  sibling: 'bg-sand-200 text-sand-700',
   genus: 'bg-sand-200 text-sand-700',
 }
 
