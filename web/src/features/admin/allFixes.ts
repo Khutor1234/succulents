@@ -59,6 +59,8 @@ export interface Suggestion {
   lines?: DataSuggestion['lines']
   choice?: DataSuggestion['choice']
   nameStates?: DataSuggestion['nameStates']
+  /** Позначено «Неактуально»: лишається в списку сірим, без галочки, позначку можна зняти */
+  dismissed?: boolean
   form?: FormFix
   breeder?: { name: string; from: string }
   aliases?: { add: string[]; from: string; result: string[] }
@@ -238,6 +240,8 @@ export function useFixPlan(products: Product[] | undefined, choices: Parameters<
     const isDismissed = (s: Suggestion) => dismissed.get(s.id) === s.sig
     const split = (wantDismissed: boolean) =>
       plants.map((g) => ({ ...g, items: g.items.filter((s) => isDismissed(s) === wantDismissed) })).filter((g) => g.items.length > 0)
-    return { active: split(false), dismissed: split(true) }
+    // all — усі пропозиції на своїх місцях, неактуальні з позначкою dismissed
+    const all = plants.map((g) => ({ ...g, items: g.items.map((s) => (isDismissed(s) ? { ...s, dismissed: true } : s)) }))
+    return { active: split(false), dismissed: split(true), all }
   }, [products, checks, dismissals, choices])
 }

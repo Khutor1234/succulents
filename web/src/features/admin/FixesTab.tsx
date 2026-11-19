@@ -51,17 +51,24 @@ export function FixesTab({ products }: { products: Product[] }) {
   const [breeders, setBreeders] = useState<Map<string, string>>(new Map())
   const choices = useMemo(() => ({ names, lineage, breeders }), [names, lineage, breeders])
   const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products])
-  const { active, dismissed } = useFixPlan(products, choices)
+  const { active, all } = useFixPlan(products, choices)
   const dismiss = useSetFixDismissal()
   const [rule, setRule] = useState<Rule | 'all'>('all')
-  const [showDismissed, setShowDismissed] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
-  const shown = (rule === 'all' ? active : active.map((g) => ({ ...g, items: g.items.filter((s) => s.rule === rule) }))).filter((g) => g.items.length)
+  // Неактуальні лишаються на своїх місцях (сірі, без галочки); у лічильниках — лише актуальні
+  const shown = (
+    rule === 'all'
+      ? all
+      : all.map((g) => ({
+          ...g,
+          items: g.items.filter((s) => s.rule === rule),
+        }))
+  ).filter((g) => g.items.length)
   const counts = new Map<Rule, number>()
   for (const g of active) for (const s of g.items) counts.set(s.rule, (counts.get(s.rule) ?? 0) + 1)
   // Підказки без зміни (patch: null) галочки не мають — їх виправляють у картці
-  const visible = shown.flatMap((g) => g.items).filter((s) => s.patch)
+  const visible = shown.flatMap((g) => g.items).filter((s) => s.patch && !s.dismissed)
   const chosen = active.flatMap((g) => g.items).filter((s) => s.patch && selected.has(s.id))
   const allChosen = visible.length > 0 && visible.every((s) => selected.has(s.id))
   const toggle = (id: string) => {
@@ -78,7 +85,11 @@ export function FixesTab({ products }: { products: Product[] }) {
       const entries = [...byProduct]
       for (let i = 0; i < entries.length; i += 400) {
         const batch = writeBatch(db)
-        for (const [id, list] of entries.slice(i, i + 400)) batch.update(doc(db, 'products', id), { ...mergePatches(list, byId.get(id)), updatedAt: serverTimestamp() })
+        for (const [id, list] of entries.slice(i, i + 400))
+          batch.update(doc(db, 'products', id), {
+            ...mergePatches(list, byId.get(id)),
+            updatedAt: serverTimestamp(),
+          })
         await batch.commit()
       }
       return items.length
@@ -94,9 +105,9 @@ export function FixesTab({ products }: { products: Product[] }) {
       <Hint>{t('admin.allFixes.hint')}</Hint>
 
       {/* Фільтр за правилом — скільки пропозицій за кожним */}
-      {active.length > 0 && (
+      {all.length > 0 && (
         <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('admin.allFixes.filter')}>
-          {(['all', ...RULES.filter((r) => counts.has(r))] as const).map((r) => (
+          {(['all', ...RULES.filter((r) => all.some((g) => g.items.some((s) => s.rule === r)))] as const).map((r) => (
             <button
               key={r}
               type="button"
@@ -107,7 +118,7 @@ export function FixesTab({ products }: { products: Product[] }) {
               }`}
             >
               {r === 'all' ? t('admin.allFixes.all') : t(`admin.allFixes.rules.${r}.label`)}{' '}
-              <span className="tabular-nums opacity-80">{r === 'all' ? active.reduce((n, g) => n + g.items.length, 0) : counts.get(r)}</span>
+              <span className="tabular-nums opacity-80">{r === 'all' ? active.reduce((n, g) => n + g.items.length, 0) : (counts.get(r) ?? 0)}</span>
             </button>
           ))}
         </div>
@@ -142,21 +153,34 @@ export function FixesTab({ products }: { products: Product[] }) {
                     onChooseLineage={(key, sig) => setLineage(new Map(lineage).set(key, sig))}
                     onChooseBreeder={(key, name) => setBreeders(new Map(breeders).set(key, name))}
                     action={
-                      <button
-                        type="button"
-                        onClick={() => {
-                          dismiss.mutate({ id: s.id, sig: s.sig })
-                          const next = new Set(selected)
-                          next.delete(s.id)
-                          setSelected(next)
-                        }}
-                        disabled={dismiss.isPending}
-                        title={t('admin.allFixes.dismissHint')}
-                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-sand-300 px-2 py-1 text-xs font-bold text-sand-700 transition-colors hover:border-sunset-600 hover:text-sunset-700 disabled:opacity-60"
-                      >
-                        <X size={14} strokeWidth={2.5} aria-hidden />
-                        {t('admin.allFixes.dismiss')}
-                      </button>
+                      s.dismissed ? (
+                        <button
+                          type="button"
+                          onClick={() => dismiss.mutate({ id: s.id, sig: null })}
+                          disabled={dismiss.isPending}
+                          title={t('admin.allFixes.restoreHint')}
+                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-sand-300 bg-sand-50 px-2 py-1 text-xs font-bold text-sand-700 transition-colors hover:border-brand-600 hover:text-brand-700 disabled:opacity-60"
+                        >
+                          <Undo2 size={14} strokeWidth={2.5} aria-hidden />
+                          {t('admin.allFixes.restore')}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            dismiss.mutate({ id: s.id, sig: s.sig })
+                            const next = new Set(selected)
+                            next.delete(s.id)
+                            setSelected(next)
+                          }}
+                          disabled={dismiss.isPending}
+                          title={t('admin.allFixes.dismissHint')}
+                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-sand-300 px-2 py-1 text-xs font-bold text-sand-700 transition-colors hover:border-sunset-600 hover:text-sunset-700 disabled:opacity-60"
+                        >
+                          <X size={14} strokeWidth={2.5} aria-hidden />
+                          {t('admin.allFixes.dismiss')}
+                        </button>
+                      )
                     }
                   />
                 ))}
@@ -176,42 +200,6 @@ export function FixesTab({ products }: { products: Product[] }) {
         </>
       )}
       {apply.isError && <p className="text-red-700">{t('admin.saveError')}</p>}
-
-      {/* Позначені «Неактуально» — можна переглянути й повернути */}
-      {dismissed.length > 0 && (
-        <div className="pt-2">
-          <button type="button" onClick={() => setShowDismissed(!showDismissed)} className="text-sm font-bold text-sand-700 underline">
-            {t(showDismissed ? 'admin.allFixes.hideDismissed' : 'admin.allFixes.showDismissed', {
-              count: dismissed.reduce((n, g) => n + g.items.length, 0),
-            })}
-          </button>
-          {showDismissed && (
-            <ul className="mt-3 space-y-3 opacity-80">
-              {dismissed.map((g) => (
-                <PlantCard key={g.id} plant={g}>
-                  {g.items.map((s) => (
-                    <SuggestionRow
-                      key={s.id}
-                      s={s}
-                      action={
-                        <button
-                          type="button"
-                          onClick={() => dismiss.mutate({ id: s.id, sig: null })}
-                          disabled={dismiss.isPending}
-                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-sand-300 px-2 py-1 text-xs font-bold text-sand-700 transition-colors hover:border-brand-600 hover:text-brand-700 disabled:opacity-60"
-                        >
-                          <Undo2 size={14} strokeWidth={2.5} aria-hidden />
-                          {t('admin.allFixes.restore')}
-                        </button>
-                      }
-                    />
-                  ))}
-                </PlantCard>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
     </div>
   )
 }
@@ -254,6 +242,7 @@ function SuggestionRow({
   action: React.ReactNode
 }) {
   const { t } = useTranslation()
+  const off = !!s.dismissed
   const lineageText = (l: Lineage | null) =>
     !l
       ? t('admin.nameFixes.notSet')
@@ -280,13 +269,28 @@ function SuggestionRow({
 
   // Пояснення до рядків нових правил (у даних — короткі коди, тут — зрозумілий текст)
   const noteText = (note: string): string => {
-    if (s.rule === 'nameStyle') return `${t('admin.allFixes.notes.whatChanges')} ${note.split(',').map((r) => t(`admin.allFixes.reasons.${r}`)).join(', ')}`
+    if (s.rule === 'nameStyle')
+      return `${t('admin.allFixes.notes.whatChanges')} ${note
+        .split(',')
+        .map((r) => t(`admin.allFixes.reasons.${r}`))
+        .join(', ')}`
     if (s.rule === 'duplicate') return t('admin.allFixes.notes.duplicate', { name: note })
     if (s.rule === 'genusField') return t('admin.allFixes.notes.genusMismatch', { text: note })
     const [kind, ...rest] = note.split(':')
-    if (kind === 'tags') return t('admin.allFixes.notes.addTags', { tags: rest.join(':').split(',').map((tag) => t(`tags.${tag}`)).join(', ') })
+    if (kind === 'tags')
+      return t('admin.allFixes.notes.addTags', {
+        tags: rest
+          .join(':')
+          .split(',')
+          .map((tag) => t(`tags.${tag}`))
+          .join(', '),
+      })
     if (kind === 'cycle') return t('admin.allFixes.notes.cycle', { name: rest.join(':') })
-    if (kind === 'alias') return t('admin.allFixes.notes.aliasShared', { alias: rest[0], names: rest.slice(1).join(':') })
+    if (kind === 'alias')
+      return t('admin.allFixes.notes.aliasShared', {
+        alias: rest[0],
+        names: rest.slice(1).join(':'),
+      })
     if (kind === 'aliasName') return t('admin.allFixes.notes.aliasName', { alias: rest.join(':') })
     return t(`admin.allFixes.notes.${note}`)
   }
@@ -451,8 +455,12 @@ function SuggestionRow({
   }
 
   return (
-    <div className={`flex items-start gap-3 rounded-xl border p-2.5 transition-colors ${chosen ? 'border-brand-600 bg-brand-100/40' : 'border-sand-200 bg-sand-100/60'}`}>
-      {onToggle && s.patch ? (
+    <div
+      className={`flex items-start gap-3 rounded-xl border p-2.5 transition-colors ${
+        off ? 'border-dashed border-sand-300 bg-transparent' : chosen ? 'border-brand-600 bg-brand-100/40' : 'border-sand-200 bg-sand-100/60'
+      }`}
+    >
+      {onToggle && s.patch && !off ? (
         <input
           type="checkbox"
           checked={!!chosen}
@@ -463,8 +471,11 @@ function SuggestionRow({
       ) : onToggle ? (
         <span className="w-5 shrink-0" aria-hidden />
       ) : null}
-      <div className="min-w-0 flex-1 text-sm">
-        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold ${RULE_STYLE[s.rule]}`}>{t(`admin.allFixes.rules.${s.rule}.label`)}</span>
+      <div className={`min-w-0 flex-1 text-sm ${off ? 'opacity-50' : ''}`}>
+        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold ${off ? 'bg-sand-200 text-sand-700' : RULE_STYLE[s.rule]}`}>
+          {t(`admin.allFixes.rules.${s.rule}.label`)}
+        </span>
+        {off && <span className="ml-1.5 text-xs font-bold text-sand-700">· {t('admin.allFixes.dismissed')}</span>}
         {/* Чому пропонуємо — за яким правилом */}
         <span className="mt-1 block text-xs leading-relaxed text-sand-700">{t(`admin.allFixes.rules.${s.rule}.why`)}</span>
         <div className="mt-1.5 space-y-1">{body}</div>
