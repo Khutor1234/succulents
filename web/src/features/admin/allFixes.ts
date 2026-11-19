@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { nameKey, parseForms, withoutStates } from '../../lib/plantName'
+import { nameKey, parseForms, withForms, withoutStates } from '../../lib/plantName'
 import { PLANT_CATEGORY, STATE_TAGS } from '../../lib/plants'
 import type { Product } from '../../lib/types'
 import { planCultivarFixes, type CultivarFix } from './cultivarFixes'
@@ -7,6 +7,7 @@ import { planFormFixes, type FormFix } from './formFixes'
 import { planNameFixes, type LineageChange, type NameChange } from './nameFixes'
 import { useFixDismissals, useOriginChecks } from './api'
 import { rowFromCells, type CheckRow } from './originCheck'
+import { normalizeName, planDataRules, type DataChoices, type DataRule, type DataSuggestion } from './dataRules'
 
 /**
  * «Інструменти → Виправлення»: усі правила разом (колишні вкладки «Форми», «Назви батьків», «Культивари»
@@ -14,11 +15,36 @@ import { rowFromCells, type CheckRow } from './originCheck'
  * або позначити «Неактуально» (зберігається в fixDismissals; змінилась пропозиція — з'явиться знову).
  */
 
-export const RULES = ['form', 'selection', 'breeder', 'aliases', 'aliasGenus', 'names', 'lineage', 'cultivar', 'quotes'] as const
-export type Rule = (typeof RULES)[number]
+const FIX_RULES = ['form', 'selection', 'breeder', 'aliases', 'aliasGenus', 'names', 'lineage', 'cultivar', 'quotes'] as const
+export type Rule = (typeof FIX_RULES)[number] | DataRule
+/** Порядок показу: спершу назва, далі форми, інші назви, батьки й походження, наприкінці — порядок у магазині */
+export const RULES: Rule[] = [
+  'genusField',
+  'nameStyle',
+  'formTags',
+  'quotes',
+  'cultivar',
+  'duplicate',
+  'form',
+  'selection',
+  'breeder',
+  'breederSpelling',
+  'aliases',
+  'aliasGenus',
+  'aliasSelf',
+  'aliasShared',
+  'names',
+  'lineage',
+  'selfParent',
+  'originConflict',
+  'habitat',
+  'habitatSpelling',
+  'shopReady',
+  'description',
+]
 
 /** У якому порядку зливати зміни однієї рослини, якщо прийнято кілька: пізніші перекривають ті самі поля */
-const APPLY_ORDER: Rule[] = ['names', 'lineage', 'cultivar', 'quotes', 'form', 'selection', 'breeder', 'aliasGenus', 'aliases']
+const APPLY_ORDER: Rule[] = ['genusField', 'names', 'lineage', 'selfParent', 'originConflict', 'habitat', 'habitatSpelling', 'cultivar', 'quotes', 'formTags', 'nameStyle', 'form', 'selection', 'breeder', 'breederSpelling', 'aliasGenus', 'aliases', 'aliasSelf']
 
 export interface Suggestion {
   /** «товар__правило» — і ключ галочки, і документ «Неактуально» */
@@ -27,8 +53,12 @@ export interface Suggestion {
   rule: Rule
   /** Відбиток саме цієї пропозиції */
   sig: string
-  /** Що записати в товар */
-  patch: Record<string, unknown>
+  /** Що записати в товар; null — лише підказка (виправляє продавець у картці або «Неактуально») */
+  patch: Record<string, unknown> | null
+  /** Нові правила (dataRules.ts): рядки «Було → Стане» чи пояснення, вибір варіанта */
+  lines?: DataSuggestion['lines']
+  choice?: DataSuggestion['choice']
+  nameStates?: DataSuggestion['nameStates']
   form?: FormFix
   breeder?: { name: string; from: string }
   aliases?: { add: string[]; from: string; result: string[] }
@@ -91,12 +121,13 @@ function planAliasFixes(plants: Plant[]) {
 export function planAllFixes(
   products: Product[],
   checks: readonly CheckRow[],
-  choices: { names?: ReadonlyMap<string, string>; lineage?: ReadonlyMap<string, string> } = {},
+  choices: { names?: ReadonlyMap<string, string>; lineage?: ReadonlyMap<string, string> } & DataChoices = {},
 ): PlantSuggestions[] {
   const plants = products.filter((p) => p.category === PLANT_CATEGORY)
-  const byId = new Map(plants.map((p) => [p.id, p]))
+  // Порядок у магазині й опис — для всіх товарів, решта правил — лише для рослин
+  const byId = new Map(products.map((p) => [p.id, p]))
   const all: Suggestion[] = []
-  const add = (productId: string, rule: Rule, sig: string, patch: Record<string, unknown>, extra: Partial<Suggestion>) =>
+  const add = (productId: string, rule: Rule, sig: string, patch: Record<string, unknown> | null, extra: Partial<Suggestion>) =>
     all.push({ id: `${productId}__${rule}`, productId, rule, sig, patch, ...extra })
 
   for (const f of planFormFixes(plants).fixes) {
@@ -136,6 +167,22 @@ export function planAllFixes(
       add(c.id, 'quotes', c.rename.name, { 'name.uk': c.rename.name, cultivarName: c.cultivar, ...(c.rename.parents ? { parents: c.rename.parents } : {}) }, { cultivar: c })
   }
 
+  // Правила порядку й однаковості даних; підказку «гібрид без батьків» / «відбір без Від» не дублюємо,
+  // якщо для рослини вже є пропозиція походження чи форми
+  const has = (id: string, rules: Rule[]) => all.some((x) => x.productId === id && rules.includes(x.rule))
+  for (const d of planDataRules(products, checks, choices)) {
+    if (d.rule === 'originConflict' && !d.patch && has(d.productId, ['lineage', 'form', 'selection'])) continue
+    // Одна пропозиція одного правила на товар (напр. ареал і ареал у «Походженні» форми — разом)
+    const prev = all.find((x) => x.productId === d.productId && x.rule === d.rule)
+    if (prev) {
+      prev.lines = [...(prev.lines ?? []), ...d.lines]
+      prev.sig = `${prev.sig}||${d.sig}`
+      prev.patch = prev.patch || d.patch ? { ...(prev.patch ?? {}), ...(d.patch ?? {}) } : null
+      continue
+    }
+    add(d.productId, d.rule, d.sig, d.patch, { lines: d.lines, choice: d.choice, nameStates: d.nameStates })
+  }
+
   const groups = new Map<string, PlantSuggestions>()
   for (const s of all) {
     const p = byId.get(s.productId)
@@ -149,19 +196,39 @@ export function planAllFixes(
 }
 
 /** Прийняті пропозиції однієї рослини → одна зміна товару (пізніші правила перекривають ті самі поля). */
-export function mergePatches(items: Suggestion[]): Record<string, unknown> {
+export function mergePatches(items: Suggestion[], product?: Product): Record<string, unknown> {
   const merged: Record<string, unknown> = [...items]
     .sort((a, b) => APPLY_ORDER.indexOf(a.rule) - APPLY_ORDER.indexOf(b.rule))
-    .reduce((acc, s) => ({ ...acc, ...s.patch }), {})
-  // Прийнято й «Інші назви», й «Рід в інших назвах» — у доповненому списку теж прибираємо рід
-  const genus = items.find((s) => s.aliasGenus)?.aliasGenus?.genus
-  const added = items.find((s) => s.rule === 'aliases')?.aliases?.result
-  if (genus && added) merged.aliases = uniq(added.map((a) => stripGenus(a, genus)))
+    .reduce((acc, s) => ({ ...acc, ...(s.patch ?? {}) }), {})
+  const pick = (rule: Rule) => items.find((s) => s.rule === rule)
+  // Назву змінюють кілька правил — складаємо по черзі: злиті лапки → форми з галочок → однакове написання
+  const quotes = pick('quotes')?.cultivar?.rename?.name
+  const forms = pick('formTags')
+  const formsName = !!forms?.patch && 'name.uk' in forms.patch
+  const style = pick('nameStyle')
+  if (product && (quotes || formsName || style)) {
+    let name = quotes ?? product.name.uk
+    if (formsName && forms?.nameStates) name = withForms(parseForms(name).base, forms.nameStates)
+    if (style) name = normalizeName(name)
+    merged['name.uk'] = name
+  }
+  // Інші назви теж — по черзі: додати від звичайної версії → прибрати рід → прибрати саму назву рослини
+  const added = pick('aliases')?.aliases?.result
+  const genus = pick('aliasGenus')?.aliasGenus?.genus
+  const self = pick('aliasSelf')
+  if (product && (added || genus || self)) {
+    let list = added ?? product.aliases ?? []
+    if (genus) list = list.map((a) => stripGenus(a, genus))
+    const finalName = typeof merged['name.uk'] === 'string' ? (merged['name.uk'] as string) : product.name.uk
+    if (self) list = list.filter((a) => nameKey(a) !== nameKey(finalName) && nameKey(a) !== nameKey(product.name.uk))
+    merged.aliases = uniq(list.map((a) => a.trim()))
+  }
   return merged
 }
 
 /** Пропозиції всіх правил разом; «Неактуально» — у базі, тож не з'являється знову (поки пропозиція та сама). */
-export function useFixPlan(products: Product[] | undefined, choices: Parameters<typeof planAllFixes>[2] = {}) {
+const NO_CHOICES = {}
+export function useFixPlan(products: Product[] | undefined, choices: Parameters<typeof planAllFixes>[2] = NO_CHOICES) {
   const { data: checks } = useOriginChecks()
   const { data: dismissals } = useFixDismissals()
   return useMemo(() => {

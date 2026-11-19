@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { doc, serverTimestamp, writeBatch } from 'firebase/firestore'
-import { ArrowRight, Undo2, X } from 'lucide-react'
+import { ArrowRight, Info, Pencil, Undo2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -22,6 +22,19 @@ const RULE_STYLE: Record<Rule, string> = {
   lineage: 'bg-lavender-100 text-lavender-700',
   cultivar: 'bg-sand-200 text-sand-800',
   quotes: 'bg-sand-200 text-sand-800',
+  genusField: 'bg-sunset-100 text-sunset-700',
+  nameStyle: 'bg-sand-200 text-sand-800',
+  formTags: 'bg-sunset-100 text-sunset-700',
+  duplicate: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+  aliasSelf: 'bg-brand-100 text-brand-700',
+  aliasShared: 'bg-brand-100 text-brand-700',
+  selfParent: 'bg-lavender-100 text-lavender-700',
+  originConflict: 'bg-lavender-100 text-lavender-700',
+  habitat: 'bg-lavender-100 text-lavender-700',
+  habitatSpelling: 'bg-lavender-100 text-lavender-700',
+  breederSpelling: 'bg-brand-100 text-brand-700',
+  shopReady: 'bg-sand-200 text-sand-800',
+  description: 'bg-sand-200 text-sand-800',
 }
 
 /**
@@ -34,7 +47,10 @@ export function FixesTab({ products }: { products: Product[] }) {
   // Вибір правильного варіанта: як записати батька, якого немає в магазині; яке походження правильне
   const [names, setNames] = useState<Map<string, string>>(new Map())
   const [lineage, setLineage] = useState<Map<string, string>>(new Map())
-  const choices = useMemo(() => ({ names, lineage }), [names, lineage])
+  // Як правильно записати селекціонера, якщо його записано по-різному
+  const [breeders, setBreeders] = useState<Map<string, string>>(new Map())
+  const choices = useMemo(() => ({ names, lineage, breeders }), [names, lineage, breeders])
+  const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products])
   const { active, dismissed } = useFixPlan(products, choices)
   const dismiss = useSetFixDismissal()
   const [rule, setRule] = useState<Rule | 'all'>('all')
@@ -44,8 +60,9 @@ export function FixesTab({ products }: { products: Product[] }) {
   const shown = (rule === 'all' ? active : active.map((g) => ({ ...g, items: g.items.filter((s) => s.rule === rule) }))).filter((g) => g.items.length)
   const counts = new Map<Rule, number>()
   for (const g of active) for (const s of g.items) counts.set(s.rule, (counts.get(s.rule) ?? 0) + 1)
-  const visible = shown.flatMap((g) => g.items)
-  const chosen = active.flatMap((g) => g.items).filter((s) => selected.has(s.id))
+  // Підказки без зміни (patch: null) галочки не мають — їх виправляють у картці
+  const visible = shown.flatMap((g) => g.items).filter((s) => s.patch)
+  const chosen = active.flatMap((g) => g.items).filter((s) => s.patch && selected.has(s.id))
   const allChosen = visible.length > 0 && visible.every((s) => selected.has(s.id))
   const toggle = (id: string) => {
     const next = new Set(selected)
@@ -61,7 +78,7 @@ export function FixesTab({ products }: { products: Product[] }) {
       const entries = [...byProduct]
       for (let i = 0; i < entries.length; i += 400) {
         const batch = writeBatch(db)
-        for (const [id, list] of entries.slice(i, i + 400)) batch.update(doc(db, 'products', id), { ...mergePatches(list), updatedAt: serverTimestamp() })
+        for (const [id, list] of entries.slice(i, i + 400)) batch.update(doc(db, 'products', id), { ...mergePatches(list, byId.get(id)), updatedAt: serverTimestamp() })
         await batch.commit()
       }
       return items.length
@@ -123,6 +140,7 @@ export function FixesTab({ products }: { products: Product[] }) {
                     onToggle={() => toggle(s.id)}
                     onChooseName={(key, name) => setNames(new Map(names).set(key, name))}
                     onChooseLineage={(key, sig) => setLineage(new Map(lineage).set(key, sig))}
+                    onChooseBreeder={(key, name) => setBreeders(new Map(breeders).set(key, name))}
                     action={
                       <button
                         type="button"
@@ -224,6 +242,7 @@ function SuggestionRow({
   onToggle,
   onChooseName,
   onChooseLineage,
+  onChooseBreeder,
   action,
 }: {
   s: Suggestion
@@ -231,6 +250,7 @@ function SuggestionRow({
   onToggle?: () => void
   onChooseName?: (key: string, name: string) => void
   onChooseLineage?: (key: string, sig: string) => void
+  onChooseBreeder?: (key: string, name: string) => void
   action: React.ReactNode
 }) {
   const { t } = useTranslation()
@@ -258,8 +278,58 @@ function SuggestionRow({
     </button>
   )
 
+  // Пояснення до рядків нових правил (у даних — короткі коди, тут — зрозумілий текст)
+  const noteText = (note: string): string => {
+    if (s.rule === 'nameStyle') return `${t('admin.allFixes.notes.whatChanges')} ${note.split(',').map((r) => t(`admin.allFixes.reasons.${r}`)).join(', ')}`
+    if (s.rule === 'duplicate') return t('admin.allFixes.notes.duplicate', { name: note })
+    if (s.rule === 'genusField') return t('admin.allFixes.notes.genusMismatch', { text: note })
+    const [kind, ...rest] = note.split(':')
+    if (kind === 'tags') return t('admin.allFixes.notes.addTags', { tags: rest.join(':').split(',').map((tag) => t(`tags.${tag}`)).join(', ') })
+    if (kind === 'cycle') return t('admin.allFixes.notes.cycle', { name: rest.join(':') })
+    if (kind === 'alias') return t('admin.allFixes.notes.aliasShared', { alias: rest[0], names: rest.slice(1).join(':') })
+    if (kind === 'aliasName') return t('admin.allFixes.notes.aliasName', { alias: rest.join(':') })
+    return t(`admin.allFixes.notes.${note}`)
+  }
+
   let body: React.ReactNode = null
-  if ((s.rule === 'form' || s.rule === 'selection') && s.form) {
+  if (s.lines) {
+    body = (
+      <>
+        {s.lines.map((l, i) =>
+          l.note ? (
+            <span key={i} className="block text-xs text-sand-700">
+              {noteText(l.note)}
+            </span>
+          ) : (
+            <Line key={i}>
+              {was(l.from ?? '')}
+              {arrow}
+              {will(l.to === '—' ? t('admin.allFixes.removed') : (l.to ?? ''))}
+            </Line>
+          ),
+        )}
+        {s.choice && (
+          <span className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-sand-700">{t('admin.nameFixes.howRight')}</span>
+            {s.choice.options.map((o) => pick(s.choice!.value === o, o, () => onChooseBreeder?.(s.choice!.key, o)))}
+          </span>
+        )}
+        {/* Лише підказка: автоматично не виправляється — відкрити картку товару */}
+        {!s.patch && (
+          <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <span className="inline-flex items-center gap-1 text-sand-700">
+              <Info size={13} strokeWidth={2.5} aria-hidden />
+              {t('admin.allFixes.infoOnly')}
+            </span>
+            <Link to={`/admin/products/${s.productId}`} className="inline-flex items-center gap-1 font-bold text-brand-600 underline">
+              <Pencil size={13} strokeWidth={2.5} aria-hidden />
+              {t('admin.allFixes.edit')}
+            </Link>
+          </span>
+        )}
+      </>
+    )
+  } else if ((s.rule === 'form' || s.rule === 'selection') && s.form) {
     const f = s.form
     const before = [f.before.origin ? t(`admin.fields.origins.${f.before.origin}`) : t('admin.formFixes.noOrigin'), f.before.parents.join(' × ')]
       .filter(Boolean)
@@ -382,7 +452,7 @@ function SuggestionRow({
 
   return (
     <div className={`flex items-start gap-3 rounded-xl border p-2.5 transition-colors ${chosen ? 'border-brand-600 bg-brand-100/40' : 'border-sand-200 bg-sand-100/60'}`}>
-      {onToggle ? (
+      {onToggle && s.patch ? (
         <input
           type="checkbox"
           checked={!!chosen}
@@ -390,6 +460,8 @@ function SuggestionRow({
           aria-label={t(`admin.allFixes.rules.${s.rule}.label`)}
           className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-brand-600"
         />
+      ) : onToggle ? (
+        <span className="w-5 shrink-0" aria-hidden />
       ) : null}
       <div className="min-w-0 flex-1 text-sm">
         <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold ${RULE_STYLE[s.rule]}`}>{t(`admin.allFixes.rules.${s.rule}.label`)}</span>

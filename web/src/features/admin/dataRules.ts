@@ -1,0 +1,348 @@
+import { detectGenus, nameKey, parseForms, withForms, withoutStates } from '../../lib/plantName'
+import { NAME_TAGS, PLANT_CATEGORY, type PlantTag } from '../../lib/plants'
+import { HABITATS, type Product } from '../../lib/types'
+import type { CheckRow } from './originCheck'
+
+/**
+ * Правила порядку й однаковості даних для «Інструменти → Виправлення» (поруч із allFixes.ts).
+ * Кожне правило лише пропонує: зміна (patch) записується, тільки коли продавець поставить галочку й натисне «Застосувати».
+ * Правила без patch — лише підказка (напр. можливий дубль): виправляє продавець у картці, або «Неактуально».
+ */
+
+export const DATA_RULES = [
+  'genusField',
+  'nameStyle',
+  'formTags',
+  'duplicate',
+  'aliasSelf',
+  'aliasShared',
+  'selfParent',
+  'originConflict',
+  'habitat',
+  'habitatSpelling',
+  'breederSpelling',
+  'shopReady',
+  'description',
+] as const
+export type DataRule = (typeof DATA_RULES)[number]
+
+/** Рядок «Було → Стане» або просто пояснення (note) */
+export interface FixLine {
+  from?: string
+  to?: string
+  note?: string
+}
+
+export interface DataSuggestion {
+  productId: string
+  rule: DataRule
+  sig: string
+  /** null — лише підказка, без автоматичної зміни */
+  patch: Record<string, unknown> | null
+  lines: FixLine[]
+  /** Написано по-різному — продавець вибирає правильний варіант (діє на всі картки з цим написанням) */
+  choice?: { kind: 'breeder'; key: string; options: string[]; value: string }
+  /** Для злиття з іншими змінами назви: якими мають бути форми в назві (formTags) */
+  nameStates?: PlantTag[]
+  /** aliasSelf: яку назву прибрати з інших назв */
+  dropAlias?: string
+}
+
+export interface DataChoices {
+  breeders?: ReadonlyMap<string, string>
+}
+
+const QUOTES = /[‘’‚‛“”„"«»`ʼ′]/g
+const uniqCI = (list: string[]) => {
+  const seen = new Set<string>()
+  return list.filter((a) => a && !seen.has(a.toLowerCase()) && seen.add(a.toLowerCase()))
+}
+
+/**
+ * Однакове написання назви: без зайвих пробілів, рід латиною з великої («ехеверія», «echeveria» → «Echeveria»),
+ * прямі лапки ('Lola' замість ‘Lola’, «Lola», "Lola"), знак схрещування × замість x між назвами,
+ * форми одним словом («variegated», «f. Variegata» → «variegata»).
+ */
+const NAME_STEPS: [string, (n: string) => string][] = [
+  ['spaces', (n) => n.replace(/\s+/g, ' ').trim()],
+  ['quotes', (n) => n.replace(QUOTES, "'")],
+  ['cross', (n) => n.replace(/(\S) [xX] (?=\S)/g, '$1 × ')],
+  [
+    'genus',
+    (n) => {
+      const genus = detectGenus(n)
+      return genus ? [genus, ...n.split(' ').slice(1)].join(' ') : n
+    },
+  ],
+  [
+    'forms',
+    (n) => {
+      const { base, states } = parseForms(n)
+      return states.length ? withForms(base, states) : n
+    },
+  ],
+]
+
+export function normalizeName(name: string): string {
+  return NAME_STEPS.reduce((n, [, step]) => step(n), name)
+}
+
+/** Що саме змінить normalizeName — для пояснення під пропозицією */
+function nameStyleReasons(from: string): string[] {
+  const reasons: string[] = []
+  let n = from
+  for (const [id, step] of NAME_STEPS) {
+    const next = step(n)
+    if (next !== n) reasons.push(id)
+    n = next
+  }
+  return reasons
+}
+
+/** Країна ареалу однаково: як у списку форми товару (HABITATS); англійські й інші написання → українською */
+const HABITAT_ALIASES: Record<string, (typeof HABITATS)[number]> = {
+  mexico: 'Мексика',
+  méxico: 'Мексика',
+  'south africa': 'ПАР',
+  rsa: 'ПАР',
+  'південна африка': 'ПАР',
+  'південно-африканська республіка': 'ПАР',
+  namibia: 'Намібія',
+  madagascar: 'Мадагаскар',
+  'canary islands': 'Канарські острови',
+  canaries: 'Канарські острови',
+  канари: 'Канарські острови',
+  usa: 'США',
+  'united states': 'США',
+  peru: 'Перу',
+  chile: 'Чилі',
+  bolivia: 'Болівія',
+  brazil: 'Бразилія',
+  yemen: 'Ємен',
+  china: 'Китай',
+}
+export function normalizeHabitat(text: string): string {
+  const t = text.replace(/\s+/g, ' ').trim()
+  const low = t.toLowerCase().replace(/\.$/, '')
+  return HABITATS.find((h) => h.toLowerCase() === low) ?? HABITAT_ALIASES[low] ?? t
+}
+
+/** Селекціонер: «Dick Wright», «D. Wright», «dick wright» → один ключ (прізвище + перша літера імені) */
+function breederKey(name: string): string {
+  const words = name.toLowerCase().replace(/[.,]/g, ' ').split(/\s+/).filter(Boolean)
+  if (words.length === 0) return ''
+  if (words.length === 1) return words[0]
+  return `${words[words.length - 1]} ${words[0][0]}`
+}
+
+const isLatinText = (text: string) => {
+  const latin = (text.match(/[a-z]/gi) ?? []).length
+  const cyr = (text.match(/[а-яіїєґ]/gi) ?? []).length
+  return latin > 20 && latin > cyr * 2
+}
+
+export function planDataRules(products: Product[], checks: readonly CheckRow[], choices: DataChoices = {}): DataSuggestion[] {
+  const out: DataSuggestion[] = []
+  const add = (s: DataSuggestion) => out.push(s)
+  const plants = products.filter((p) => p.category === PLANT_CATEGORY)
+  const keyName = new Map<string, Product[]>()
+  for (const p of plants) {
+    // Живець — та сама рослина з тією ж назвою (на екрані «(живець)»), це не дубль
+    const k = `${nameKey(p.name.uk)}|${p.tags?.includes('cutting') ? 'c' : ''}`
+    keyName.set(k, [...(keyName.get(k) ?? []), p])
+  }
+  const byKey = new Map(plants.map((p) => [nameKey(p.name.uk), p]))
+  const familyOf = (p: Product) => nameKey(withoutStates(p.name.uk))
+
+  for (const p of plants) {
+    const name = p.name.uk
+
+    // 1. Рід у назві й у полі «Рід» мають збігатися — інакше рослина в чужому фільтрі й родоводах
+    const g = detectGenus(name)
+    if (g && g !== (p.genus ?? '')) {
+      add({ productId: p.id, rule: 'genusField', sig: g, patch: { genus: g }, lines: [{ from: p.genus || '—', to: g }] })
+    } else if (!g && p.genus) {
+      const first = name.trim().split(/\s+/)[0] ?? ''
+      if (first.replace(QUOTES, '').toLowerCase() !== p.genus.toLowerCase())
+        add({ productId: p.id, rule: 'genusField', sig: `${first}|${p.genus}`, patch: null, lines: [{ note: `«${first}» ≠ «${p.genus}»` }] })
+    }
+
+    // 2. Написання назви
+    const styled = normalizeName(name)
+    if (styled !== name) {
+      add({
+        productId: p.id,
+        rule: 'nameStyle',
+        sig: styled,
+        patch: { 'name.uk': styled },
+        lines: [{ from: name, to: styled }, { note: nameStyleReasons(name).join(',') }],
+      })
+    }
+
+    // 3. Форми в назві й галочки форм мають збігатися
+    const inName = parseForms(name).states
+    const tagged = NAME_TAGS.filter((t) => p.tags?.includes(t))
+    const missingTags = inName.filter((t) => !tagged.includes(t))
+    const missingInName = tagged.filter((t) => !inName.includes(t))
+    if (missingTags.length || missingInName.length) {
+      const states = NAME_TAGS.filter((t) => inName.includes(t) || tagged.includes(t))
+      const newName = missingInName.length ? withForms(parseForms(name).base, states) : name
+      const tags = [...new Set([...(p.tags ?? []), ...missingTags])]
+      const patch: Record<string, unknown> = {}
+      if (missingTags.length) patch.tags = tags
+      if (missingInName.length) patch['name.uk'] = newName
+      add({
+        productId: p.id,
+        rule: 'formTags',
+        sig: states.join('+'),
+        patch,
+        nameStates: states,
+        lines: [
+          ...(missingTags.length ? [{ note: `tags:${missingTags.join(',')}` }] : []),
+          ...(missingInName.length ? [{ from: name, to: newName }] : []),
+        ],
+      })
+    }
+
+    // 6. Можливий дубль — та сама назва в іншій картці (не живець)
+    const same = keyName.get(`${nameKey(name)}|${p.tags?.includes('cutting') ? 'c' : ''}`) ?? []
+    if (same.length > 1) {
+      const others = same.filter((q) => q.id !== p.id)
+      add({ productId: p.id, rule: 'duplicate', sig: same.map((q) => q.id).sort().join('|'), patch: null, lines: others.map((q) => ({ note: q.name.uk })) })
+    }
+
+    // 8. Інша назва = власна назва рослини — зайва
+    const self = (p.aliases ?? []).find((a) => nameKey(a) === nameKey(name))
+    if (self) add({ productId: p.id, rule: 'aliasSelf', sig: self, patch: { aliases: (p.aliases ?? []).filter((a) => a !== self) }, dropAlias: self, lines: [{ from: self, to: '—' }] })
+
+    // 9. Рослина — сама собі батько; або двоє записані батьками одне одного
+    const own = nameKey(name)
+    const parents = (p.parents ?? []).filter(Boolean)
+    const selfParents = parents.filter((x) => nameKey(x) === own)
+    const baseParents = (p.base?.parents ?? []).filter(Boolean)
+    const baseSelf = baseParents.filter((x) => nameKey(x) === familyOf(p))
+    if (selfParents.length || baseSelf.length) {
+      const patch: Record<string, unknown> = {}
+      if (selfParents.length) patch.parents = parents.filter((x) => nameKey(x) !== own)
+      if (baseSelf.length && p.base) patch.base = { ...p.base, parents: baseParents.filter((x) => nameKey(x) !== familyOf(p)) }
+      add({ productId: p.id, rule: 'selfParent', sig: [...selfParents, ...baseSelf].join('|'), patch, lines: [...selfParents, ...baseSelf].map((x) => ({ from: x, to: '—' })) })
+    }
+    for (const x of parents) {
+      const q = byKey.get(nameKey(x))
+      if (q && q.id !== p.id && (q.parents ?? []).some((y) => nameKey(y) === own))
+        add({ productId: p.id, rule: 'selfParent', sig: `cycle|${q.id}`, patch: null, lines: [{ note: `cycle:${q.name.uk}` }] })
+    }
+
+    // 10. Суперечності в походженні
+    if (p.origin === 'natural' && (parents.length || p.breeder?.trim())) {
+      add({
+        productId: p.id,
+        rule: 'originConflict',
+        sig: `natural|${parents.join('+')}|${p.breeder ?? ''}`,
+        patch: { parents: [], breeder: '' },
+        lines: [
+          ...(parents.length ? [{ from: parents.join(' × '), to: '—' }] : []),
+          ...(p.breeder?.trim() ? [{ from: p.breeder, to: '—' }] : []),
+        ],
+      })
+    } else if (p.origin === 'hybrid' && parents.length === 0) {
+      add({ productId: p.id, rule: 'originConflict', sig: 'hybrid-empty', patch: null, lines: [{ note: 'hybridEmpty' }] })
+    } else if (p.origin === 'cultivar' && parents.length === 0) {
+      add({ productId: p.id, rule: 'originConflict', sig: 'cultivar-empty', patch: null, lines: [{ note: 'cultivarEmpty' }] })
+    }
+
+    // 11. Природний вид без ареалу — з перевірки походження чи інших карток цієї рослини, якщо там є
+    if (p.origin === 'natural' && !p.habitat?.trim()) {
+      const fam = familyOf(p)
+      const fromCards = plants
+        .flatMap((q) => [
+          familyOf(q) === fam && q.origin === 'natural' ? q.habitat : '',
+          familyOf(q) === fam && q.base?.origin === 'natural' ? q.base.habitat : '',
+        ])
+        .map((h) => h?.trim() ?? '')
+        .find(Boolean)
+      const fromCheck = checks.find((r) => [r.name, r.fixedName].some((n) => n && nameKey(n) === own))?.habitat?.trim()
+      const found = fromCards || fromCheck
+      add({
+        productId: p.id,
+        rule: 'habitat',
+        sig: found ?? 'none',
+        patch: found ? { habitat: normalizeHabitat(found) } : null,
+        lines: found ? [{ from: '—', to: normalizeHabitat(found) }] : [{ note: 'noHabitat' }],
+      })
+    }
+
+    // 13. Ареал однаково (і в блоці «Походження …» форми)
+    const h = p.habitat?.trim()
+    if (h && normalizeHabitat(h) !== h)
+      add({ productId: p.id, rule: 'habitatSpelling', sig: h, patch: { habitat: normalizeHabitat(h) }, lines: [{ from: h, to: normalizeHabitat(h) }] })
+    const bh = p.base?.habitat?.trim()
+    if (p.base && bh && normalizeHabitat(bh) !== bh)
+      add({ productId: p.id, rule: 'habitatSpelling', sig: `base|${bh}`, patch: { base: { ...p.base, habitat: normalizeHabitat(bh) } }, lines: [{ from: bh, to: normalizeHabitat(bh) }] })
+  }
+
+  // 7. Та сама інша назва в різних рослинах (крім форм і живців однієї рослини — їм вона й має бути спільна)
+  const aliasOwners = new Map<string, Product[]>()
+  for (const p of plants) for (const a of uniqCI(p.aliases ?? [])) aliasOwners.set(a.toLowerCase(), [...(aliasOwners.get(a.toLowerCase()) ?? []), p])
+  for (const p of plants) {
+    const notes: FixLine[] = []
+    for (const a of uniqCI(p.aliases ?? [])) {
+      const others = (aliasOwners.get(a.toLowerCase()) ?? []).filter((q) => familyOf(q) !== familyOf(p))
+      if (others.length) notes.push({ note: `alias:${a}:${others.map((q) => q.name.uk).join(', ')}` })
+      const named = byKey.get(nameKey(a))
+      if (named && familyOf(named) !== familyOf(p)) notes.push({ note: `aliasName:${a}` })
+    }
+    if (notes.length) add({ productId: p.id, rule: 'aliasShared', sig: notes.map((n) => n.note).join('|'), patch: null, lines: notes })
+  }
+
+  // 12. Селекціонер однаково: «Dick Wright» / «D. Wright» / «dick wright» — вибирає продавець (за замовчуванням — найчастіше)
+  const spellings = new Map<string, Map<string, number>>()
+  for (const p of plants) {
+    const b = p.breeder?.trim()
+    if (!b) continue
+    const k = breederKey(b)
+    const m = spellings.get(k) ?? new Map<string, number>()
+    spellings.set(k, m.set(b, (m.get(b) ?? 0) + 1))
+  }
+  // Лише прізвище («Wright») — до того самого, якщо таке прізвище є лише в одного селекціонера
+  for (const [k, m] of [...spellings]) {
+    if (k.includes(' ')) continue
+    const targets = [...spellings.keys()].filter((x) => x.startsWith(`${k} `))
+    if (targets.length === 1) {
+      const t = spellings.get(targets[0])!
+      for (const [b, n] of m) t.set(b, (t.get(b) ?? 0) + n)
+      spellings.delete(k)
+    }
+  }
+  const keyOfSpelling = new Map<string, string>()
+  for (const [k, m] of spellings) for (const b of m.keys()) keyOfSpelling.set(b, k)
+  for (const p of plants) {
+    const b = p.breeder?.trim()
+    const k = b ? keyOfSpelling.get(b) : undefined
+    const m = k ? spellings.get(k) : undefined
+    if (!b || !k || !m || m.size < 2) continue
+    const options = [...m].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0])).map(([s]) => s)
+    const pick = choices.breeders?.get(k)
+    const value = pick && options.includes(pick) ? pick : options[0]
+    if (value === b) continue
+    add({
+      productId: p.id,
+      rule: 'breederSpelling',
+      sig: `${k}|${options.slice().sort().join('+')}`,
+      patch: { breeder: value },
+      lines: [{ from: b, to: value }],
+      choice: { kind: 'breeder', key: k, options, value },
+    })
+  }
+
+  // 14–15. Порядок у магазині: товар «У продажу», а купити неможливо чи нема що показати; опис
+  for (const p of products) {
+    if (p.isActive && p.forSale !== false) {
+      const issues = [...(p.images?.length ? [] : ['noPhoto']), ...(p.price > 0 ? [] : ['noPrice']), ...(p.stock > 0 ? [] : ['noStock'])]
+      if (issues.length) add({ productId: p.id, rule: 'shopReady', sig: issues.join('|'), patch: null, lines: issues.map((note) => ({ note })) })
+    }
+    const d = p.description?.uk?.trim() ?? ''
+    if (!d || isLatinText(d)) add({ productId: p.id, rule: 'description', sig: d ? 'latin' : 'empty', patch: null, lines: [{ note: d ? 'descLatin' : 'descEmpty' }] })
+  }
+  return out
+}
