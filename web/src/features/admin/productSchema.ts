@@ -142,9 +142,17 @@ export function splitCultivar(rest: string): { cultivar: string; selection: stri
   return m ? { cultivar: m[1], selection: m[2].trim() } : { cultivar: rest, selection: '' }
 }
 
-/** Повна назва без форм: рід + вид/назва + культивар у лапках. */
-export const plantBase = (genus: string, cultivar: string, selection: string) =>
-  [genus, cultivar.trim(), selection.trim() ? `'${selection.trim()}'` : ''].filter(Boolean).join(' ')
+/**
+ * Повна назва без форм: рід + вид/назва + культивар у лапках.
+ * Назва вже в лапках («'Monroe'») + культивар «Black» → одні лапки на двох: «Echeveria 'Monroe Black'».
+ */
+export function plantBase(genus: string, cultivar: string, selection: string): string {
+  const c = cultivar.trim()
+  const s = selection.trim()
+  const quoted = !!s && /['‘’"].*['‘’"]$/u.test(c)
+  const rest = quoted ? `${c.slice(0, -1)} ${s}${c.slice(-1)}` : [c, s ? `'${s}'` : ''].filter(Boolean).join(' ')
+  return [genus, rest].filter(Boolean).join(' ')
+}
 
 /** Назва без культивару в лапках: «Echeveria agavoides 'Maria'» → «Echeveria agavoides». */
 export const withoutSelection = (name: string) => parseForms(name).base.replace(/\s+['‘’"](?:(?!['‘’"]\s).)+['‘’"]$/u, '').trim()
@@ -155,8 +163,15 @@ export const withoutSelection = (name: string) => parseForms(name).base.replace(
  */
 function nameFields(p: Product | null, category: string): { cultivar: string; selection: string } {
   const rest = p && category === PLANT_CATEGORY ? cultivarOf(p.name.uk, p.genus) : ''
+  const selection = p?.cultivarName?.trim() ?? ''
   const split = splitCultivar(rest)
-  return p?.cultivarName?.trim() && split.selection === p.cultivarName.trim() ? split : { cultivar: rest, selection: '' }
+  if (selection && split.selection === selection) return split
+  // Культивар у спільних лапках з назвою: «'Monroe Black'» → «'Monroe'» і культивар «Black»
+  const tail = ` ${selection}`
+  const close = rest.slice(-1)
+  if (selection && /^['‘’"]/u.test(rest) && /['‘’"]/u.test(close) && rest.slice(0, -1).endsWith(tail) && rest.length - 1 - tail.length > 1)
+    return { cultivar: rest.slice(0, -1 - tail.length) + close, selection }
+  return { cultivar: rest, selection: '' }
 }
 
 /**

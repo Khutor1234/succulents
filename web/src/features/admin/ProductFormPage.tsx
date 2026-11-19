@@ -244,9 +244,14 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     const hybrid = tags.includes('hybridName')
     const selection = !states && !hybrid && !!getValues('selection').trim()
     const own = states ? withoutStates : hybrid ? (n: string) => parseForms(n).base : selection ? withoutSelection : null
+    // Культивар — «Від» рід + вид/назва без культивару (так і для спільних лапок «'Monroe Black'» → «Echeveria 'Monroe'»)
+    const species = plantBase(getValues('genus'), getValues('cultivar'), '')
+    const target = selection ? species : own?.(name)
     const from = getValues('parents.0')
-    if (own && getValues('origin') === (states || selection ? 'cultivar' : 'hybrid') && (!from.trim() || nameKey(from) === nameKey(own(before))))
-      setValue('parents.0', own(name), { shouldDirty: true })
+    // «Від» ще йде за назвою: збігається з попередньою назвою без культивару (у спільних лапках — її початок)
+    const follows = !from.trim() || (selection ? `${nameKey(before)} `.startsWith(`${nameKey(from)} `) : nameKey(from) === nameKey(own?.(before) ?? ''))
+    if (own && target && getValues('origin') === (states || selection ? 'cultivar' : 'hybrid') && follows)
+      setValue('parents.0', target, { shouldDirty: true })
     suggestSlug()
   }
 
