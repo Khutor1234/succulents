@@ -36,11 +36,14 @@ export function ProductCard({
   index = 0,
   fullNames = false,
   asBuyer = false,
+  noVerified = false,
 }: {
   product: Product
   index?: number
   fullNames?: boolean
   asBuyer?: boolean
+  /** Без галочки «Перевірено вручну» (напр. у «Пов'язаних рослинах» під товаром) */
+  noVerified?: boolean
 }) {
   const { t } = useTranslation()
   const lang = useLang()
@@ -98,6 +101,10 @@ export function ProductCard({
         {realSeller && <HomePin product={product} name={name} className="absolute top-14 right-2" />}
         {/* Продавцю — «Живець» під шпилькою (у ряд кнопок унизу картки вже не вміщається) */}
         {isSeller && product.category === PLANT_CATEGORY && <CuttingToggle product={product} name={name} className="absolute top-26 right-2" />}
+        {/* Продавцю — «Перевірено вручну» під ножицями (у не-рослин ножиць немає — тоді під шпилькою) */}
+        {isSeller && !noVerified && (
+          <VerifiedToggle product={product} floating className={`absolute right-2 ${product.category === PLANT_CATEGORY ? "top-38" : "top-26"}`} />
+        )}
         {/* Походження — плашкою внизу фото: під назвою не займає місця, тож картки з батьками й без однакові.
             Кожен батько — окреме посилання в пошук. */}
         {product.category === PLANT_CATEGORY && (
@@ -155,7 +162,6 @@ export function ProductCard({
             на початку рядка вона на всіх картках на одному місці, хоч які довгі назви */}
         <div className="flex min-w-0 items-start gap-1">
           {isSeller && <CopyName name={name} className="-ml-1.5" />}
-          {isSeller && <VerifiedToggle product={product} />}
           <h3 className="leading-snug font-bold">
             <Link to={`/product/${product.slug}`} className="hover:text-brand-600">
               {withCuttingMark(name, product.tags?.includes('cutting'), t('product.cuttingMark'))}
@@ -430,7 +436,7 @@ export function CuttingToggle({ product, name, className = '', compact = false }
  * Зелена й зафарбована — перевірено; світла — ні (за замовчуванням). Стоїть одразу після «скопіювати назву»:
  * на картці, на сторінці товару й у списку товарів адмінки.
  */
-export function VerifiedToggle({ product, className = '' }: { product: Product; className?: string }) {
+export function VerifiedToggle({ product, className = '', floating = false }: { product: Product; className?: string; floating?: boolean }) {
   const { t } = useTranslation()
   const toggle = useToggleVerified()
   const on = !!product.verified
@@ -438,16 +444,28 @@ export function VerifiedToggle({ product, className = '' }: { product: Product; 
   return (
     <button
       type="button"
-      onClick={() => toggle.mutate({ id: product.id, verified: !on })}
+      onClick={(e) => {
+        // На картці кнопка лежить на фото-посиланні — не відкриваємо товар
+        e.preventDefault()
+        e.stopPropagation()
+        toggle.mutate({ id: product.id, verified: !on })
+      }}
       disabled={toggle.isPending}
       aria-pressed={on}
       aria-label={label}
       title={label}
-      className={`-my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors active:scale-95 disabled:opacity-60 ${
-        on ? 'text-brand-600 hover:bg-brand-100' : 'text-sand-400 hover:bg-sand-200 hover:text-sand-700'
-      } ${className}`}
+      className={
+        floating
+          ? // На фото картки — кружечок, як шпилька й ножиці над ним
+            `flex h-10 w-10 items-center justify-center rounded-full shadow-sm transition-transform hover:scale-110 active:scale-95 disabled:opacity-60 ${
+              on ? 'bg-brand-600 text-sand-50' : 'bg-sand-50/95 text-ink'
+            } ${className}`
+          : `-my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors active:scale-95 disabled:opacity-60 ${
+              on ? 'text-brand-600 hover:bg-brand-100' : 'text-sand-400 hover:bg-sand-200 hover:text-sand-700'
+            } ${className}`
+      }
     >
-      <CircleCheck size={19} strokeWidth={on ? 2.75 : 2} className={on ? 'fill-brand-100' : ''} aria-hidden />
+      <CircleCheck size={floating ? 18 : 19} strokeWidth={on ? 2.75 : 2.25} className={on && !floating ? 'fill-brand-100' : ''} aria-hidden />
     </button>
   )
 }
