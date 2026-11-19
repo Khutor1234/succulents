@@ -1,5 +1,6 @@
 import { detectGenus, nameKey, parseForms, withForms, withoutStates } from '../../lib/plantName'
 import { NAME_TAGS, PLANT_CATEGORY, type PlantTag } from '../../lib/plants'
+import { sourceNameOf } from '../../lib/search'
 import { HABITATS, type Product } from '../../lib/types'
 import type { CheckRow } from './originCheck'
 
@@ -21,8 +22,8 @@ export const DATA_RULES = [
   'habitat',
   'habitatSpelling',
   'breederSpelling',
+  'breederCopied',
   'shopReady',
-  'description',
 ] as const
 export type DataRule = (typeof DATA_RULES)[number]
 
@@ -133,12 +134,6 @@ function breederKey(name: string): string {
   if (words.length === 0) return ''
   if (words.length === 1) return words[0]
   return `${words[words.length - 1]} ${words[0][0]}`
-}
-
-const isLatinText = (text: string) => {
-  const latin = (text.match(/[a-z]/gi) ?? []).length
-  const cyr = (text.match(/[а-яіїєґ]/gi) ?? []).length
-  return latin > 20 && latin > cyr * 2
 }
 
 export function planDataRules(products: Product[], checks: readonly CheckRow[], choices: DataChoices = {}): DataSuggestion[] {
@@ -281,6 +276,16 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
       add({ productId: p.id, rule: 'habitatSpelling', sig: `base|${bh}`, patch: { base: { ...p.base, habitat: normalizeHabitat(bh) } }, lines: [{ from: bh, to: normalizeHabitat(bh) }] })
   }
 
+  // Селекціонер форми скопійовано зі звичайної версії — прибрати (його видно в блоці «Від …», і за ним форма знаходиться)
+  const breederByKey = new Map(plants.map((p) => [nameKey(p.name.uk), p.breeder?.trim() ?? '']))
+  for (const p of plants) {
+    const own = p.breeder?.trim()
+    const source = sourceNameOf(p)
+    const theirs = source ? breederByKey.get(nameKey(source)) : ''
+    if (own && theirs && own.toLowerCase() === theirs.toLowerCase())
+      add({ productId: p.id, rule: 'breederCopied', sig: `${own}|${source}`, patch: { breeder: '' }, lines: [{ from: own, to: '—' }, { note: `breederFrom:${source}` }] })
+  }
+
   // 7. Та сама інша назва в різних рослинах (крім форм і живців однієї рослини — їм вона й має бути спільна)
   const aliasOwners = new Map<string, Product[]>()
   for (const p of plants) for (const a of uniqCI(p.aliases ?? [])) aliasOwners.set(a.toLowerCase(), [...(aliasOwners.get(a.toLowerCase()) ?? []), p])
@@ -335,14 +340,13 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
     })
   }
 
-  // 14–15. Порядок у магазині: товар «У продажу», а купити неможливо чи нема що показати; опис
+  // 14. Порядок у магазині: товар показано й «У продажу», але без фото чи ціни.
+  // (Розпродано — нормальний стан, а відсутній опис — не помилка: ці правила прибрано на прохання власниці.)
   for (const p of products) {
     if (p.isActive && p.forSale !== false) {
-      const issues = [...(p.images?.length ? [] : ['noPhoto']), ...(p.price > 0 ? [] : ['noPrice']), ...(p.stock > 0 ? [] : ['noStock'])]
+      const issues = [...(p.images?.length ? [] : ['noPhoto']), ...(p.price > 0 ? [] : ['noPrice'])]
       if (issues.length) add({ productId: p.id, rule: 'shopReady', sig: issues.join('|'), patch: null, lines: issues.map((note) => ({ note })) })
     }
-    const d = p.description?.uk?.trim() ?? ''
-    if (!d || isLatinText(d)) add({ productId: p.id, rule: 'description', sig: d ? 'latin' : 'empty', patch: null, lines: [{ note: d ? 'descLatin' : 'descEmpty' }] })
   }
   return out
 }

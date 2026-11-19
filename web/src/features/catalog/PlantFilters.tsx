@@ -42,7 +42,7 @@ export function PlantFilters({ products, filters, category }: { products: Produc
   // Варіанти — з усіх товарів категорії, а кількість — з урахуванням інших вибраних фільтрів:
   // вибрали Aeonium — біля Variegata стоїть, скільки саме варієгатних еоніумів.
   const genera = [...new Set(products.map((p) => p.genus).filter((g): g is string => !!g))].sort()
-  const breeders = [...new Set(products.map((p) => p.breeder?.trim()).filter((b): b is string => !!b))].sort((a, b) => a.localeCompare(b, 'uk'))
+  const breeders = [...new Set(products.flatMap((p) => [p.breeder?.trim(), p.sourceBreeder]).filter((b): b is string => !!b))].sort((a, b) => a.localeCompare(b, 'uk'))
   const genusCounts = new Map<string, number>()
   const tagCounts = new Map<PlantTag, number>()
   const originCounts = new Map<string, number>()
@@ -53,7 +53,7 @@ export function PlantFilters({ products, filters, category }: { products: Produc
     if (filters.matches(p, 'tag')) for (const tag of p.tags ?? []) inc(tagCounts, tag)
     const o = originOf(p)
     if (o && filters.matches(p, 'origin')) inc(originCounts, o)
-    if (p.breeder && filters.matches(p, 'breeder')) inc(breederCounts, p.breeder.trim())
+    if (filters.matches(p, 'breeder')) for (const b of new Set([p.breeder?.trim(), p.sourceBreeder])) if (b) inc(breederCounts, b)
   }
   const hasOrigins = products.some((p) => originOf(p))
   // Теги категорії показуємо завжди (рослини — Живець і форми, горщики й інструменти — Б/У),

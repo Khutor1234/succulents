@@ -164,7 +164,7 @@ export function planNameFixes(
   return fixes.sort((a, b) => a.name.localeCompare(b.name))
 }
 
-const hasForms = (p: Plant) => !!p.tags?.some((t) => STATE_TAGS.includes(t)) || parseForms(p.name.uk).states.length > 0
+const hasForms = (p: Plant) => !!p.tags?.some((t) => STATE_TAGS.includes(t)) || parseForms(p.name.uk).states.some((s) => STATE_TAGS.includes(s))
 const cleanList = (list: readonly string[] = []) => list.map((x) => x.trim()).filter(Boolean)
 /** Однакове походження — той самий тип і ті самі батьки (у будь-якому порядку й написанні) */
 const sigOf = (l: Lineage) => `${l.origin}|${l.origin === 'natural' ? '' : l.parents.map(nameKey).sort().join('+')}`
@@ -194,6 +194,17 @@ function planLineage(plants: Plant[], checks: readonly CheckRow[], chosen: Reado
       g.plant = p.name.uk.trim()
     }
     groups.set(key, g)
+    // «Echeveria Orion hybrid» (галочка Hybrid, без форм) — її блок «Походження …» описує саму Orion:
+    // для батьків Orion вона — як форма
+    if (p.tags?.includes('hybridName') && !hasForms(p)) {
+      const orig = parseForms(p.name.uk).base
+      const ok = nameKey(orig)
+      if (ok && ok !== key) {
+        const og = groups.get(ok) ?? { plant: orig, forms: [] as Plant[] }
+        og.forms.push(p)
+        groups.set(ok, og)
+      }
+    }
   }
   const checkByKey = new Map<string, CheckRow>()
   for (const r of checks) for (const n of [r.name, r.fixedName]) if (n?.trim()) checkByKey.set(nameKey(n), r)
@@ -249,8 +260,9 @@ function planLineage(plants: Plant[], checks: readonly CheckRow[], chosen: Reado
       const b = f.base ? lineageOf(f.base.origin, f.base.parents, f.base.habitat) : null
       if (known(b)) {
         if (sigOf(b) !== target.sig) out.set(f.id, change('base', b))
-      } else if (!g.card) {
-        // Звичайної версії в магазині немає — «Походження …» у формі єдине місце, де його видно на сайті
+      } else {
+        // У формі блок «Походження …» порожній, а батьки звичайної версії відомі — пропонуємо дописати
+        // (на сайті без нього беруться з картки звичайної версії, але в самій картці форми їх не видно)
         out.set(f.id, change('base', null))
       }
     }

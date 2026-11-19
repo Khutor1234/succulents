@@ -165,6 +165,8 @@ function FromRow({ lead, name, base }: { lead: string; name: string; base?: Prod
       </>
     )
   }
+  // Селекціонер рослини, від якої ця (у самої форми його може й не бути — форму міг вивести інший)
+  const sourceBreeder = source?.breeder?.trim()
   // «Від [рослина]», під ним стрілка вниз з підписом «Батьки [рослини]», а під підписом на фоні — самі батьки
   return (
     <div className="mt-3 text-sm text-sand-700">
@@ -172,12 +174,22 @@ function FromRow({ lead, name, base }: { lead: string; name: string; base?: Prod
         <span className="shrink-0 font-semibold">{lead}</span>
         <PlantChip name={name} big known={base ?? undefined} />
       </div>
-      {caption && (
+      {(caption || sourceBreeder) && (
         <div className="mt-1.5 flex gap-1.5 pl-1">
           <CornerDownRight size={22} strokeWidth={2.5} className="shrink-0 text-sunset-600" aria-hidden />
           <div className="min-w-0 flex-1 sm:max-w-md">
-            <p className="pt-0.5 text-xs font-semibold">{caption}</p>
+            {caption && <p className="pt-0.5 text-xs font-semibold">{caption}</p>}
             {rest && <div className="mt-1.5 flex min-w-0 items-center gap-1.5 rounded-2xl bg-sand-100 p-2 sm:gap-2">{rest}</div>}
+            {/* «Селекціонер Echeveria 'Blue Bird': Dick Wright» — видно, що це селекціонер саме тієї рослини */}
+            {sourceBreeder && (
+              <p className={`flex flex-wrap items-center gap-2 text-xs ${caption ? 'mt-2' : 'pt-0.5'}`}>
+                <Sprout size={14} strokeWidth={2.25} className="shrink-0" aria-hidden />
+                <span className="font-semibold">{t('search.breederOf', { name })}:</span>
+                <Chip to={sourceBreeder} title={t('search.findBreeder', { name: sourceBreeder })} big>
+                  {sourceBreeder}
+                </Chip>
+              </p>
+            )}
           </div>
         </div>
       )}

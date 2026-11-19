@@ -47,6 +47,8 @@ export interface Product {
   tags?: PlantTag[]
   /** Інші назви, під якими рослину теж знають: «Sedum morganianum», «Ослячий хвіст». Шукаються пошуком. */
   aliases?: string[]
+  /** Лише в браузері (withSourceBreeders): селекціонер рослини, від якої ця форма, — для пошуку й фільтра */
+  sourceBreeder?: string
   /** Батьки гібрида: [материнська ♀, батьківська ♂], напр. «Echeveria lilacina», «Echeveria Deresina». Лише для рослин; порожньо — не вказано. */
   parents?: string[]
   /**

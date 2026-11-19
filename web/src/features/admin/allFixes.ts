@@ -29,6 +29,7 @@ export const RULES: Rule[] = [
   'selection',
   'breeder',
   'breederSpelling',
+  'breederCopied',
   'aliases',
   'aliasGenus',
   'aliasSelf',
@@ -40,11 +41,10 @@ export const RULES: Rule[] = [
   'habitat',
   'habitatSpelling',
   'shopReady',
-  'description',
 ]
 
 /** У якому порядку зливати зміни однієї рослини, якщо прийнято кілька: пізніші перекривають ті самі поля */
-const APPLY_ORDER: Rule[] = ['genusField', 'names', 'lineage', 'selfParent', 'originConflict', 'habitat', 'habitatSpelling', 'cultivar', 'quotes', 'formTags', 'nameStyle', 'form', 'selection', 'breeder', 'breederSpelling', 'aliasGenus', 'aliases', 'aliasSelf']
+const APPLY_ORDER: Rule[] = ['genusField', 'names', 'lineage', 'selfParent', 'originConflict', 'habitat', 'habitatSpelling', 'cultivar', 'quotes', 'formTags', 'nameStyle', 'form', 'selection', 'breeder', 'breederSpelling', 'breederCopied', 'aliasGenus', 'aliases', 'aliasSelf']
 
 export interface Suggestion {
   /** «товар__правило» — і ключ галочки, і документ «Неактуально» */
@@ -94,7 +94,7 @@ const uniq = (list: string[]) => {
   return list.filter((a) => a && !seen.has(a.toLowerCase()) && seen.add(a.toLowerCase()))
 }
 
-const hasForms = (p: Plant) => !!p.tags?.some((t) => STATE_TAGS.includes(t)) || parseForms(p.name.uk).states.length > 0
+const hasForms = (p: Plant) => !!p.tags?.some((t) => STATE_TAGS.includes(t)) || parseForms(p.name.uk).states.some((s) => STATE_TAGS.includes(s))
 
 /**
  * Інші назви звичайної версії — і її формам: «Sedum morganianum» (Ослячий хвіст) → «Sedum morganianum variegata».
@@ -137,7 +137,7 @@ export function planAllFixes(
       const rule = f.kind === 'selection' ? 'selection' : 'form'
       add(f.id, rule, f.source, { origin: 'cultivar', parents: [f.source], habitat: '' }, { form: f })
     }
-    if (f.breeder) add(f.id, 'breeder', f.breeder, { breeder: f.breeder }, { breeder: { name: f.breeder, from: f.source } })
+    // Селекціонера звичайної версії формам більше не копіюємо (форму міг вивести інший) — він видно в блоці «Від …»
   }
   for (const a of planAliasFixes(plants)) add(a.p.id, 'aliases', a.add.join('|'), { aliases: a.result }, { aliases: { add: a.add, from: a.from, result: a.result } })
   // Рід у інших назвах: «Echeveria Lola» в рослини роду Echeveria → «Lola» (рід і так видно в назві); інший рід лишається

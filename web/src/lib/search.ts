@@ -1,4 +1,5 @@
-import { detectGenus } from './plantName'
+import { detectGenus, nameKey, parseForms, withoutStates } from './plantName'
+import { STATE_TAGS } from './plants'
 import type { Product } from './types'
 
 /**
@@ -53,9 +54,32 @@ export interface SearchContext {
   tagLabel: (tag: string) => string
 }
 
+/**
+ * Від якої рослини ця: форма (variegata…) чи «Hybrid» — від звичайної версії, відбір — від першої (єдиної) рослини «Від».
+ * Немає — порожньо.
+ */
+export function sourceNameOf(p: Product): string {
+  const states = !!p.tags?.some((t) => STATE_TAGS.includes(t)) || parseForms(p.name.uk).states.some((s) => STATE_TAGS.includes(s))
+  if ((p.origin === 'cultivar' || p.tags?.includes('hybridName')) && p.parents?.[0]?.trim()) return p.parents[0].trim()
+  return states ? withoutStates(p.name.uk) : ''
+}
+
+/**
+ * Селекціонер рослини, від якої ця (форма не завжди виведена тим самим селекціонером, тож у самої форми його немає) —
+ * щоб форма знаходилась за ним у пошуку й фільтрі. Береться з картки цієї рослини серед `products`.
+ */
+export function withSourceBreeders(products: Product[]): Product[] {
+  const byKey = new Map(products.map((p) => [nameKey(p.name.uk), p.breeder?.trim() ?? '']))
+  return products.map((p) => {
+    const source = sourceNameOf(p)
+    const b = source ? byKey.get(nameKey(source)) : ''
+    return b && b !== p.breeder?.trim() ? { ...p, sourceBreeder: b } : p
+  })
+}
+
 function haystack(p: Product, ctx: SearchContext): string {
   return normalize(
-    [p.name.uk, p.name.en, p.genus, ...(p.aliases ?? []), ...(p.parents ?? []), p.habitat, p.breeder, p.slug.replace(/-/g, ' '), ctx.categoryName(p.category), ...(p.tags ?? []).flatMap((t) => [t, ctx.tagLabel(t), ...(TAG_SYNONYMS[t] ?? [])])]
+    [p.name.uk, p.name.en, p.genus, ...(p.aliases ?? []), ...(p.parents ?? []), p.habitat, p.breeder, p.sourceBreeder, p.slug.replace(/-/g, ' '), ctx.categoryName(p.category), ...(p.tags ?? []).flatMap((t) => [t, ctx.tagLabel(t), ...(TAG_SYNONYMS[t] ?? [])])]
       .filter(Boolean)
       .join(' '),
   )
@@ -68,7 +92,7 @@ export function searchProducts(products: Product[], query: string, ctx: SearchCo
   const wordCandidates = words.map(candidates)
 
   const scored: { product: Product; score: number }[] = []
-  for (const product of products) {
+  for (const product of withSourceBreeders(products)) {
     const text = haystack(product, ctx)
     if (!wordCandidates.every((cands) => cands.some((c) => text.includes(c)))) continue
     const name = normalize(product.name.uk)

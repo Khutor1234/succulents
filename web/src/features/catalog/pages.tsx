@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { lazy, Suspense } from "react";
+import { withSourceBreeders } from "../../lib/search";
 import { useTranslation } from "react-i18next";
 import {
   Link,
@@ -420,9 +421,11 @@ export function CategoryPage() {
     return <Navigate to="/" replace />;
 
   // «Як бачить покупець»: з даних продавця робимо покупцеву версію — те саме, що завантажив би покупець
-  const list = buyerView
+  // Форми знаходяться й за селекціонером звичайної версії (sourceBreeder)
+  const raw = buyerView
     ? products.data?.filter((p) => p.isActive).map(forBuyer)
     : products.data;
+  const list = raw ? withSourceBreeders(raw) : raw;
   const shown = list ? filters.apply(list) : undefined;
 
   return (

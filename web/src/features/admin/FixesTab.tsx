@@ -33,8 +33,8 @@ const RULE_STYLE: Record<Rule, string> = {
   habitat: 'bg-lavender-100 text-lavender-700',
   habitatSpelling: 'bg-lavender-100 text-lavender-700',
   breederSpelling: 'bg-brand-100 text-brand-700',
+  breederCopied: 'bg-brand-100 text-brand-700',
   shopReady: 'bg-sand-200 text-sand-800',
-  description: 'bg-sand-200 text-sand-800',
 }
 
 /**
@@ -291,6 +291,7 @@ function SuggestionRow({
         alias: rest[0],
         names: rest.slice(1).join(':'),
       })
+    if (kind === 'breederFrom') return t('admin.allFixes.notes.breederFrom', { name: rest.join(':') })
     if (kind === 'aliasName') return t('admin.allFixes.notes.aliasName', { alias: rest.join(':') })
     return t(`admin.allFixes.notes.${note}`)
   }

@@ -64,7 +64,7 @@ export function usePlantFilters() {
     (except === 'genus' || !genus || p.genus === genus) &&
     (except === 'tag' || !tag || !!p.tags?.includes(tag)) &&
     (except === 'origin' || !origin || originOf(p) === origin) &&
-    (except === 'breeder' || !breeder || p.breeder === breeder) &&
+    (except === 'breeder' || !breeder || p.breeder === breeder || p.sourceBreeder === breeder) &&
     (!inStock || p.stock > 0)
 
   const activeCount = Number(!!genus) + Number(!!tag) + Number(!!origin) + Number(!!breeder) + Number(inStock)
