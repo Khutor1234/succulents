@@ -315,7 +315,10 @@ function NamesTab({ products }: { products: Product[] }) {
 /** «Культивари»: слово в лапках переходить у поле «Культивар» форми. Назва, батьки й походження не змінюються. */
 function CultivarsTab({ products }: { products: Product[] }) {
   const { t } = useTranslation()
-  const apply = useApplyFixes<CultivarFix>((f) => ({ cultivarName: f.cultivar }))
+  const apply = useApplyFixes<CultivarFix>((f) => ({
+    cultivarName: f.cultivar,
+    ...(f.rename ? { 'name.uk': f.rename.name, ...(f.rename.parents ? { parents: f.rename.parents } : {}) } : {}),
+  }))
   const fixes = useMemo(() => planCultivarFixes(products), [products])
   const field = (label: string, value: string) => (
     <span className="inline-flex items-center gap-1">
@@ -338,6 +341,17 @@ function CultivarsTab({ products }: { products: Product[] }) {
             {field(t('admin.fields.cultivar'), f.rest)}
             <span className="text-sand-700">·</span>
             {field(t('admin.fields.selection'), f.cultivar)}
+            {f.rename && (
+              <span className="flex basis-full flex-wrap items-center gap-x-2">
+                <span className="text-sand-700">{t('admin.formFixes.mergedQuotes')}:</span>
+                <span className="font-bold text-brand-700">{f.rename.name}</span>
+                {f.rename.parents && (
+                  <span className="text-sand-700">
+                    · {t('admin.formFixes.fromLabel')} {f.rename.parents[0]}
+                  </span>
+                )}
+              </span>
+            )}
           </span>
         )}
       />

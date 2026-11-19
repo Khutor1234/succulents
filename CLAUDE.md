@@ -52,7 +52,8 @@ firestore.rules, storage.rules, firestore.indexes.json
   Повна назва = рід + вид/назва + культивар у лапках + форми з галочок, напр. «Echeveria Lola variegata», «Echeveria agavoides 'Maria'».
   Поле «Культивар» у формі (`selection`; у товарі — `cultivarName`, назва й так містить його в лапках; `splitCultivar`/`plantBase` у `admin/productSchema.ts`):
   вписаний культивар сам ставить «Відбір або мутація» від виду/назви («Echeveria agavoides»). Назва вже в лапках + культивар → одні лапки:
-  «'Monroe'» + «Black» = «Echeveria 'Monroe Black'», від «Echeveria 'Monroe'» (`plantBase`; при відкритті форма знову розділяє за `cultivarName`). Старі назви зі словом у лапках форма показує
+  «'Monroe'» + «Black» = «Echeveria 'Monroe Black'», від «Echeveria 'Monroe'» (`plantBase`; при відкритті форма знову розділяє за `cultivarName`). Старі назви з двома парами лапок
+  зливає вкладка «Культивари» (`rename` у `cultivarFixes.ts`: назва + «Від», якщо він ішов за назвою). Старі назви зі словом у лапках форма показує
   в «Вид або назва», поки культивар не перенесли: «Виправити форми» → вкладка «Культивари» (?tab=cultivars, `cultivarFixes.ts`) пише лише `cultivarName`,
   назву й батьків не чіпає. «Echeveria 'Lola'» без назви перед лапками — назва гібрида, не культивар. Галочка «Hybrid» (тег `hybridName`, не плутати зі старим
   тегом `hybrid` і з полем «Походження») дописує «hybrid» — для гібрида без власної назви: «Echeveria Orion hybrid». Галочка сама ставить походження «Гібрид» і першого
