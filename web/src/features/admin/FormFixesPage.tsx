@@ -12,7 +12,7 @@ import { ImportPage } from './ImportPage'
 import { TabBar, useTab } from './TabBar'
 import { planFormFixes, type FormFix } from './formFixes'
 import { planCultivarFixes, type CultivarFix } from './cultivarFixes'
-import { planNameFixes, type NameFix } from './nameFixes'
+import { planNameFixes, type Lineage, type LineageSource, type NameFix } from './nameFixes'
 import { OriginsTab } from './OriginCheckPage'
 import { planOriginFixes, rowFromCells } from './originCheck'
 
@@ -58,7 +58,7 @@ export function FormFixesPage() {
       products
         ? {
             forms: planFormFixes(products).fixes.length,
-            names: planNameFixes(products).length,
+            names: planNameFixes(products, new Map(), (checks ?? []).map((c) => rowFromCells(c.cells))).length,
             cultivars: planCultivarFixes(products).length,
             origins: planOriginFixes(products, (checks ?? []).map((c) => rowFromCells(c.cells))).fixes.length,
           }
@@ -225,8 +225,11 @@ export function FixList<T extends { id: string; slug: string; name: string; imag
 
 function FormsTab({ products }: { products: Product[] }) {
   const { t } = useTranslation()
-  // Як збереження форми з «Відбір або мутація»: одна рослина-джерело, без ареалу. Селекціонера не чіпаємо.
-  const apply = useApplyFixes<FormFix>((f) => ({ origin: 'cultivar', parents: [f.source], habitat: '' }))
+  // Як збереження форми з «Відбір або мутація»: одна рослина-джерело, без ареалу; селекціонер — як у звичайної версії, якщо в форми порожньо
+  const apply = useApplyFixes<FormFix>((f) => ({
+    ...(f.originOk ? {} : { origin: 'cultivar', parents: [f.source], habitat: '' }),
+    ...(f.breeder ? { breeder: f.breeder } : {}),
+  }))
   const plan = useMemo(() => planFormFixes(products), [products])
   const before = (f: FormFix) =>
     [f.before.origin ? t(`admin.fields.origins.${f.before.origin}`) : t('admin.formFixes.noOrigin'), f.before.parents.join(' × ')]
@@ -240,11 +243,20 @@ function FormsTab({ products }: { products: Product[] }) {
         apply={apply}
         row={(f) => (
           <>
-            <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-              <span className="text-sand-700 line-through">{before(f)}</span>
-              <ArrowRight size={14} strokeWidth={2.5} className="shrink-0 text-sand-700" aria-hidden />
-              <span className="font-bold text-brand-700">{t(f.kind === 'selection' ? 'admin.formFixes.afterSelection' : 'admin.formFixes.after', { name: f.source })}</span>
-            </span>
+            {!f.originOk && (
+              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                <span className="text-sand-700 line-through">{before(f)}</span>
+                <ArrowRight size={14} strokeWidth={2.5} className="shrink-0 text-sand-700" aria-hidden />
+                <span className="font-bold text-brand-700">{t(f.kind === 'selection' ? 'admin.formFixes.afterSelection' : 'admin.formFixes.after', { name: f.source })}</span>
+              </span>
+            )}
+            {f.breeder && (
+              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                <span className="text-sand-700">{t('admin.formFixes.breeder')}:</span>
+                <span className="font-bold text-brand-700">{f.breeder}</span>
+                <span className="text-sand-700">{t('admin.formFixes.breederFrom', { name: f.source })}</span>
+              </span>
+            )}
             {!f.sourceInShop && <span className="mt-1 block text-xs text-sand-700">{t('admin.formFixes.notInShop')}</span>}
           </>
         )}
@@ -256,12 +268,25 @@ function FormsTab({ products }: { products: Product[] }) {
 
 function NamesTab({ products }: { products: Product[] }) {
   const { t } = useTranslation()
-  // Лише назви: батьки й «Походження звичайної версії» (base), решту товару не чіпаємо
-  const apply = useApplyFixes<NameFix>((f) => ({ parents: f.parents, ...(f.base ? { base: f.base } : {}) }))
+  // Лише батьки й походження: батьки, «Походження звичайної версії» (base), а з правилом «з інших записів» — і тип походження
+  const apply = useApplyFixes<NameFix>((f) => ({
+    parents: f.parents,
+    ...(f.base ? { base: f.base } : {}),
+    ...(f.origin ? { origin: f.origin, habitat: f.habitat ?? '' } : {}),
+  }))
+  const { data: checks } = useOriginChecks()
+  const rows = useMemo(() => (checks ?? []).map((c) => rowFromCells(c.cells)), [checks])
   // Рослини, якої немає в магазині, але записаної по-різному: яке написання правильне (вибирає продавець)
   const [chosen, setChosen] = useState<Map<string, string>>(new Map())
-  const fixes = useMemo(() => planNameFixes(products, chosen), [products, chosen])
+  // Походження рослини записане по-різному в різних місцях: який варіант правильний
+  const [lineageChosen, setLineageChosen] = useState<Map<string, string>>(new Map())
+  const fixes = useMemo(() => planNameFixes(products, chosen, rows, lineageChosen), [products, chosen, rows, lineageChosen])
   const choose = (key: string, name: string) => setChosen(new Map(chosen).set(key, name))
+  const lineageText = (l: Lineage | null) =>
+    !l
+      ? t('admin.nameFixes.notSet')
+      : [t(`admin.fields.origins.${l.origin}`), l.origin === 'natural' ? l.habitat : l.parents.join(' × ')].filter(Boolean).join(': ')
+  const sourceText = (s: LineageSource) => t(`admin.nameFixes.sources.${s.kind}`, { name: s.name })
   return (
     <div className="space-y-4">
       <Hint>{t('admin.nameFixes.hint')}</Hint>
@@ -305,6 +330,44 @@ function NamesTab({ products }: { products: Product[] }) {
                 )}
               </span>
             ))}
+            {/* Походження з інших записів: картка рослини, «Походження …» у формах, перевірка походження */}
+            {f.lineage && (
+              <span className="block rounded-xl bg-sand-100 px-2.5 py-2">
+                <span className="block text-xs font-bold text-sand-700">
+                  {t(f.lineage.target === 'base' ? 'admin.nameFixes.lineageBase' : 'admin.nameFixes.lineageCard', { name: f.lineage.plant })}
+                </span>
+                <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className={`text-sand-700 ${f.lineage.from ? 'line-through' : ''}`}>{lineageText(f.lineage.from)}</span>
+                  <ArrowRight size={14} strokeWidth={2.5} className="shrink-0 text-sand-700" aria-hidden />
+                  <span className="font-bold text-brand-700">{lineageText(f.lineage.to)}</span>
+                </span>
+                <span className="mt-1 block text-xs text-sand-700">
+                  {t('admin.nameFixes.from')} {f.lineage.sources.map(sourceText).join('; ')}
+                </span>
+                {/* Записано по-різному — продавець вибирає правильний варіант; вибір діє на всі картки цієї рослини */}
+                {f.lineage.variants && (
+                  <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs text-sand-700">{t('admin.nameFixes.howRight')}</span>
+                    {f.lineage.variants.map((v) => (
+                      <button
+                        key={v.sig}
+                        type="button"
+                        aria-pressed={f.lineage!.sig === v.sig}
+                        title={v.sources.map(sourceText).join('; ')}
+                        onClick={() => setLineageChosen(new Map(lineageChosen).set(f.lineage!.key, v.sig))}
+                        className={`rounded-lg border px-2 py-0.5 text-left text-xs font-bold transition-colors ${
+                          f.lineage!.sig === v.sig
+                            ? 'border-brand-600 bg-brand-600 text-sand-50'
+                            : 'border-sand-300 bg-sand-50 text-sand-700 hover:border-brand-600'
+                        }`}
+                      >
+                        {lineageText(v.lineage)}
+                      </button>
+                    ))}
+                  </span>
+                )}
+              </span>
+            )}
           </span>
         )}
       />

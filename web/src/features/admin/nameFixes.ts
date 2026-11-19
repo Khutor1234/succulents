@@ -1,6 +1,7 @@
-import { editDistance, nameKey } from '../../lib/plantName'
-import { PLANT_CATEGORY } from '../../lib/plants'
-import type { Product } from '../../lib/types'
+import { editDistance, nameKey, parseForms, withoutStates } from '../../lib/plantName'
+import { PLANT_CATEGORY, STATE_TAGS } from '../../lib/plants'
+import type { PlantOrigin, Product } from '../../lib/types'
+import type { CheckRow } from './originCheck'
 
 /**
  * «Виправити назви»: батьки, записані не так, як рослина в магазині, — інші лапки чи регістр («graptoveria Debbie»)
@@ -8,6 +9,12 @@ import type { Product } from '../../lib/types'
  * «Пов'язані рослини», аналітика). Тут такі назви стають точно такими, як у магазині.
  * Якщо самої рослини в магазині немає, а серед батьків вона записана по-різному («Echeveria moon» і «Echeveria Moon»),
  * правильне написання вибирає продавець (за замовчуванням — найчастіше).
+ *
+ * Друге правило — «Походження з інших записів»: батьки однієї рослини можуть бути записані в кількох місцях —
+ * у її картці, у блоці «Походження …» карток її форм (variegata, cristata, monstrose), у старому походженні форми
+ * (ще не виправленої у «Формах») і в збереженій «Перевірці походження». Якщо десь порожньо, а в іншому місці відомо, —
+ * пропонуємо дописати; якщо записи різні — показуємо «Було / Стане», а правильний варіант вибирає продавець
+ * (за замовчуванням — як у картці самої рослини).
  */
 
 export interface NameChange {
@@ -18,6 +25,41 @@ export interface NameChange {
   /** Рослини немає в магазині — з яких написань можна вибрати правильне (ключ групи — key) */
   choices?: string[]
   key: string
+}
+
+export interface Lineage {
+  origin: PlantOrigin
+  parents: string[]
+  habitat?: string
+}
+
+/** Звідки відомо походження: картка рослини, «Походження …» у формі, старе походження форми, перевірка походження */
+export interface LineageSource {
+  kind: 'card' | 'base' | 'formOld' | 'check'
+  name: string
+}
+
+export interface LineageVariant {
+  sig: string
+  lineage: Lineage
+  sources: LineageSource[]
+}
+
+export interface LineageChange {
+  /** Рослина, про чиє походження йдеться (звичайна версія, без форм) */
+  plant: string
+  /** Ключ рослини — для вибору правильного варіанта */
+  key: string
+  /** Що міняємо: походження самої картки чи блок «Походження …» у формі */
+  target: 'card' | 'base'
+  from: Lineage | null
+  to: Lineage
+  /** Вибраний варіант */
+  sig: string
+  /** Усі відомі варіанти, якщо вони різні (вибирає продавець) */
+  variants?: LineageVariant[]
+  /** Звідки взято нове */
+  sources: LineageSource[]
 }
 
 export interface NameFix {
@@ -31,12 +73,25 @@ export interface NameFix {
   parents: string[]
   /** Нове «Походження звичайної версії» (для форм), якщо там теж були назви до виправлення */
   base?: Product['base']
+  /** Нове походження самої рослини (правило «Походження з інших записів») */
+  origin?: PlantOrigin
+  habitat?: string
+  lineage?: LineageChange
 }
 
-type Plant = Pick<Product, 'id' | 'slug' | 'name' | 'category' | 'parents' | 'base'> & { images?: string[] }
+type Plant = Pick<Product, 'id' | 'slug' | 'name' | 'category' | 'parents' | 'base' | 'origin' | 'habitat' | 'tags'> & { images?: string[] }
 
-/** `chosen` — вибране продавцем правильне написання для рослин, яких немає в магазині (ключ — nameKey). */
-export function planNameFixes(products: Plant[], chosen: ReadonlyMap<string, string> = new Map()): NameFix[] {
+/**
+ * `chosen` — вибране продавцем правильне написання для рослин, яких немає в магазині (ключ — nameKey);
+ * `checks` — збережені перевірки походження;
+ * `lineageChosen` — вибраний варіант походження рослини (ключ — nameKey рослини, значення — sig варіанта).
+ */
+export function planNameFixes(
+  products: Plant[],
+  chosen: ReadonlyMap<string, string> = new Map(),
+  checks: readonly CheckRow[] = [],
+  lineageChosen: ReadonlyMap<string, string> = new Map(),
+): NameFix[] {
   const plants = products.filter((p) => p.category === PLANT_CATEGORY)
   const shopByKey = new Map(plants.map((p) => [nameKey(p.name.uk), p.name.uk.trim()]))
   const shopKeys = [...shopByKey.keys()]
@@ -77,6 +132,7 @@ export function planNameFixes(products: Plant[], chosen: ReadonlyMap<string, str
     return found
   }
 
+  const lineageFixes = planLineage(plants, checks, lineageChosen)
   const fixes: NameFix[] = []
   for (const p of plants) {
     const changes: NameChange[] = []
@@ -89,9 +145,13 @@ export function planNameFixes(products: Plant[], chosen: ReadonlyMap<string, str
         if (!changes.some((c) => c.from === name)) changes.push({ from: name, ...target })
         return target.to
       })
-    const parents = fixList(p.parents)
-    const baseParents = p.base ? fixList(p.base.parents) : undefined
-    if (changes.length === 0) continue
+    const lineage = lineageFixes.get(p.id)
+    // Нове походження теж записуємо з правильними назвами батьків (без окремих рядків «описка» — це вже нові батьки)
+    const to = lineage && { ...lineage.to, parents: lineage.to.parents.map((n) => targetOf(nameKey(n))?.to ?? n) }
+    const parents = lineage?.target === 'card' && to ? to.parents : fixList(p.parents)
+    const baseParents = lineage?.target === 'base' ? undefined : p.base ? fixList(p.base.parents) : undefined
+    if (changes.length === 0 && !lineage) continue
+    const base = lineage?.target === 'base' && to ? to : p.base && baseParents ? { ...p.base, parents: baseParents } : undefined
     fixes.push({
       id: p.id,
       slug: p.slug,
@@ -99,8 +159,104 @@ export function planNameFixes(products: Plant[], chosen: ReadonlyMap<string, str
       image: p.images?.[0],
       changes,
       parents,
-      ...(p.base && baseParents ? { base: { ...p.base, parents: baseParents } } : {}),
+      ...(base ? { base } : {}),
+      ...(lineage?.target === 'card' && to ? { origin: to.origin, habitat: to.origin === 'natural' ? (to.habitat ?? '') : '' } : {}),
+      ...(lineage && to ? { lineage: { ...lineage, to } } : {}),
     })
   }
   return fixes.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+const hasForms = (p: Plant) => !!p.tags?.some((t) => STATE_TAGS.includes(t)) || parseForms(p.name.uk).states.length > 0
+const cleanList = (list: readonly string[] = []) => list.map((x) => x.trim()).filter(Boolean)
+/** Однакове походження — той самий тип і ті самі батьки (у будь-якому порядку й написанні) */
+const sigOf = (l: Lineage) => `${l.origin}|${l.origin === 'natural' ? '' : l.parents.map(nameKey).sort().join('+')}`
+/** Чи взагалі щось відомо: природний вид або хоча б один батько */
+const known = (l: Lineage | null | undefined): l is Lineage => !!l && (l.origin === 'natural' || l.parents.length > 0)
+function lineageOf(origin: PlantOrigin | null | undefined, parents: readonly string[] | undefined, habitat?: string): Lineage | null {
+  if (!origin) return null
+  if (origin === 'natural') return { origin, parents: [], habitat: habitat?.trim() ?? '' }
+  return { origin, parents: cleanList(parents).slice(0, origin === 'cultivar' ? 1 : 2) }
+}
+
+/**
+ * Походження кожної рослини з усіх місць, де воно записане, — і що де дописати чи виправити.
+ * Результат: id товару → зміна (картка самої рослини або блок «Походження …» у формі).
+ */
+function planLineage(plants: Plant[], checks: readonly CheckRow[], chosen: ReadonlyMap<string, string>): Map<string, LineageChange> {
+  // Рослина (звичайна версія) → її картка й форми
+  const groups = new Map<string, { plant: string; card?: Plant; forms: Plant[] }>()
+  for (const p of plants) {
+    const plain = withoutStates(p.name.uk)
+    const key = nameKey(plain)
+    if (!key) continue
+    const g = groups.get(key) ?? { plant: plain, forms: [] as Plant[] }
+    if (hasForms(p)) g.forms.push(p)
+    else if (!g.card) {
+      g.card = p
+      g.plant = p.name.uk.trim()
+    }
+    groups.set(key, g)
+  }
+  const checkByKey = new Map<string, CheckRow>()
+  for (const r of checks) for (const n of [r.name, r.fixedName]) if (n?.trim()) checkByKey.set(nameKey(n), r)
+
+  const out = new Map<string, LineageChange>()
+  for (const [key, g] of groups) {
+    const records: { lineage: Lineage; source: LineageSource }[] = []
+    const cardLineage = g.card ? lineageOf(g.card.origin, g.card.parents, g.card.habitat) : null
+    if (g.card && known(cardLineage)) records.push({ lineage: cardLineage, source: { kind: 'card', name: g.card.name.uk } })
+    for (const f of g.forms) {
+      const b = f.base ? lineageOf(f.base.origin, f.base.parents, f.base.habitat) : null
+      if (known(b)) records.push({ lineage: b, source: { kind: 'base', name: f.name.uk } })
+      // Форма ще з батьками самої рослини (не виправлена у «Формах»): «Debbie monstrose» — lilacina × amethystinum
+      else if (f.origin === 'hybrid') {
+        const old = lineageOf('hybrid', f.parents)
+        if (known(old) && !old.parents.some((x) => nameKey(x) === key)) records.push({ lineage: old, source: { kind: 'formOld', name: f.name.uk } })
+      }
+    }
+    const row = checkByKey.get(key)
+    const fromCheck = row ? lineageOf(row.origin, row.parents, row.habitat) : null
+    if (row && known(fromCheck)) records.push({ lineage: fromCheck, source: { kind: 'check', name: row.fixedName || row.name } })
+    if (records.length === 0) continue
+
+    const variants: LineageVariant[] = []
+    for (const r of records) {
+      const sig = sigOf(r.lineage)
+      const v = variants.find((x) => x.sig === sig)
+      if (v) {
+        v.sources.push(r.source)
+        // Ареал — з першого запису, де він є
+        if (!v.lineage.habitat && r.lineage.habitat) v.lineage = { ...v.lineage, habitat: r.lineage.habitat }
+      } else variants.push({ sig, lineage: r.lineage, sources: [r.source] })
+    }
+    // За замовчуванням — як у картці самої рослини; немає — найчастіший варіант (перевірка походження — при рівності)
+    const rank = (v: LineageVariant) =>
+      v.sources.length + (v.sources.some((x) => x.kind === 'check') ? 0.5 : 0) + (v.sources.some((x) => x.kind === 'card') ? 100 : 0)
+    variants.sort((a, b) => rank(b) - rank(a))
+    const target = variants.find((v) => v.sig === chosen.get(key)) ?? variants[0]
+    const change = (t: 'card' | 'base', from: Lineage | null): LineageChange => ({
+      plant: g.plant,
+      key,
+      target: t,
+      from,
+      to: target.lineage,
+      sig: target.sig,
+      ...(variants.length > 1 ? { variants } : {}),
+      sources: target.sources,
+    })
+
+    // Картка самої рослини: порожньо або інакше, ніж вибраний варіант
+    if (g.card && (!known(cardLineage) || sigOf(cardLineage) !== target.sig)) out.set(g.card.id, change('card', known(cardLineage) ? cardLineage : null))
+    for (const f of g.forms) {
+      const b = f.base ? lineageOf(f.base.origin, f.base.parents, f.base.habitat) : null
+      if (known(b)) {
+        if (sigOf(b) !== target.sig) out.set(f.id, change('base', b))
+      } else if (!g.card) {
+        // Звичайної версії в магазині немає — «Походження …» у формі єдине місце, де його видно на сайті
+        out.set(f.id, change('base', null))
+      }
+    }
+  }
+  return out
 }

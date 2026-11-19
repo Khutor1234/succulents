@@ -8,6 +8,7 @@ import type { PlantOrigin, Product } from '../../lib/types'
  * Тож «Graptoveria Debbie variegata» має бути «Відбір або мутація» від «Graptoveria Debbie»,
  * а не мати ті самі батьки, що й Debbie. Батьків-гібрида видно на сторінці самої Debbie.
  * Так само культивар (слово в лапках після назви): «Echeveria agavoides 'Maria'» — відбір від «Echeveria agavoides».
+ * А якщо в звичайної версії вказано селекціонера, а у форми — ні, пропонуємо того самого селекціонера й формі.
  */
 
 export interface FormFix {
@@ -24,6 +25,10 @@ export interface FormFix {
   /** form — форма (variegata…) від звичайної версії; selection — культивар від рослини без культивару */
   kind: 'form' | 'selection'
   before: { origin?: PlantOrigin; parents: string[] }
+  /** Походження вже правильне — правка лише про селекціонера */
+  originOk?: boolean
+  /** Селекціонер звичайної версії, якого в форми ще немає */
+  breeder?: string
 }
 
 export interface FormFixPlan {
@@ -32,7 +37,7 @@ export interface FormFixPlan {
   ok: number
 }
 
-type Plant = Pick<Product, 'id' | 'slug' | 'name' | 'category' | 'tags' | 'origin' | 'parents' | 'isActive' | 'genus'> & { images?: string[] }
+type Plant = Pick<Product, 'id' | 'slug' | 'name' | 'category' | 'tags' | 'origin' | 'parents' | 'isActive' | 'genus' | 'breeder'> & { images?: string[] }
 
 // Назва без форм, лапок і різниці в регістрі/пробілах: «Graptoveria 'Debbie' variegata» → «graptoveriadebbie»
 // («hybrid» лишається: «Orion hybrid variegata» — від «Orion hybrid», а «Orion variegata» — від «Orion»)
@@ -88,11 +93,25 @@ export function planFormFixes(products: Plant[]): FormFixPlan {
     if (!source || source.split(/\s+/).length < 2) continue
     const parents = (p.parents ?? []).filter(Boolean)
     // Уже правильно, навіть якщо джерело записане трохи інакше (без лапок, іншими літерами регістру)
-    if (p.origin === 'cultivar' && parents.length === 1 && nameKey(parents[0]) === nameKey(source)) {
+    const originOk = p.origin === 'cultivar' && parents.length === 1 && nameKey(parents[0]) === nameKey(source)
+    // Селекціонер звичайної версії (серед однакових — перший, у кого він вказаний), а у форми порожньо
+    const breeder = p.breeder?.trim() ? '' : (candidates.find((q) => q.breeder?.trim())?.breeder?.trim() ?? '')
+    if (originOk && !breeder) {
       plan.ok++
       continue
     }
-    plan.fixes.push({ id: p.id, slug: p.slug, name: p.name.uk, image: p.images?.[0], source, sourceInShop: !!inShop, kind: 'form', before: { origin: p.origin, parents } })
+    plan.fixes.push({
+      id: p.id,
+      slug: p.slug,
+      name: p.name.uk,
+      image: p.images?.[0],
+      source,
+      sourceInShop: !!inShop,
+      kind: 'form',
+      before: { origin: p.origin, parents },
+      ...(originOk ? { originOk } : {}),
+      ...(breeder ? { breeder } : {}),
+    })
   }
   plan.fixes.sort((a, b) => a.name.localeCompare(b.name))
   return plan
