@@ -73,9 +73,7 @@ export interface NameFix {
   parents: string[]
   /** Нове «Походження звичайної версії» (для форм), якщо там теж були назви до виправлення */
   base?: Product['base']
-  /** Нове походження самої рослини (правило «Походження з інших записів») */
-  origin?: PlantOrigin
-  habitat?: string
+  /** Походження з інших записів — окрема пропозиція (картка рослини чи блок «Походження …» у формі) */
   lineage?: LineageChange
 }
 
@@ -148,10 +146,10 @@ export function planNameFixes(
     const lineage = lineageFixes.get(p.id)
     // Нове походження теж записуємо з правильними назвами батьків (без окремих рядків «описка» — це вже нові батьки)
     const to = lineage && { ...lineage.to, parents: lineage.to.parents.map((n) => targetOf(nameKey(n))?.to ?? n) }
-    const parents = lineage?.target === 'card' && to ? to.parents : fixList(p.parents)
-    const baseParents = lineage?.target === 'base' ? undefined : p.base ? fixList(p.base.parents) : undefined
+    // Назви батьків і походження — окремі пропозиції (кожну можна прийняти окремо), тож рахуємо їх незалежно
+    const parents = fixList(p.parents)
+    const baseParents = p.base ? fixList(p.base.parents) : undefined
     if (changes.length === 0 && !lineage) continue
-    const base = lineage?.target === 'base' && to ? to : p.base && baseParents ? { ...p.base, parents: baseParents } : undefined
     fixes.push({
       id: p.id,
       slug: p.slug,
@@ -159,8 +157,7 @@ export function planNameFixes(
       image: p.images?.[0],
       changes,
       parents,
-      ...(base ? { base } : {}),
-      ...(lineage?.target === 'card' && to ? { origin: to.origin, habitat: to.origin === 'natural' ? (to.habitat ?? '') : '' } : {}),
+      ...(p.base && baseParents ? { base: { ...p.base, parents: baseParents } } : {}),
       ...(lineage && to ? { lineage: { ...lineage, to } } : {}),
     })
   }

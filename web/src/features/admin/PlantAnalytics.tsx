@@ -359,7 +359,7 @@ export function PlantAnalytics() {
               />
               {stats.crossGenus > 0 && <p className="mt-3 text-xs text-sand-700">{t('plantStats.crossGenus', { count: stats.crossGenus })}</p>}
               {stats.multiForm.length > 0 && (
-                <Link to="/admin/tools?tab=forms" className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-brand-600 underline">
+                <Link to="/admin/tools?tab=fixes" className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-brand-600 underline">
                   <Sparkles size={16} strokeWidth={2.25} aria-hidden />
                   {t('admin.formFixes.link')}
                 </Link>

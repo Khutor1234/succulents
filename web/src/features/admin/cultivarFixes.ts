@@ -25,6 +25,8 @@ export interface CultivarFix {
   before: string
   /** Подвійні лапки → одні: нова назва (і «Від», якщо він ішов за назвою) */
   rename?: { name: string; parents?: string[] }
+  /** Культивар уже в полі «Культивар» — лишилось тільки злити лапки */
+  cultivarSet?: boolean
 }
 
 type Plant = Pick<Product, 'id' | 'slug' | 'name' | 'category' | 'genus' | 'cultivarName' | 'parents'> & { images?: string[] }
@@ -44,7 +46,8 @@ export function planCultivarFixes(products: Plant[]): CultivarFix[] {
       const from = p.parents?.[0] ?? ''
       const followed = !!name && !!from && from === withoutStates(p.name.uk) && from !== withoutStates(name)
       const rename = name ? { name, ...(followed ? { parents: [withoutStates(name), ...(p.parents ?? []).slice(1)] } : {}) } : undefined
-      return [{ id: p.id, slug: p.slug, name: p.name.uk, image: p.images?.[0], rest, cultivar: selection, before, rename }]
+      const cultivarSet = p.cultivarName?.trim() === selection
+      return [{ id: p.id, slug: p.slug, name: p.name.uk, image: p.images?.[0], rest, cultivar: selection, before, rename, ...(cultivarSet ? { cultivarSet } : {}) }]
     })
     .sort((a, b) => a.name.localeCompare(b.name))
 }

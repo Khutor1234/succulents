@@ -109,6 +109,11 @@ service cloud.firestore {
       allow read, write: if isSeller();
     }
 
+    // «Неактуально» в «Інструменти → Виправлення»: яку пропозицію продавець відхилила (лише саме цю — відбиток sig).
+    match /fixDismissals/{id} {
+      allow read, write: if isSeller();
+    }
+
     // Службові документи (лічильник номерів замовлень тощо) — тільки для Functions.
     match /counters/{id} {
       allow read, write: if false;

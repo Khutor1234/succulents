@@ -38,7 +38,7 @@ export default function AdminApp() {
         <Route path="categories" element={<Moved to="/admin/products?tab=categories" />} />
         <Route path="pedigrees" element={<Moved to="/admin/analytics?tab=pedigrees" keep="view" />} />
         <Route path="import" element={<Moved to="/admin/tools" />} />
-        <Route path="forms" element={<Moved to="/admin/tools" keep="tab" fallback="forms" />} />
+        <Route path="forms" element={<Moved to="/admin/tools?tab=fixes" />} />
         <Route path="origins" element={<Moved to="/admin/tools?tab=origins" />} />
       </Route>
     </Routes>

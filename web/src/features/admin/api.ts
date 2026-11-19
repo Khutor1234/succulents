@@ -13,6 +13,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   Timestamp,
   writeBatch,
   updateDoc,
@@ -218,6 +219,35 @@ export function useOriginChecks() {
         .map((d) => ({ id: d.id, ...d.data() }) as SavedCheck)
         .sort((a, b) => (b.checkedAt?.toMillis() ?? 0) - (a.checkedAt?.toMillis() ?? 0))
     },
+  })
+}
+
+/**
+ * «Неактуально» в «Інструменти → Виправлення»: документ на кожну відхилену пропозицію (id — «товар__правило»).
+ * sig — відбиток саме тієї пропозиції: якщо пропозиція зміниться, вона з'явиться знову.
+ */
+export interface FixDismissal {
+  id: string
+  sig: string
+}
+
+export function useFixDismissals() {
+  return useQuery({
+    queryKey: ['admin', 'fixDismissals'],
+    queryFn: async () => (await getDocs(collection(db, 'fixDismissals'))).docs.map((d) => ({ id: d.id, sig: String(d.data().sig ?? '') })),
+  })
+}
+
+/** Позначити пропозицію «неактуально» (sig) або повернути її (sig = null). */
+export function useSetFixDismissal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, sig }: { id: string; sig: string | null }) => {
+      if (sig === null) await deleteDoc(doc(db, 'fixDismissals', id))
+      else await setDoc(doc(db, 'fixDismissals', id), { sig, at: serverTimestamp() })
+    },
+    onSuccess: (_, { id, sig }) =>
+      qc.setQueryData<FixDismissal[]>(['admin', 'fixDismissals'], (old = []) => [...old.filter((d) => d.id !== id), ...(sig === null ? [] : [{ id, sig }])]),
   })
 }
 

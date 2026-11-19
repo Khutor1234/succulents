@@ -108,7 +108,7 @@ export function AdminHome() {
           icon={Wrench}
           title={t('admin.home.tools')}
           text={t('admin.home.toolsText')}
-          tabs={(['import', 'forms', 'names', 'cultivars', 'origins'] as const).map((id) => ({
+          tabs={(['import', 'fixes', 'origins'] as const).map((id) => ({
             to: id === 'import' ? '/admin/tools' : `/admin/tools?tab=${id}`,
             label: t(`admin.fixes.tabsShort.${id}`),
           }))}

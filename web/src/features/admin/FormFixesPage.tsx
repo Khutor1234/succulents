@@ -1,18 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { doc, serverTimestamp, writeBatch } from 'firebase/firestore'
-import { ArrowRight, FileSpreadsheet, Quote, SearchCheck, Sparkles, SpellCheck } from 'lucide-react'
+import { FileSpreadsheet, SearchCheck, Sparkles, Wand2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
+import { Link, Navigate, useSearchParams } from 'react-router'
 import { db } from '../../firebase/config'
-import type { Product } from '../../lib/types'
 import { Button, SmallImage } from '../../shared/ui'
 import { useAllProducts, useOriginChecks } from './api'
+import { FixesTab } from './FixesTab'
+import { useFixPlan } from './allFixes'
 import { ImportPage } from './ImportPage'
 import { TabBar, useTab } from './TabBar'
-import { planFormFixes, type FormFix } from './formFixes'
-import { planCultivarFixes, type CultivarFix } from './cultivarFixes'
-import { planNameFixes, type Lineage, type LineageSource, type NameFix } from './nameFixes'
 import { OriginsTab } from './OriginCheckPage'
 import { planOriginFixes, rowFromCells } from './originCheck'
 
@@ -35,36 +33,41 @@ export function useApplyFixes<T extends { id: string }>(patch: (fix: T) => Recor
   })
 }
 
-const TABS = ['import', 'forms', 'names', 'cultivars', 'origins'] as const
+const TABS = ['import', 'fixes', 'origins'] as const
+/** Колишні вкладки, тепер — одна «Виправлення» */
+const OLD_TABS = ['forms', 'names', 'cultivars']
 type Tab = (typeof TABS)[number]
-const TAB_ICONS = { import: FileSpreadsheet, forms: Sparkles, names: SpellCheck, cultivars: Quote, origins: SearchCheck }
+const TAB_ICONS = { import: FileSpreadsheet, fixes: Wand2, origins: SearchCheck }
 
 /**
  * /admin/tools — «Інструменти»: зміни одразу в багатьох товарах, вкладки (?tab=…):
  * - «Імпорт з таблиці» (ImportPage.tsx) — перша, без параметра;
- * - «Форми» (forms): варієгати, кристати й монстрози стають «Відбір або мутація» від звичайної версії;
- * - «Назви батьків» (names): батьки, записані не так, як рослина в магазині (описка, лапки, регістр);
- * - «Культивари» (cultivars); «Перевірка походження» (origins, OriginCheckPage.tsx) — звірка з довідковими сайтами.
+ * - «Виправлення» (fixes, FixesTab.tsx): усі правила разом — форми, селекціонер, інші назви, назви батьків, походження,
+ *   культивари й лапки (колишні вкладки forms / names / cultivars ведуть сюди);
+ * - «Перевірка походження» (origins, OriginCheckPage.tsx) — звірка з довідковими сайтами.
  * Спершу список «було → стане», кожен рядок можна зняти галочкою; записується лише після «Застосувати».
  */
 export function FormFixesPage() {
   const { t } = useTranslation()
+  const [params] = useSearchParams()
   const [tab, setTab] = useTab(TABS)
   const { data: products, isLoading } = useAllProducts()
   const { data: checks } = useOriginChecks()
+  const fixPlan = useFixPlan(products)
   // Скільки рослин можна виправити на кожній вкладці — у дужках біля назви вкладки
   const counts = useMemo(
     (): Partial<Record<Tab, number>> =>
       products
         ? {
-            forms: planFormFixes(products).fixes.length,
-            names: planNameFixes(products, new Map(), (checks ?? []).map((c) => rowFromCells(c.cells))).length,
-            cultivars: planCultivarFixes(products).length,
+            fixes: fixPlan.active.length,
             origins: planOriginFixes(products, (checks ?? []).map((c) => rowFromCells(c.cells))).fixes.length,
           }
         : {},
-    [products, checks],
+    [products, checks, fixPlan],
   )
+
+  // Стара адреса (?tab=forms / names / cultivars) — на нову спільну вкладку
+  if (OLD_TABS.includes(params.get('tab') ?? '')) return <Navigate to="/admin/tools?tab=fixes" replace />
 
   return (
     <div className="max-w-4xl">
@@ -86,14 +89,7 @@ export function FormFixesPage() {
       ) : (
         <>
           {isLoading && <p className="text-sand-700">{t('loading')}</p>}
-          {products &&
-            (tab === 'names' ? (
-              <NamesTab key="names" products={products} />
-            ) : tab === 'cultivars' ? (
-              <CultivarsTab key="cultivars" products={products} />
-            ) : (
-              <FormsTab key="forms" products={products} />
-            ))}
+          {products && <FixesTab key="fixes" products={products} />}
         </>
       )}
     </div>
@@ -220,204 +216,5 @@ export function FixList<T extends { id: string; slug: string; name: string; imag
       )}
       {apply.isError && <p className="text-red-700">{t('admin.saveError')}</p>}
     </>
-  )
-}
-
-function FormsTab({ products }: { products: Product[] }) {
-  const { t } = useTranslation()
-  // Як збереження форми з «Відбір або мутація»: одна рослина-джерело, без ареалу; селекціонер — як у звичайної версії, якщо в форми порожньо
-  const apply = useApplyFixes<FormFix>((f) => ({
-    ...(f.originOk ? {} : { origin: 'cultivar', parents: [f.source], habitat: '' }),
-    ...(f.breeder ? { breeder: f.breeder } : {}),
-  }))
-  const plan = useMemo(() => planFormFixes(products), [products])
-  const before = (f: FormFix) =>
-    [f.before.origin ? t(`admin.fields.origins.${f.before.origin}`) : t('admin.formFixes.noOrigin'), f.before.parents.join(' × ')]
-      .filter(Boolean)
-      .join(': ')
-  return (
-    <div className="space-y-4">
-      <Hint>{t('admin.formFixes.hint')}</Hint>
-      <FixList
-        fixes={plan.fixes}
-        apply={apply}
-        row={(f) => (
-          <>
-            {!f.originOk && (
-              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                <span className="text-sand-700 line-through">{before(f)}</span>
-                <ArrowRight size={14} strokeWidth={2.5} className="shrink-0 text-sand-700" aria-hidden />
-                <span className="font-bold text-brand-700">{t(f.kind === 'selection' ? 'admin.formFixes.afterSelection' : 'admin.formFixes.after', { name: f.source })}</span>
-              </span>
-            )}
-            {f.breeder && (
-              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                <span className="text-sand-700">{t('admin.formFixes.breeder')}:</span>
-                <span className="font-bold text-brand-700">{f.breeder}</span>
-                <span className="text-sand-700">{t('admin.formFixes.breederFrom', { name: f.source })}</span>
-              </span>
-            )}
-            {!f.sourceInShop && <span className="mt-1 block text-xs text-sand-700">{t('admin.formFixes.notInShop')}</span>}
-          </>
-        )}
-      />
-      {plan.ok > 0 && <p className="text-sm text-sand-700">{t('admin.formFixes.ok', { count: plan.ok })}</p>}
-    </div>
-  )
-}
-
-function NamesTab({ products }: { products: Product[] }) {
-  const { t } = useTranslation()
-  // Лише батьки й походження: батьки, «Походження звичайної версії» (base), а з правилом «з інших записів» — і тип походження
-  const apply = useApplyFixes<NameFix>((f) => ({
-    parents: f.parents,
-    ...(f.base ? { base: f.base } : {}),
-    ...(f.origin ? { origin: f.origin, habitat: f.habitat ?? '' } : {}),
-  }))
-  const { data: checks } = useOriginChecks()
-  const rows = useMemo(() => (checks ?? []).map((c) => rowFromCells(c.cells)), [checks])
-  // Рослини, якої немає в магазині, але записаної по-різному: яке написання правильне (вибирає продавець)
-  const [chosen, setChosen] = useState<Map<string, string>>(new Map())
-  // Походження рослини записане по-різному в різних місцях: який варіант правильний
-  const [lineageChosen, setLineageChosen] = useState<Map<string, string>>(new Map())
-  const fixes = useMemo(() => planNameFixes(products, chosen, rows, lineageChosen), [products, chosen, rows, lineageChosen])
-  const choose = (key: string, name: string) => setChosen(new Map(chosen).set(key, name))
-  const lineageText = (l: Lineage | null) =>
-    !l
-      ? t('admin.nameFixes.notSet')
-      : [t(`admin.fields.origins.${l.origin}`), l.origin === 'natural' ? l.habitat : l.parents.join(' × ')].filter(Boolean).join(': ')
-  const sourceText = (s: LineageSource) => t(`admin.nameFixes.sources.${s.kind}`, { name: s.name })
-  return (
-    <div className="space-y-4">
-      <Hint>{t('admin.nameFixes.hint')}</Hint>
-      <FixList
-        fixes={fixes}
-        apply={apply}
-        row={(f) => (
-          <span className="mt-1 block space-y-1.5 text-sm">
-            {f.changes.map((c) => (
-              <span key={c.from} className="block">
-                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="text-sand-700 line-through">{c.from}</span>
-                  <ArrowRight size={14} strokeWidth={2.5} className="shrink-0 text-sand-700" aria-hidden />
-                  <span className="font-bold text-brand-700">{c.to}</span>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                      c.choices ? 'bg-sand-200 text-sand-700' : c.typo ? 'bg-sunset-100 text-sunset-600' : 'bg-sand-200 text-sand-700'
-                    }`}
-                  >
-                    {t(c.choices ? 'admin.nameFixes.notInShop' : c.typo ? 'admin.nameFixes.typo' : 'admin.nameFixes.spelling')}
-                  </span>
-                </span>
-                {/* Рослини в магазині немає — продавець вибирає, як правильно; вибір діє на всі рослини з цим батьком */}
-                {c.choices && (
-                  <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    <span className="text-xs text-sand-700">{t('admin.nameFixes.howRight')}</span>
-                    {c.choices.map((name) => (
-                      <button
-                        key={name}
-                        type="button"
-                        aria-pressed={c.to === name}
-                        onClick={() => choose(c.key, name)}
-                        className={`rounded-lg border px-2 py-0.5 text-xs font-bold transition-colors ${
-                          c.to === name ? 'border-brand-600 bg-brand-600 text-sand-50' : 'border-sand-300 bg-sand-100 text-sand-700 hover:border-brand-600'
-                        }`}
-                      >
-                        {name}
-                      </button>
-                    ))}
-                  </span>
-                )}
-              </span>
-            ))}
-            {/* Походження з інших записів: картка рослини, «Походження …» у формах, перевірка походження */}
-            {f.lineage && (
-              <span className="block rounded-xl bg-sand-100 px-2.5 py-2">
-                <span className="block text-xs font-bold text-sand-700">
-                  {t(f.lineage.target === 'base' ? 'admin.nameFixes.lineageBase' : 'admin.nameFixes.lineageCard', { name: f.lineage.plant })}
-                </span>
-                <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className={`text-sand-700 ${f.lineage.from ? 'line-through' : ''}`}>{lineageText(f.lineage.from)}</span>
-                  <ArrowRight size={14} strokeWidth={2.5} className="shrink-0 text-sand-700" aria-hidden />
-                  <span className="font-bold text-brand-700">{lineageText(f.lineage.to)}</span>
-                </span>
-                <span className="mt-1 block text-xs text-sand-700">
-                  {t('admin.nameFixes.from')} {f.lineage.sources.map(sourceText).join('; ')}
-                </span>
-                {/* Записано по-різному — продавець вибирає правильний варіант; вибір діє на всі картки цієї рослини */}
-                {f.lineage.variants && (
-                  <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    <span className="text-xs text-sand-700">{t('admin.nameFixes.howRight')}</span>
-                    {f.lineage.variants.map((v) => (
-                      <button
-                        key={v.sig}
-                        type="button"
-                        aria-pressed={f.lineage!.sig === v.sig}
-                        title={v.sources.map(sourceText).join('; ')}
-                        onClick={() => setLineageChosen(new Map(lineageChosen).set(f.lineage!.key, v.sig))}
-                        className={`rounded-lg border px-2 py-0.5 text-left text-xs font-bold transition-colors ${
-                          f.lineage!.sig === v.sig
-                            ? 'border-brand-600 bg-brand-600 text-sand-50'
-                            : 'border-sand-300 bg-sand-50 text-sand-700 hover:border-brand-600'
-                        }`}
-                      >
-                        {lineageText(v.lineage)}
-                      </button>
-                    ))}
-                  </span>
-                )}
-              </span>
-            )}
-          </span>
-        )}
-      />
-    </div>
-  )
-}
-
-/** «Культивари»: слово в лапках переходить у поле «Культивар» форми. Назва, батьки й походження не змінюються. */
-function CultivarsTab({ products }: { products: Product[] }) {
-  const { t } = useTranslation()
-  const apply = useApplyFixes<CultivarFix>((f) => ({
-    cultivarName: f.cultivar,
-    ...(f.rename ? { 'name.uk': f.rename.name, ...(f.rename.parents ? { parents: f.rename.parents } : {}) } : {}),
-  }))
-  const fixes = useMemo(() => planCultivarFixes(products), [products])
-  const field = (label: string, value: string) => (
-    <span className="inline-flex items-center gap-1">
-      <span className="text-sand-700">{label}:</span>
-      <span className="font-bold text-brand-700">{value}</span>
-    </span>
-  )
-  return (
-    <div className="space-y-4">
-      <Hint>{t('admin.formFixes.cultivarsHint')}</Hint>
-      <FixList
-        fixes={fixes}
-        apply={apply}
-        row={(f) => (
-          <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-            <span className="text-sand-700 line-through">
-              {t('admin.fields.cultivar')}: {f.before}
-            </span>
-            <ArrowRight size={14} strokeWidth={2.5} className="shrink-0 text-sand-700" aria-hidden />
-            {field(t('admin.fields.cultivar'), f.rest)}
-            <span className="text-sand-700">·</span>
-            {field(t('admin.fields.selection'), f.cultivar)}
-            {f.rename && (
-              <span className="flex basis-full flex-wrap items-center gap-x-2">
-                <span className="text-sand-700">{t('admin.formFixes.mergedQuotes')}:</span>
-                <span className="font-bold text-brand-700">{f.rename.name}</span>
-                {f.rename.parents && (
-                  <span className="text-sand-700">
-                    · {t('admin.formFixes.fromLabel')} {f.rename.parents[0]}
-                  </span>
-                )}
-              </span>
-            )}
-          </span>
-        )}
-      />
-    </div>
   )
 }
