@@ -201,7 +201,8 @@ export function FixList<T extends { id: string; slug: string; name: string; imag
               </li>
             ))}
           </ul>
-          <div className="sticky bottom-[var(--bottom-nav-h,0px)] z-30 -mx-4 border-t-2 border-sand-200 bg-sand-100/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
+          {/* Кнопка «Застосувати» завжди під рукою: телефон — смуга над нижнім меню, комп'ютер — плаваюча внизу екрана */}
+          <div className="sticky bottom-[var(--bottom-nav-h,0px)] z-30 -mx-4 border-t-2 border-sand-200 bg-sand-100/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:bottom-4 sm:mr-0 sm:ml-auto sm:w-fit sm:rounded-2xl sm:border-2 sm:bg-sand-50/95 sm:p-2 sm:shadow-lg">
             <Button onClick={() => apply.mutate(chosen, {
                 onSuccess: () => {
                   setSelected(new Set())

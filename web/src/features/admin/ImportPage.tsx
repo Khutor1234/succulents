@@ -171,9 +171,12 @@ export function ImportPage() {
           {apply.isSuccess ? (
             <p className="rounded-xl bg-brand-100 p-3 font-bold text-brand-700">{t('admin.import.done', apply.data)}</p>
           ) : hasChanges ? (
-            <Button onClick={() => apply.mutate(chosen)} disabled={apply.isPending}>
-              {apply.isPending ? t('admin.import.applying') : t('admin.import.applyChosen', { count: chosen.renames.length + chosen.creates.length + chosen.updates.length })}
-            </Button>
+            // Завжди під рукою, як і в «Інструментах»: не треба гортати до кінця списку
+            <div className="sticky bottom-[var(--bottom-nav-h,0px)] z-30 -mx-4 border-t-2 border-sand-200 bg-sand-100/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:bottom-4 sm:mr-0 sm:ml-auto sm:w-fit sm:rounded-2xl sm:border-2 sm:bg-sand-50/95 sm:p-2 sm:shadow-lg">
+              <Button onClick={() => apply.mutate(chosen)} disabled={apply.isPending}>
+                {apply.isPending ? t('admin.import.applying') : t('admin.import.applyChosen', { count: chosen.renames.length + chosen.creates.length + chosen.updates.length })}
+              </Button>
+            </div>
           ) : (
             <p className="font-bold text-brand-700">{t('admin.import.nothing')}</p>
           )}
