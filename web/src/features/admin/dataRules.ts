@@ -15,7 +15,6 @@ export const DATA_RULES = [
   'genusField',
   'nameStyle',
   'formTags',
-  'duplicate',
   'aliasSelf',
   'aliasShared',
   'selfParent',
@@ -181,12 +180,6 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
   const out: DataSuggestion[] = []
   const add = (s: DataSuggestion) => out.push(s)
   const plants = products.filter((p) => p.category === PLANT_CATEGORY)
-  const keyName = new Map<string, Product[]>()
-  for (const p of plants) {
-    // Живець — та сама рослина з тією ж назвою (на екрані «(живець)»), це не дубль
-    const k = `${nameKey(p.name.uk)}|${p.tags?.includes('cutting') ? 'c' : ''}`
-    keyName.set(k, [...(keyName.get(k) ?? []), p])
-  }
   const byKey = new Map(plants.map((p) => [nameKey(p.name.uk), p]))
   const familyOf = (p: Product) => nameKey(withoutStates(p.name.uk))
 
@@ -263,12 +256,7 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
       })
     }
 
-    // 6. Можливий дубль — та сама назва в іншій картці (не живець)
-    const same = keyName.get(`${nameKey(name)}|${p.tags?.includes('cutting') ? 'c' : ''}`) ?? []
-    if (same.length > 1) {
-      const others = same.filter((q) => q.id !== p.id)
-      add({ productId: p.id, rule: 'duplicate', sig: same.map((q) => q.id).sort().join('|'), patch: null, lines: others.map((q) => ({ note: q.name.uk })) })
-    }
+    // «Можливий дубль» (та сама назва в кількох картках) прибрано на прохання власниці: це різні екземпляри варієгатності
 
     // 8. Інша назва = власна назва рослини — зайва
     const self = (p.aliases ?? []).find((a) => nameKey(a) === nameKey(name))
@@ -317,11 +305,8 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
           ...(p.breeder?.trim() ? [{ from: p.breeder, to: '—' }] : []),
         ],
       })
-    } else if (p.origin === 'hybrid' && parents.length === 0) {
-      add({ productId: p.id, rule: 'originConflict', sig: 'hybrid-empty', patch: null, lines: [{ note: 'hybridEmpty' }] })
-    } else if (p.origin === 'cultivar' && parents.length === 0) {
-      add({ productId: p.id, rule: 'originConflict', sig: 'cultivar-empty', patch: null, lines: [{ note: 'cultivarEmpty' }] })
     }
+    // Підказки «гібрид без батьків» / «відбір без Від» прибрано на прохання власниці: батьки бувають невідомі
 
     // 11. Природний вид без ареалу — з перевірки походження чи інших карток цієї рослини, якщо там є
     if (p.origin === 'natural' && !p.habitat?.trim()) {

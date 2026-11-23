@@ -26,7 +26,6 @@ export const RULES: Rule[] = [
   'formTags',
   'quotes',
   'cultivar',
-  'duplicate',
   'form',
   'selection',
   'breeder',

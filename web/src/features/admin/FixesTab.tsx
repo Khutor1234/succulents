@@ -25,7 +25,6 @@ const RULE_STYLE: Record<Rule, string> = {
   genusField: 'bg-sunset-100 text-sunset-700',
   nameStyle: 'bg-sand-200 text-sand-800',
   formTags: 'bg-sunset-100 text-sunset-700',
-  duplicate: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
   aliasSelf: 'bg-brand-100 text-brand-700',
   aliasShared: 'bg-brand-100 text-brand-700',
   selfParent: 'bg-lavender-100 text-lavender-700',
@@ -278,7 +277,6 @@ function SuggestionRow({
         .split(',')
         .map((r) => t(`admin.allFixes.reasons.${r}`))
         .join(', ')}`
-    if (s.rule === 'duplicate') return t('admin.allFixes.notes.duplicate', { name: note })
     if (s.rule === 'genusField') return t('admin.allFixes.notes.genusMismatch', { text: note })
     const [kind, ...rest] = note.split(':')
     if (kind === 'tags')
