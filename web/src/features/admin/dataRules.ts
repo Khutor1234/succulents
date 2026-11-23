@@ -28,6 +28,7 @@ export const DATA_RULES = [
   'quoteName',
   'speciesCase',
   'originMissing',
+  'fromSpelling',
 ] as const
 export type DataRule = (typeof DATA_RULES)[number]
 
@@ -278,6 +279,14 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
       const q = byKey.get(nameKey(x))
       if (q && q.id !== p.id && (q.parents ?? []).some((y) => nameKey(y) === own))
         add({ productId: p.id, rule: 'selfParent', sig: `cycle|${q.id}`, patch: null, lines: [{ note: `cycle:${q.name.uk}` }] })
+    }
+
+    // «Від» форми — та сама рослина, що й у назві, але записана інакше (інші лапки чи без них): «Echeveria Monocerotis»
+    // у «Echeveria 'Monocerotis' variegata». Якщо ця рослина є в магазині — це вже правило «Назва батька».
+    if (p.origin === 'cultivar' && parents[0] && (p.tags?.some((t) => STATE_TAGS.includes(t)) || parseForms(name).states.some((s) => STATE_TAGS.includes(s)))) {
+      const expected = withoutStates(name).trim()
+      if (nameKey(parents[0]) === nameKey(expected) && parents[0] !== expected && !byKey.has(nameKey(expected)))
+        add({ productId: p.id, rule: 'fromSpelling', sig: expected, patch: { parents: [expected] }, lines: [{ from: parents[0], to: expected }] })
     }
 
     // Походження не вказане зовсім (ні типу, ні батьків); форми — окремим правилом «Форма — мутація»

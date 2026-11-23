@@ -37,6 +37,7 @@ const RULE_STYLE: Record<Rule, string> = {
   slugGenus: 'bg-sunset-100 text-sunset-700',
   quoteName: 'bg-sand-200 text-sand-800',
   originMissing: 'bg-lavender-100 text-lavender-700',
+  fromSpelling: 'bg-sand-200 text-sand-800',
   speciesCase: 'bg-sand-200 text-sand-800',
 }
 

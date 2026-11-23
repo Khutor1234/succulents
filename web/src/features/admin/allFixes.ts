@@ -36,6 +36,7 @@ export const RULES: Rule[] = [
   'aliasSelf',
   'aliasShared',
   'names',
+  'fromSpelling',
   'lineage',
   'selfParent',
   'originMissing',
