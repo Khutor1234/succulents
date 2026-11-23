@@ -38,7 +38,7 @@ export function ProductGallery({ images, alt }: { images: string[]; alt: string 
   }
 
   return (
-    <div className="rounded-[32px] bg-sand-50 p-3">
+    <div className="rounded-[32px] bg-sand-50 p-3 select-none">
       <button
         type="button"
         onClick={() => setViewing(current)}
@@ -57,6 +57,7 @@ export function ProductGallery({ images, alt }: { images: string[]; alt: string 
         <img
           src={imageUrl(images[current])}
           alt={alt}
+          draggable={false}
           className="aspect-square w-full object-cover transition-transform duration-200 ease-out"
           style={origin ? { transform: `scale(${ZOOM})`, transformOrigin: origin } : undefined}
         />
@@ -160,7 +161,7 @@ function Lightbox({
       }}
       onClick={(e) => e.target === e.currentTarget && ref.current?.close()}
       aria-label={t('gallery.open', { n: index + 1, count })}
-      className="m-auto max-h-none max-w-none bg-transparent p-0 backdrop:bg-ink/90 dark:backdrop:bg-black/85"
+      className="m-auto max-h-none max-w-none bg-transparent p-0 select-none [-webkit-tap-highlight-color:transparent] backdrop:bg-ink/90 dark:backdrop:bg-black/85"
     >
       <div className="flex h-[100dvh] w-screen flex-col items-center gap-3 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="flex w-full max-w-5xl items-center justify-between text-sand-50">
@@ -174,6 +175,12 @@ function Lightbox({
           className="relative flex min-h-0 w-full max-w-5xl flex-1 items-center justify-center overflow-hidden"
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
+          // Клік по темному фону ліворуч чи праворуч від фото — попереднє / наступне
+          onClick={(e) => {
+            if (e.target !== e.currentTarget || count < 2) return
+            const r = e.currentTarget.getBoundingClientRect()
+            go(e.clientX < r.left + r.width / 2 ? -1 : 1)
+          }}
         >
           <img
             key={images[index]}
@@ -181,6 +188,7 @@ function Lightbox({
             alt={alt}
             onClick={onImageClick}
             onMouseMove={onImageMove}
+            draggable={false}
             className={`max-h-full max-w-full animate-page-in rounded-xl object-contain shadow-2xl transition-transform duration-200 ${
               zoomAt ? 'cursor-zoom-out' : 'cursor-zoom-in'
             }`}

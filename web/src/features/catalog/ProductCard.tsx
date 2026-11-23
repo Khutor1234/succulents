@@ -72,7 +72,7 @@ export function ProductCard({
             : 'border-sand-200 bg-sand-50 hover:border-sand-300'
       }`}
     >
-      <div className="group relative overflow-hidden rounded-2xl">
+      <div className="group relative overflow-hidden rounded-2xl select-none [-webkit-tap-highlight-color:transparent]">
         {/* Фото трохи наближається при наведенні */}
         <div className="transition-transform duration-500 group-hover:scale-[1.04]">
           <CardPhotos product={product} alt={name} tint={TINTS[index % TINTS.length]} onIndex={setPhoto} scrollRef={photosRef} />
@@ -140,7 +140,7 @@ export function ProductCard({
           })}
       </div>
       {photoCount > 1 && (
-        <div className="mt-1 flex justify-center">
+        <div className="mt-1 flex justify-center select-none [-webkit-tap-highlight-color:transparent]">
           {product.images.map((src, i) => (
             <button
               key={`${i}-${src}`}
