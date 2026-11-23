@@ -39,6 +39,7 @@ export const RULES: Rule[] = [
   'names',
   'fromSpelling',
   'lineage',
+  'baseFromName',
   'selfParent',
   'originMissing',
   'originConflict',
@@ -53,6 +54,7 @@ export const RULES: Rule[] = [
 const APPLY_ORDER: Rule[] = [
   'genusField',
   'names',
+  'baseFromName',
   'lineage',
   'selfParent',
   'originConflict',
@@ -223,6 +225,8 @@ export function planAllFixes(
     if (d.rule === 'originConflict' && !d.patch && has(d.productId, ['lineage', 'form', 'selection'])) continue
     // Походження вже пропонує інше правило (з карток форм чи перевірки) — «Немає походження» не дублюємо
     if (d.rule === 'originMissing' && has(d.productId, ['lineage', 'form', 'selection'])) continue
+    // Походження вже знайдено в записах — з назви не вгадуємо
+    if (d.rule === 'baseFromName' && has(d.productId, ['lineage'])) continue
     // Одна пропозиція одного правила на товар (напр. ареал і ареал у «Походженні» форми — разом)
     const prev = all.find((x) => x.productId === d.productId && x.rule === d.rule)
     if (prev) {

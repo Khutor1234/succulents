@@ -30,6 +30,7 @@ export const DATA_RULES = [
   'originMissing',
   'fromSpelling',
   'slugForm',
+  'baseFromName',
 ] as const
 export type DataRule = (typeof DATA_RULES)[number]
 
@@ -305,6 +306,50 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
       const expected = withoutStates(name).trim()
       if (nameKey(parents[0]) === nameKey(expected) && parents[0] !== expected && !byKey.has(nameKey(expected)))
         add({ productId: p.id, rule: 'fromSpelling', sig: expected, patch: { parents: [expected] }, lines: [{ from: parents[0], to: expected }] })
+    }
+
+    // Звичайної версії форми немає в магазині, а блок «Походження …» порожній — те, що видно з самої назви «Від»:
+    // «Echeveria agavoides 'Maria'» — відбір від Echeveria agavoides; «Echeveria chihuahuaensis» — природний вид
+    const isForm0 = !!p.tags?.some((t) => STATE_TAGS.includes(t)) || parseForms(name).states.some((s) => STATE_TAGS.includes(s))
+    const baseEmpty = !p.base || (!p.base.origin && !(p.base.parents ?? []).filter(Boolean).length)
+    const from0 = parents[0]?.trim() ?? ''
+    if (p.origin === 'cultivar' && isForm0 && baseEmpty && from0 && !byKey.has(nameKey(from0)) && !/×|\sx\s/i.test(from0)) {
+      const q = from0.search(/['‘’"]/u)
+      const words = (q > 0 ? from0.slice(0, q) : from0).trim().split(/\s+/)
+      const speciesOk = words.length >= 2 && words.slice(1).every((w) => /^[a-z]/.test(w))
+      if (speciesOk && q > 0) {
+        const species = words.join(' ')
+        add({
+          productId: p.id,
+          rule: 'baseFromName',
+          sig: `cultivar|${species}`,
+          patch: { base: { origin: 'cultivar', parents: [species], habitat: '' } },
+          lines: [{ note: `baseCultivar:${species}` }],
+        })
+      } else if (speciesOk && q < 0) {
+        // Ареал — з інших карток цього виду чи з перевірки походження, якщо є
+        const key = nameKey(from0)
+        const habitat =
+          plants
+            .flatMap((x) => [
+              nameKey(withoutStates(x.name.uk)) === key && x.origin === 'natural' ? x.habitat : '',
+              nameKey(x.parents?.[0] ?? '') === key && x.base?.origin === 'natural' ? x.base.habitat : '',
+            ])
+            .map((h) => h?.trim() ?? '')
+            .find(Boolean) ||
+          checks.find((r) => [r.name, r.fixedName].some((n) => n && nameKey(n) === key))?.habitat?.trim() ||
+          ''
+        add({
+          productId: p.id,
+          rule: 'baseFromName',
+          sig: `natural|${from0}|${habitat}`,
+          patch: { base: { origin: 'natural', parents: [], habitat: habitat ? normalizeHabitat(habitat) : '' } },
+          lines: [
+            { note: habitat ? `baseNatural:${from0}` : `baseNaturalNoHabitat:${from0}` },
+            ...(habitat ? [{ from: '—', to: normalizeHabitat(habitat) }] : []),
+          ],
+        })
+      }
     }
 
     // Походження не вказане зовсім (ні типу, ні батьків); форми — окремим правилом «Форма — мутація»

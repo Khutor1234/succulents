@@ -40,6 +40,7 @@ const RULE_STYLE: Record<Rule, string> = {
   quoteName: 'bg-sand-200 text-sand-800',
   originMissing: 'bg-lavender-100 text-lavender-700',
   fromSpelling: 'bg-sand-200 text-sand-800',
+  baseFromName: 'bg-lavender-100 text-lavender-700',
   speciesCase: 'bg-sand-200 text-sand-800',
 }
 
@@ -298,6 +299,8 @@ function SuggestionRow({
       })
     if (kind === 'breederNoCard') return t('admin.allFixes.notes.breederNoCard', { name: rest.join(':') })
     if (kind === 'breederFrom') return t('admin.allFixes.notes.breederFrom', { name: rest.join(':') })
+    if (kind === 'baseCultivar' || kind === 'baseNatural' || kind === 'baseNaturalNoHabitat')
+      return t(`admin.allFixes.notes.${kind}`, { name: rest.join(':') })
     if (kind === 'slugExtra')
       return t('admin.allFixes.notes.slugExtra', { forms: rest.join(':').split(',').map((f) => t(`tags.${f}`)).join(', ') })
     if (kind === 'aliasName') return t('admin.allFixes.notes.aliasName', { alias: rest.join(':') })
