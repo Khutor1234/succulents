@@ -355,10 +355,10 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
   for (const p of plants) {
     const notes: FixLine[] = []
     for (const a of uniqCI(p.aliases ?? [])) {
-      const others = (aliasOwners.get(a.toLowerCase()) ?? []).filter((q) => familyKey(q.name.uk) !== familyKey(p.name.uk))
+      const others = (aliasOwners.get(a.toLowerCase()) ?? []).filter((q) => familyKey(q.name.uk, q.cultivarName) !== familyKey(p.name.uk, p.cultivarName))
       if (others.length) notes.push({ note: `alias:${a}:${others.map((q) => q.name.uk).join(', ')}` })
       const named = byKey.get(nameKey(a))
-      if (named && familyKey(named.name.uk) !== familyKey(p.name.uk)) notes.push({ note: `aliasName:${a}` })
+      if (named && familyKey(named.name.uk, named.cultivarName) !== familyKey(p.name.uk, p.cultivarName)) notes.push({ note: `aliasName:${a}` })
     }
     if (notes.length) add({ productId: p.id, rule: 'aliasShared', sig: notes.map((n) => n.note).join('|'), patch: null, lines: notes })
   }

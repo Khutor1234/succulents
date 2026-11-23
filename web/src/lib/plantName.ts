@@ -171,18 +171,28 @@ export function baseKey(name: string): string {
  * «Echeveria chihuahuaensis 'Ruby Blush' variegata», «Echeveria chihuahuaensis variegata» і сама chihuahuaensis —
  * одна родина; «Echeveria Orion» і «Echeveria Orion hybrid» — теж. «Echeveria 'Lola'» (лапки одразу після роду —
  * це сама назва гібрида) лишається «echeveria lola». Для «Інші форми цієї рослини» і «Родоводи» → «Форми».
+ * `cultivar` — культивар з поля «Культивар» (cultivarName): у спільних лапках з назвою («Echeveria 'Suyon Frill Gold'»,
+ * культивар «Frill Gold») — родина самої назви, «Echeveria 'Suyon'».
  */
-export function familyKey(name: string): string {
+export function familyKey(name: string, cultivar?: string): string {
   const skip = new Set<string>([...STATE_TAGS, 'hybridName'])
-  return nameKey(familyName(name))
+  return nameKey(familyName(name, cultivar))
     .split(' ')
     .filter((w) => !skip.has(w))
     .join(' ')
 }
 
 /** Назва родини для показу: «Echeveria chihuahuaensis 'Ruby Blush' variegata» → «Echeveria chihuahuaensis». */
-export function familyName(name: string): string {
-  return parseForms(name).base.replace(/^(\S+\s+.*?\S)\s+['‘’"](?:(?!['‘’"]\s).)+['‘’"]$/u, '$1')
+export function familyName(name: string, cultivar?: string): string {
+  return parseForms(withoutMergedCultivar(name, cultivar)).base.replace(/^(\S+\s+.*?\S)\s+['‘’"](?:(?!['‘’"]\s).)+['‘’"]$/u, '$1')
+}
+
+/** «Echeveria 'Suyon Frill Gold' variegata» + культивар «Frill Gold» → «Echeveria 'Suyon' variegata» (лише коли культивар — у тих самих лапках) */
+export function withoutMergedCultivar(name: string, cultivar?: string): string {
+  const c = cultivar?.trim()
+  if (!c) return name
+  const esc = c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return name.replace(new RegExp(`(['‘’"][^'‘’"]*?\\S)\\s+${esc}(['‘’"])`, 'u'), '$1$2')
 }
 
 /** Відстань між двома рядками в буквах (скільки букв замінити, додати чи прибрати) — щоб знаходити описки. */

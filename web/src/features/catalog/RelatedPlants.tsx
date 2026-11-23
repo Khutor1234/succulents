@@ -26,7 +26,7 @@ const genusOf = (p: Product) => p.genus || p.name.uk.split(/\s+/)[0] || ''
  */
 function relationOf(product: Product, other: Product, resolve: (name: string) => string): Relation | null {
   // Назви порівнюємо без лапок, регістру, форм, «hybrid» і культивару: «chihuahuaensis 'Ruby Blush'» — родина chihuahuaensis
-  if (familyKey(other.name.uk) === familyKey(product.name.uk)) return 'form'
+  if (familyKey(other.name.uk, other.cultivarName) === familyKey(product.name.uk, product.cultivarName)) return 'form'
   // Батьки — точна назва разом із формою: батько «Echeveria lilacina» — це саме lilacina,
   // а не «lilacina variegata» чи «lilacina monstrose» (то її форми, а не батьки)
   const self = nameKey(product.name.uk)

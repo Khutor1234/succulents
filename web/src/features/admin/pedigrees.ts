@@ -49,12 +49,12 @@ export function buildPedigrees(products: Product[]) {
   const resolve = makeNameResolver([...byKey.keys()])
   // Родина: рослина, її форми, культивари й «hybrid» — спершу сама рослина, далі за кількістю форм і назвою
   const plainFirst = (a: Product, b: Product) =>
-    Number(nameKey(b.name.uk) === familyKey(b.name.uk)) - Number(nameKey(a.name.uk) === familyKey(a.name.uk)) ||
+    Number(nameKey(b.name.uk) === familyKey(b.name.uk, b.cultivarName)) - Number(nameKey(a.name.uk) === familyKey(a.name.uk, a.cultivarName)) ||
     forms(a).length - forms(b).length ||
     a.name.uk.localeCompare(b.name.uk)
   const byFamily = new Map<string, Product[]>()
   for (const p of plants) {
-    const k = familyKey(p.name.uk)
+    const k = familyKey(p.name.uk, p.cultivarName)
     byFamily.set(k, [...(byFamily.get(k) ?? []), p])
   }
   for (const list of byFamily.values()) list.sort((a, b) => better(a, b) || plainFirst(a, b))
@@ -110,7 +110,7 @@ export function buildPedigrees(products: Product[]) {
     if (new Set(items.map((p) => nameKey(p.name.uk))).size < 2) continue
     const sorted = [...items].sort(plainFirst)
     // Заголовок — сама рослина без форм, культивару й hybrid: «Echeveria chihuahuaensis», а не «… 'Ruby Blush'»
-    formGroups.push({ name: familyName(sorted[0].name.uk), items: sorted })
+    formGroups.push({ name: familyName(sorted[0].name.uk, sorted[0].cultivarName), items: sorted })
   }
 
   const byName = (a: FormGroup, b: FormGroup) => a.name.localeCompare(b.name)

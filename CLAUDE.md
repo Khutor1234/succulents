@@ -53,7 +53,7 @@ firestore.rules, storage.rules, firestore.indexes.json
   (`/admin/products/new?name=…&origin=…&p1=…&p2=…&habitat=…`, `prefillPlant` у `admin/productSchema.ts`). Для форми й відбору — «Від [рослина]», під ним стрілка-гачок униз з підписом «Батьки [рослини]» / «… — природний вид» / «… — відбір від»
   (підпис — поза фоном), а під підписом на світлому фоні — батьки (`FromRow`, однаково на телефоні й комп'ютері): вписане у формі товару в згорнутому блоці «Походження Echeveria Lola» (поле `base`), інакше — з картки звичайної версії.
 - «Інші форми цієї рослини» (під товаром) і «Родоводи» → «Форми» групують за `familyKey` (lib/plantName): без форм, «hybrid» і культивару
-  в лапках після назви — chihuahuaensis, її 'Ruby Blush' і variegata разом; Orion і Orion hybrid разом.
+  в лапках після назви — chihuahuaensis, її 'Ruby Blush' і variegata разом; Orion і Orion hybrid разом. Культивар у спільних лапках («'Suyon Frill Gold'», поле «Культивар» = Frill Gold) — у родині самої назви (`familyKey(name, cultivarName)`, `withoutMergedCultivar`); без поля «Культивар» лапки не розбираємо («'Margaret Martin'» — окрема рослина).
 - Пов'язані рослини під товаром — `catalog/RelatedPlants.tsx`: інші форми, батьки, гібриди від неї (блок «Зі спільним батьком» прибрано на прохання власниці); для рідкісних родів (до 10 рослин на сайті) — ще й «Інші рослини роду».
 - Блог: статті прямо в коді — `web/src/features/blog/articles.ts`.
 - Назви рослин і теги-форми: `web/src/lib/plants.ts`, `web/src/lib/plantName.ts`.
