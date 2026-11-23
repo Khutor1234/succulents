@@ -15,6 +15,7 @@ import { PLANT_CATEGORY } from "../../lib/plants";
 import { useHere } from "../../shared/navigation";
 import { nameKey } from "../../lib/plantName";
 import { slugify } from "../../lib/slug";
+import { useCategories } from "../catalog/categories";
 import { Select, Textarea } from "../../shared/ui";
 import {
   useAllProducts,
@@ -30,6 +31,7 @@ import {
   planOriginFixes,
   rowFromCells,
   toTsv,
+  fullTsv,
   type CheckRow,
   type OriginFix,
 } from "./originCheck";
@@ -132,6 +134,15 @@ export function OriginsTab() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  // Усі товари з головною інформацією (разом із формами, «Hybrid» і прихованими) — для загальної перевірки бази
+  const { nameOf } = useCategories();
+  const [copiedAll, setCopiedAll] = useState(false);
+  async function copyAll() {
+    await navigator.clipboard.writeText(fullTsv(products ?? [], nameOf));
+    setCopiedAll(true);
+    setTimeout(() => setCopiedAll(false), 2000);
+  }
+
   return (
     <div className="space-y-6">
       <Hint>{t("admin.originCheck.hint")}</Hint>
@@ -181,6 +192,22 @@ export function OriginsTab() {
                 {copied
                   ? t("admin.originCheck.copied")
                   : t("admin.originCheck.copy", { count: list.length })}
+              </button>
+              <button
+                type="button"
+                onClick={copyAll}
+                disabled={!products?.length}
+                title={t("admin.originCheck.copyAllHint")}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-brand-600 px-4 font-bold text-brand-700 transition-colors hover:bg-brand-100 disabled:opacity-50"
+              >
+                {copiedAll ? (
+                  <Check size={18} strokeWidth={2.5} aria-hidden />
+                ) : (
+                  <ClipboardCopy size={18} strokeWidth={2.25} aria-hidden />
+                )}
+                {copiedAll
+                  ? t("admin.originCheck.copied")
+                  : t("admin.originCheck.copyAll", { count: products?.length ?? 0 })}
               </button>
             </div>
             {/* Що зараз записано — коротко, щоб було видно, що саме піде на перевірку */}

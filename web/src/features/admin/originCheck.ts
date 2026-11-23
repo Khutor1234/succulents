@@ -42,6 +42,76 @@ export function toTsv(plants: Product[]): string {
   return [COLUMNS.join('\t'), ...rows].join('\n')
 }
 
+/** Колонки повного списку товарів (кнопка «Скопіювати всі товари») — лише для перегляду, назад не вставляється */
+export const FULL_COLUMNS = [
+  'Назва',
+  'Категорія',
+  'Рід',
+  'Позначки',
+  'Культивар',
+  'Походження',
+  'Батько 1',
+  'Батько 2',
+  'Ареал',
+  'Селекціонер',
+  'Інші назви',
+  'Походження звичайної версії',
+  'Її батько 1',
+  'Її батько 2',
+  'Її ареал',
+  'Показано',
+  'У продажу',
+  'Залишок',
+  'Ціна, грн',
+  'Фото',
+  'Перевірено',
+  'Адреса',
+  'Опис',
+] as const
+
+/**
+ * Усі товари з головною інформацією — разом із формами, «Hybrid», прихованими й не рослинами (для загальної перевірки бази).
+ * `categoryName` — назва категорії для показу.
+ */
+export function fullTsv(products: Product[], categoryName: (id: string) => string): string {
+  const yes = (b: boolean) => (b ? 'так' : 'ні')
+  const rows = [...products]
+    .sort((a, b) => a.category.localeCompare(b.category) || a.name.uk.localeCompare(b.name.uk))
+    .map((p) => {
+      const parents = (p.parents ?? []).filter(Boolean)
+      const base = p.base
+      const bp = (base?.parents ?? []).filter(Boolean)
+      return [
+        p.name.uk,
+        categoryName(p.category),
+        p.genus ?? '',
+        (p.tags ?? []).join(', '),
+        p.cultivarName ?? '',
+        p.origin ? ORIGIN_WORDS[p.origin] : '',
+        parents[0] ?? '',
+        parents[1] ?? '',
+        p.habitat ?? '',
+        p.breeder ?? '',
+        (p.aliases ?? []).join(', '),
+        base?.origin ? ORIGIN_WORDS[base.origin] : '',
+        bp[0] ?? '',
+        bp[1] ?? '',
+        base?.habitat ?? '',
+        yes(p.isActive),
+        yes(p.forSale !== false),
+        String(p.stock ?? 0),
+        String(Math.round((p.price ?? 0) / 100)),
+        String(p.images?.length ?? 0),
+        yes(!!p.verified),
+        p.slug,
+        p.description?.uk ?? '',
+      ]
+        .map(clean)
+        .join('\t')
+    })
+  return [FULL_COLUMNS.join('\t'), ...rows].join('\n')
+}
+
 function parseOrigin(text: string): PlantOrigin | null | undefined {
   const s = text.trim().toLowerCase()
   if (!s) return undefined
