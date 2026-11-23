@@ -1,4 +1,4 @@
-import { detectGenus, nameKey, parseForms, withForms, withoutStates } from '../../lib/plantName'
+import { detectGenus, familyKey, nameKey, parseForms, withForms, withoutStates } from '../../lib/plantName'
 import { NAME_TAGS, PLANT_CATEGORY, type PlantTag } from '../../lib/plants'
 import { sourceNameOf } from '../../lib/search'
 import { slugify } from '../../lib/slug'
@@ -348,16 +348,17 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
       add({ productId: p.id, rule: 'breederCopied', sig: `${own}|${source}`, patch: { breeder: '' }, lines: [{ from: own, to: '—' }, { note: `breederFrom:${source}` }] })
   }
 
-  // 7. Та сама інша назва в різних рослинах (крім форм і живців однієї рослини — їм вона й має бути спільна)
+  // 7. Та сама інша назва в різних рослинах. Одна родина — як у «Інші форми цієї рослини» (familyKey): форми, «hybrid» і культивар
+  // у лапках разом (Orion, Orion hybrid, Orion variegata; chihuahuaensis і її 'Ruby Blush') — їм спільні інші назви й мають бути
   const aliasOwners = new Map<string, Product[]>()
   for (const p of plants) for (const a of uniqCI(p.aliases ?? [])) aliasOwners.set(a.toLowerCase(), [...(aliasOwners.get(a.toLowerCase()) ?? []), p])
   for (const p of plants) {
     const notes: FixLine[] = []
     for (const a of uniqCI(p.aliases ?? [])) {
-      const others = (aliasOwners.get(a.toLowerCase()) ?? []).filter((q) => familyOf(q) !== familyOf(p))
+      const others = (aliasOwners.get(a.toLowerCase()) ?? []).filter((q) => familyKey(q.name.uk) !== familyKey(p.name.uk))
       if (others.length) notes.push({ note: `alias:${a}:${others.map((q) => q.name.uk).join(', ')}` })
       const named = byKey.get(nameKey(a))
-      if (named && familyOf(named) !== familyOf(p)) notes.push({ note: `aliasName:${a}` })
+      if (named && familyKey(named.name.uk) !== familyKey(p.name.uk)) notes.push({ note: `aliasName:${a}` })
     }
     if (notes.length) add({ productId: p.id, rule: 'aliasShared', sig: notes.map((n) => n.note).join('|'), patch: null, lines: notes })
   }
