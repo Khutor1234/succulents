@@ -41,6 +41,7 @@ export const RULES: Rule[] = [
   'habitat',
   'habitatSpelling',
   'shopReady',
+  'slugGenus',
 ]
 
 /** У якому порядку зливати зміни однієї рослини, якщо прийнято кілька: пізніші перекривають ті самі поля */

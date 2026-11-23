@@ -555,6 +555,9 @@ export function ProductPage() {
 
   if (isLoading || isError)
     return <Status isLoading={isLoading} isError={isError} />;
+  // Відкрили за старою адресою (її змінили) — переходимо на нову
+  if (product && product.slug !== slug)
+    return <Navigate to={`/product/${product.slug}`} replace />;
   // Товар прибрали чи приховали (напр. посилання збережене раніше) — пропонуємо, куди піти далі.
   if (!product || (!isSeller && !isVisible(product.category))) {
     return (

@@ -1,6 +1,7 @@
 import { detectGenus, nameKey, parseForms, withForms, withoutStates } from '../../lib/plantName'
 import { NAME_TAGS, PLANT_CATEGORY, type PlantTag } from '../../lib/plants'
 import { sourceNameOf } from '../../lib/search'
+import { slugify } from '../../lib/slug'
 import { HABITATS, type Product } from '../../lib/types'
 import type { CheckRow } from './originCheck'
 
@@ -24,6 +25,7 @@ export const DATA_RULES = [
   'breederSpelling',
   'breederCopied',
   'shopReady',
+  'slugGenus',
 ] as const
 export type DataRule = (typeof DATA_RULES)[number]
 
@@ -337,6 +339,27 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
       patch: { breeder: value },
       lines: [{ from: b, to: value }],
       choice: { kind: 'breeder', key: k, options, value },
+    })
+  }
+
+  // Рід в адресі сторінки інший, ніж у рослини («crassula-blue-bird-variegata» в Echeveria) — нова адреса з назви;
+  // стара лишається в oldSlugs, тож старі посилання й далі відкривають рослину
+  const slugs = new Set(products.flatMap((p) => [p.slug, ...(p.oldSlugs ?? [])]))
+  for (const p of plants) {
+    const genus = p.genus || detectGenus(p.name.uk) || ''
+    const inSlug = detectGenus(p.slug.split('-')[0] ?? '')
+    if (!genus || !inSlug || inSlug.toLowerCase() === genus.toLowerCase()) continue
+    const base = slugify(p.name.uk)
+    let next = base
+    for (let i = 2; slugs.has(next) && next !== p.slug; i++) next = `${base}-${i}`
+    if (!next || next === p.slug) continue
+    slugs.add(next)
+    add({
+      productId: p.id,
+      rule: 'slugGenus',
+      sig: next,
+      patch: { slug: next, oldSlugs: [...new Set([...(p.oldSlugs ?? []), p.slug])] },
+      lines: [{ from: p.slug, to: next }, { note: 'oldLink' }],
     })
   }
 

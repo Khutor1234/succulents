@@ -49,6 +49,8 @@ export interface Product {
   aliases?: string[]
   /** Лише в браузері (withSourceBreeders): селекціонер рослини, від якої ця форма, — для пошуку й фільтра */
   sourceBreeder?: string
+  /** Колишні адреси сторінки (змінені у «Виправленнях») — старі посилання ведуть на нову */
+  oldSlugs?: string[]
   /** Батьки гібрида: [материнська ♀, батьківська ♂], напр. «Echeveria lilacina», «Echeveria Deresina». Лише для рослин; порожньо — не вказано. */
   parents?: string[]
   /**

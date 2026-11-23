@@ -56,7 +56,13 @@ export function useHomePicks() {
 export function useProduct(slug: string, withHidden = false) {
   return useQuery({
     queryKey: ['product', slug, withHidden],
-    queryFn: async () => (await (withHidden ? fetchAny : fetchProducts)(where('slug', '==', slug), limit(1)))[0] ?? null,
+    queryFn: async () => {
+      const get = withHidden ? fetchAny : fetchProducts
+      const found = (await get(where('slug', '==', slug), limit(1)))[0]
+      if (found) return found
+      // Адресу змінили (напр. виправили рід у «Виправленнях») — старе посилання знаходить товар, сторінка переходить на нову адресу
+      return (await get(where('oldSlugs', 'array-contains', slug), limit(1)))[0] ?? null
+    },
   })
 }
 

@@ -77,9 +77,10 @@ export function withSourceBreeders(products: Product[]): Product[] {
   })
 }
 
+// Адресу сторінки (slug) не шукаємо: після перейменування в ній лишається стара назва («crassula-blue-bird-variegata»)
 function haystack(p: Product, ctx: SearchContext): string {
   return normalize(
-    [p.name.uk, p.name.en, p.genus, ...(p.aliases ?? []), ...(p.parents ?? []), p.habitat, p.breeder, p.sourceBreeder, p.slug.replace(/-/g, ' '), ctx.categoryName(p.category), ...(p.tags ?? []).flatMap((t) => [t, ctx.tagLabel(t), ...(TAG_SYNONYMS[t] ?? [])])]
+    [p.name.uk, p.name.en, p.genus, ...(p.aliases ?? []), ...(p.parents ?? []), p.habitat, p.breeder, p.sourceBreeder, ctx.categoryName(p.category), ...(p.tags ?? []).flatMap((t) => [t, ctx.tagLabel(t), ...(TAG_SYNONYMS[t] ?? [])])]
       .filter(Boolean)
       .join(' '),
   )

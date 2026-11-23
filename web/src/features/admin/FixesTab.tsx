@@ -35,6 +35,7 @@ const RULE_STYLE: Record<Rule, string> = {
   breederSpelling: 'bg-brand-100 text-brand-700',
   breederCopied: 'bg-brand-100 text-brand-700',
   shopReady: 'bg-sand-200 text-sand-800',
+  slugGenus: 'bg-sunset-100 text-sunset-700',
 }
 
 /**
