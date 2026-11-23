@@ -726,6 +726,9 @@ export const uk = {
       shows: {
         all: 'Усі товари',
         inStock: 'Лише в наявності',
+        outOfStock: 'Лише не в наявності',
+        withPhoto: 'Лише з фото',
+        noPhoto: 'Лише без фото',
         forSale: 'Лише в продажу',
         notForSale: 'Лише не в продажу',
         visible: 'Лише видимі покупцям',

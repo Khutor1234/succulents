@@ -21,13 +21,16 @@ const TABS = ['list', 'categories'] as const
 const TAB_ICONS = { list: List, categories: Tags }
 
 /** Фільтр «Показати»: усі, лише в наявності, у продажу, не продаються, видимі покупцям, приховані. */
-const SHOWS = ['all', 'inStock', 'forSale', 'notForSale', 'visible', 'hidden', 'verified', 'unverified'] as const
+const SHOWS = ['all', 'inStock', 'outOfStock', 'withPhoto', 'noPhoto', 'forSale', 'notForSale', 'visible', 'hidden', 'verified', 'unverified'] as const
 type Show = (typeof SHOWS)[number]
 // «У продажу» — як зафарбована іконка-цінник: позначено «у продажу» і покупцю справді є що купити (не 0)
 const sellable = (p: Product) => p.forSale !== false && p.stock > 0
 const SHOW_TEST: Record<Show, (p: Product) => boolean> = {
   all: () => true,
   inStock: (p) => p.stock > 0,
+  outOfStock: (p) => p.stock <= 0,
+  withPhoto: (p) => (p.images?.length ?? 0) > 0,
+  noPhoto: (p) => !p.images?.length,
   forSale: sellable,
   notForSale: (p) => !sellable(p),
   visible: (p) => p.isActive,
