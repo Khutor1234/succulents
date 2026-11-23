@@ -18,6 +18,7 @@ const RULE_STYLE: Record<Rule, string> = {
   breeder: 'bg-brand-100 text-brand-700',
   aliases: 'bg-brand-100 text-brand-700',
   aliasGenus: 'bg-brand-100 text-brand-700',
+  aliasQuotes: 'bg-brand-100 text-brand-700',
   names: 'bg-sand-200 text-sand-800',
   lineage: 'bg-lavender-100 text-lavender-700',
   cultivar: 'bg-sand-200 text-sand-800',
@@ -35,6 +36,7 @@ const RULE_STYLE: Record<Rule, string> = {
   breederCopied: 'bg-brand-100 text-brand-700',
   shopReady: 'bg-sand-200 text-sand-800',
   slugGenus: 'bg-sunset-100 text-sunset-700',
+  slugForm: 'bg-sunset-100 text-sunset-700',
   quoteName: 'bg-sand-200 text-sand-800',
   originMissing: 'bg-lavender-100 text-lavender-700',
   fromSpelling: 'bg-sand-200 text-sand-800',
@@ -296,6 +298,8 @@ function SuggestionRow({
       })
     if (kind === 'breederNoCard') return t('admin.allFixes.notes.breederNoCard', { name: rest.join(':') })
     if (kind === 'breederFrom') return t('admin.allFixes.notes.breederFrom', { name: rest.join(':') })
+    if (kind === 'slugExtra')
+      return t('admin.allFixes.notes.slugExtra', { forms: rest.join(':').split(',').map((f) => t(`tags.${f}`)).join(', ') })
     if (kind === 'aliasName') return t('admin.allFixes.notes.aliasName', { alias: rest.join(':') })
     return t(`admin.allFixes.notes.${note}`)
   }
@@ -375,7 +379,7 @@ function SuggestionRow({
         </span>
       </>
     )
-  } else if (s.rule === 'aliasGenus' && s.aliasGenus) {
+  } else if ((s.rule === 'aliasGenus' || s.rule === 'aliasQuotes') && s.aliasGenus) {
     body = (
       <>
         {s.aliasGenus.changes.map((c) => (

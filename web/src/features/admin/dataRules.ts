@@ -29,6 +29,7 @@ export const DATA_RULES = [
   'speciesCase',
   'originMissing',
   'fromSpelling',
+  'slugForm',
 ] as const
 export type DataRule = (typeof DATA_RULES)[number]
 
@@ -205,7 +206,13 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
       const words = parseForms(name).base.split(/\s+/)
       const genusOk = !!words[0] && (detectGenus(words[0]) || words[0].toLowerCase() === (p.genus ?? '').toLowerCase())
       // Форма чи відбір природного виду — слова виду з малої, решта (культивар) — у лапках
-      const speciesWords = sourceNatural && sourceName ? parseForms(sourceName).base.split(/\s+/).slice(1).map((w) => w.toLowerCase()) : []
+      const speciesWords =
+        sourceNatural && sourceName
+          ? parseForms(sourceName)
+              .base.split(/\s+/)
+              .slice(1)
+              .map((w) => w.toLowerCase())
+          : []
       const ctx: CaseCtx | null = !genusOk
         ? null
         : p.origin === 'natural'
@@ -250,10 +257,7 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
         sig: states.join('+'),
         patch,
         nameStates: states,
-        lines: [
-          ...(missingTags.length ? [{ note: `tags:${missingTags.join(',')}` }] : []),
-          ...(missingInName.length ? [{ from: name, to: newName }] : []),
-        ],
+        lines: [...(missingTags.length ? [{ note: `tags:${missingTags.join(',')}` }] : []), ...(missingInName.length ? [{ from: name, to: newName }] : [])],
       })
     }
 
@@ -261,7 +265,15 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
 
     // 8. Інша назва = власна назва рослини — зайва
     const self = (p.aliases ?? []).find((a) => nameKey(a) === nameKey(name))
-    if (self) add({ productId: p.id, rule: 'aliasSelf', sig: self, patch: { aliases: (p.aliases ?? []).filter((a) => a !== self) }, dropAlias: self, lines: [{ from: self, to: '—' }] })
+    if (self)
+      add({
+        productId: p.id,
+        rule: 'aliasSelf',
+        sig: self,
+        patch: { aliases: (p.aliases ?? []).filter((a) => a !== self) },
+        dropAlias: self,
+        lines: [{ from: self, to: '—' }],
+      })
 
     // 9. Рослина — сама собі батько; або двоє записані батьками одне одного
     const own = nameKey(name)
@@ -273,7 +285,13 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
       const patch: Record<string, unknown> = {}
       if (selfParents.length) patch.parents = parents.filter((x) => nameKey(x) !== own)
       if (baseSelf.length && p.base) patch.base = { ...p.base, parents: baseParents.filter((x) => nameKey(x) !== familyOf(p)) }
-      add({ productId: p.id, rule: 'selfParent', sig: [...selfParents, ...baseSelf].join('|'), patch, lines: [...selfParents, ...baseSelf].map((x) => ({ from: x, to: '—' })) })
+      add({
+        productId: p.id,
+        rule: 'selfParent',
+        sig: [...selfParents, ...baseSelf].join('|'),
+        patch,
+        lines: [...selfParents, ...baseSelf].map((x) => ({ from: x, to: '—' })),
+      })
     }
     for (const x of parents) {
       const q = byKey.get(nameKey(x))
@@ -309,10 +327,7 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
         rule: 'originConflict',
         sig: `natural|${parents.join('+')}|${p.breeder ?? ''}`,
         patch: { parents: [], breeder: '' },
-        lines: [
-          ...(parents.length ? [{ from: parents.join(' × '), to: '—' }] : []),
-          ...(p.breeder?.trim() ? [{ from: p.breeder, to: '—' }] : []),
-        ],
+        lines: [...(parents.length ? [{ from: parents.join(' × '), to: '—' }] : []), ...(p.breeder?.trim() ? [{ from: p.breeder, to: '—' }] : [])],
       })
     }
     // Підказки «гібрид без батьків» / «відбір без Від» прибрано на прохання власниці: батьки бувають невідомі
@@ -344,7 +359,13 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
       add({ productId: p.id, rule: 'habitatSpelling', sig: h, patch: { habitat: normalizeHabitat(h) }, lines: [{ from: h, to: normalizeHabitat(h) }] })
     const bh = p.base?.habitat?.trim()
     if (p.base && bh && normalizeHabitat(bh) !== bh)
-      add({ productId: p.id, rule: 'habitatSpelling', sig: `base|${bh}`, patch: { base: { ...p.base, habitat: normalizeHabitat(bh) } }, lines: [{ from: bh, to: normalizeHabitat(bh) }] })
+      add({
+        productId: p.id,
+        rule: 'habitatSpelling',
+        sig: `base|${bh}`,
+        patch: { base: { ...p.base, habitat: normalizeHabitat(bh) } },
+        lines: [{ from: bh, to: normalizeHabitat(bh) }],
+      })
   }
 
   // Селекціонер форми скопійовано зі звичайної версії — прибрати (його видно в блоці «Від …», і за ним форма знаходиться)
@@ -361,9 +382,21 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
     // Форма (variegata…), а звичайної версії в магазині немає — селекціонер у формі майже напевно від звичайної версії
     const isForm = !!p.tags?.some((t) => STATE_TAGS.includes(t)) || parseForms(name0(p)).states.some((s) => STATE_TAGS.includes(s))
     if (same)
-      add({ productId: p.id, rule: 'breederCopied', sig: `${own}|${source}`, patch: { breeder: '' }, lines: [{ from: own, to: '—' }, { note: `breederFrom:${source}` }] })
+      add({
+        productId: p.id,
+        rule: 'breederCopied',
+        sig: `${own}|${source}`,
+        patch: { breeder: '' },
+        lines: [{ from: own, to: '—' }, { note: `breederFrom:${source}` }],
+      })
     else if (theirs === undefined && isForm)
-      add({ productId: p.id, rule: 'breederCopied', sig: `${own}|${source}|nocard`, patch: { breeder: '' }, lines: [{ from: own, to: '—' }, { note: `breederNoCard:${source}` }] })
+      add({
+        productId: p.id,
+        rule: 'breederCopied',
+        sig: `${own}|${source}|nocard`,
+        patch: { breeder: '' },
+        lines: [{ from: own, to: '—' }, { note: `breederNoCard:${source}` }],
+      })
   }
 
   // 7. Та сама інша назва в різних рослинах. Одна родина — як у «Інші форми цієї рослини» (familyKey): форми, «hybrid» і культивар
@@ -427,7 +460,14 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
   for (const p of plants) {
     const genus = p.genus || detectGenus(p.name.uk) || ''
     const inSlug = detectGenus(p.slug.split('-')[0] ?? '')
-    if (!genus || !inSlug || inSlug.toLowerCase() === genus.toLowerCase()) continue
+    const genusWrong = !!genus && !!inSlug && inSlug.toLowerCase() !== genus.toLowerCase()
+    // Форми (variegata / cristata / monstrose) в адресі й у назві різні — або адреса стара, або забули галочку форми
+    const slugWords = p.slug.split('-')
+    const nameStates = parseForms(p.name.uk).states.filter((s) => STATE_TAGS.includes(s))
+    const extra = STATE_TAGS.filter((s) => slugWords.includes(s) && !nameStates.includes(s))
+    const missing = nameStates.filter((s) => !slugWords.includes(s))
+    const formWrong = extra.length > 0 || missing.length > 0
+    if (!genusWrong && !formWrong) continue
     const base = slugify(p.name.uk)
     let next = base
     for (let i = 2; slugs.has(next) && next !== p.slug; i++) next = `${base}-${i}`
@@ -435,10 +475,10 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
     slugs.add(next)
     add({
       productId: p.id,
-      rule: 'slugGenus',
+      rule: genusWrong ? 'slugGenus' : 'slugForm',
       sig: next,
       patch: { slug: next, oldSlugs: [...new Set([...(p.oldSlugs ?? []), p.slug])] },
-      lines: [{ from: p.slug, to: next }, { note: 'oldLink' }],
+      lines: [{ from: p.slug, to: next }, ...(!genusWrong && extra.length ? [{ note: `slugExtra:${extra.join(',')}` }] : []), { note: 'oldLink' }],
     })
   }
 

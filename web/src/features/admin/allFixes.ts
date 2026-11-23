@@ -15,7 +15,7 @@ import { caseName, normalizeName, planDataRules, type DataChoices, type DataRule
  * або позначити «Неактуально» (зберігається в fixDismissals; змінилась пропозиція — з'явиться знову).
  */
 
-const FIX_RULES = ['form', 'selection', 'breeder', 'aliases', 'aliasGenus', 'names', 'lineage', 'cultivar', 'quotes'] as const
+const FIX_RULES = ['form', 'selection', 'breeder', 'aliases', 'aliasGenus', 'aliasQuotes', 'names', 'lineage', 'cultivar', 'quotes'] as const
 export type Rule = (typeof FIX_RULES)[number] | DataRule
 /** Порядок показу: спершу назва, далі форми, інші назви, батьки й походження, наприкінці — порядок у магазині */
 export const RULES: Rule[] = [
@@ -33,6 +33,7 @@ export const RULES: Rule[] = [
   'breederCopied',
   'aliases',
   'aliasGenus',
+  'aliasQuotes',
   'aliasSelf',
   'aliasShared',
   'names',
@@ -45,10 +46,34 @@ export const RULES: Rule[] = [
   'habitatSpelling',
   'shopReady',
   'slugGenus',
+  'slugForm',
 ]
 
 /** У якому порядку зливати зміни однієї рослини, якщо прийнято кілька: пізніші перекривають ті самі поля */
-const APPLY_ORDER: Rule[] = ['genusField', 'names', 'lineage', 'selfParent', 'originConflict', 'habitat', 'habitatSpelling', 'cultivar', 'quotes', 'formTags', 'quoteName', 'speciesCase', 'nameStyle', 'form', 'selection', 'breeder', 'breederSpelling', 'breederCopied', 'aliasGenus', 'aliases', 'aliasSelf']
+const APPLY_ORDER: Rule[] = [
+  'genusField',
+  'names',
+  'lineage',
+  'selfParent',
+  'originConflict',
+  'habitat',
+  'habitatSpelling',
+  'cultivar',
+  'quotes',
+  'formTags',
+  'quoteName',
+  'speciesCase',
+  'nameStyle',
+  'form',
+  'selection',
+  'breeder',
+  'breederSpelling',
+  'breederCopied',
+  'aliasGenus',
+  'aliasQuotes',
+  'aliases',
+  'aliasSelf',
+]
 
 export interface Suggestion {
   /** «товар__правило» — і ключ галочки, і документ «Неактуально» */
@@ -92,6 +117,11 @@ const genusOf = (p: Plant) => (p.genus || p.name.uk.trim().split(/s+/)[0] || '')
 export function stripGenus(alias: string, genus: string): string {
   const a = alias.trim()
   return genus && a.toLowerCase().startsWith(`${genus.toLowerCase()} `) ? a.slice(genus.length).trim() : a
+}
+/** «'Debbie'» → «Debbie»: інша назва цілком у лапках (рід із лапками, як «Graptoveria 'Kew Marble'», лишається) */
+export function unquoteAlias(alias: string): string {
+  const m = /^['‘’"]([^'‘’"]+)['‘’"]$/u.exec(alias.trim())
+  return m ? m[1].trim() : alias.trim()
 }
 /** Без порожніх і повторів (без різниці у великих літерах) */
 const uniq = (list: string[]) => {
@@ -144,7 +174,8 @@ export function planAllFixes(
     }
     // Селекціонера звичайної версії формам більше не копіюємо (форму міг вивести інший) — він видно в блоці «Від …»
   }
-  for (const a of planAliasFixes(plants)) add(a.p.id, 'aliases', a.add.join('|'), { aliases: a.result }, { aliases: { add: a.add, from: a.from, result: a.result } })
+  for (const a of planAliasFixes(plants))
+    add(a.p.id, 'aliases', a.add.join('|'), { aliases: a.result }, { aliases: { add: a.add, from: a.from, result: a.result } })
   // Рід у інших назвах: «Echeveria Lola» в рослини роду Echeveria → «Lola» (рід і так видно в назві); інший рід лишається
   for (const p of plants) {
     const genus = genusOf(p)
@@ -154,6 +185,13 @@ export function planAllFixes(
     const result = uniq(mine.map((a) => stripGenus(a, genus)))
     add(p.id, 'aliasGenus', result.join('|'), { aliases: result }, { aliasGenus: { genus, changes, result } })
   }
+  for (const p of plants) {
+    const mine = (p.aliases ?? []).map((a) => a.trim()).filter(Boolean)
+    const changes = mine.map((a) => ({ from: a, to: unquoteAlias(a) })).filter((c) => c.from !== c.to)
+    if (changes.length === 0) continue
+    const result = uniq(mine.map(unquoteAlias))
+    add(p.id, 'aliasQuotes', result.join('|'), { aliases: result }, { aliasGenus: { genus: '', changes, result } })
+  }
   for (const n of planNameFixes(plants, choices.names, checks, choices.lineage)) {
     if (n.changes.length)
       add(n.id, 'names', n.changes.map((c) => `${c.from}>${c.to}`).join('|'), { parents: n.parents, ...(n.base ? { base: n.base } : {}) }, { names: n.changes })
@@ -162,16 +200,20 @@ export function planAllFixes(
       // «Неактуально» — про саму розбіжність, а не про вибраний варіант: відбиток — що було й які варіанти відомі
       const sig = [l.target, JSON.stringify(l.from), ...(l.variants ?? [{ sig: l.sig }]).map((v) => v.sig).sort()].join('|')
       const patch =
-        l.target === 'base'
-          ? { base: l.to }
-          : { origin: l.to.origin, parents: l.to.parents, habitat: l.to.origin === 'natural' ? (l.to.habitat ?? '') : '' }
+        l.target === 'base' ? { base: l.to } : { origin: l.to.origin, parents: l.to.parents, habitat: l.to.origin === 'natural' ? (l.to.habitat ?? '') : '' }
       add(n.id, 'lineage', sig, patch, { lineage: l })
     }
   }
   for (const c of planCultivarFixes(plants)) {
     if (!c.cultivarSet) add(c.id, 'cultivar', c.cultivar, { cultivarName: c.cultivar }, { cultivar: c })
     if (c.rename)
-      add(c.id, 'quotes', c.rename.name, { 'name.uk': c.rename.name, cultivarName: c.cultivar, ...(c.rename.parents ? { parents: c.rename.parents } : {}) }, { cultivar: c })
+      add(
+        c.id,
+        'quotes',
+        c.rename.name,
+        { 'name.uk': c.rename.name, cultivarName: c.cultivar, ...(c.rename.parents ? { parents: c.rename.parents } : {}) },
+        { cultivar: c },
+      )
   }
 
   // Правила порядку й однаковості даних; підказку «гібрид без батьків» / «відбір без Від» не дублюємо,
@@ -227,9 +269,11 @@ export function mergePatches(items: Suggestion[], product?: Product): Record<str
   const added = pick('aliases')?.aliases?.result
   const genus = pick('aliasGenus')?.aliasGenus?.genus
   const self = pick('aliasSelf')
-  if (product && (added || genus || self)) {
+  const unquote = !!pick('aliasQuotes')
+  if (product && (added || genus || self || unquote)) {
     let list = added ?? product.aliases ?? []
     if (genus) list = list.map((a) => stripGenus(a, genus))
+    if (unquote) list = list.map(unquoteAlias)
     const finalName = typeof merged['name.uk'] === 'string' ? (merged['name.uk'] as string) : product.name.uk
     if (self) list = list.filter((a) => nameKey(a) !== nameKey(finalName) && nameKey(a) !== nameKey(product.name.uk))
     merged.aliases = uniq(list.map((a) => a.trim()))
