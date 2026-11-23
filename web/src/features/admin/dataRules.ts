@@ -26,6 +26,8 @@ export const DATA_RULES = [
   'breederCopied',
   'shopReady',
   'slugGenus',
+  'quoteName',
+  'speciesCase',
 ] as const
 export type DataRule = (typeof DATA_RULES)[number]
 
@@ -49,6 +51,8 @@ export interface DataSuggestion {
   nameStates?: PlantTag[]
   /** aliasSelf: яку назву прибрати з інших назв */
   dropAlias?: string
+  /** quoteName / speciesCase: як писати назву (щоб застосувати й разом з іншими змінами назви) */
+  caseCtx?: CaseCtx
 }
 
 export interface DataChoices {
@@ -66,6 +70,39 @@ const uniqCI = (list: string[]) => {
  * прямі лапки ('Lola' замість ‘Lola’, «Lola», "Lola"), знак схрещування × замість x між назвами,
  * форми одним словом («variegated», «f. Variegata» → «variegata»).
  */
+/**
+ * Як писати назву за ботанічними правилами: природний вид — з малої літери («Echeveria agavoides»),
+ * гібрид і культивар — у лапках («Echeveria 'Lola'», «Echeveria agavoides 'Maria'»).
+ * species — слова виду, від якого ця рослина (для відбору чи форми виду): їх лишаємо з малої, решту — у лапки.
+ */
+export interface CaseCtx {
+  /** natural — увесь вид з малої; quote — назва гібрида/культивару в лапках */
+  mode: 'natural' | 'quote'
+  /** Слова виду-джерела з малої (для «agavoides Maria» → «agavoides 'Maria'») */
+  species: string[]
+}
+
+export function caseName(name: string, ctx: CaseCtx): string {
+  const { base, states } = parseForms(name.replace(/\s+/g, ' ').trim())
+  const words = base.split(' ')
+  if (words.length < 2) return name
+  const [genus, ...rest] = words
+  // Лапки вже є, формула схрещування («Romeo x Rubin») чи службові слова — не чіпаємо
+  if (rest.some((w) => /['‘’"«»]/.test(w) || /^(x|×|hybrid|subsp\.?|var\.?|f\.?|ssp\.?)$/i.test(w))) return name
+  let out: string[]
+  if (ctx.mode === 'natural') out = rest.map((w) => w.toLowerCase())
+  else {
+    // Спершу слова виду (з малої), далі — назва в лапках
+    let i = 0
+    while (i < rest.length && (ctx.species[i] ? rest[i].toLowerCase() === ctx.species[i] : /^\p{Ll}/u.test(rest[i]))) i++
+    const head = rest.slice(0, i).map((w) => w.toLowerCase())
+    const tail = rest.slice(i)
+    out = tail.length ? [...head, `'${tail.join(' ')}'`] : head
+  }
+  const result = withForms([genus, ...out].join(' '), states)
+  return result
+}
+
 const NAME_STEPS: [string, (n: string) => string][] = [
   ['spaces', (n) => n.replace(/\s+/g, ' ').trim()],
   ['quotes', (n) => n.replace(QUOTES, "'")],
@@ -162,6 +199,29 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
       const first = name.trim().split(/\s+/)[0] ?? ''
       if (first.replace(QUOTES, '').toLowerCase() !== p.genus.toLowerCase())
         add({ productId: p.id, rule: 'genusField', sig: `${first}|${p.genus}`, patch: null, lines: [{ note: `«${first}» ≠ «${p.genus}»` }] })
+    }
+
+    // Назва гібрида чи культивару — у лапках; природний вид — з малої літери (ботанічні правила)
+    {
+      const sourceName = sourceNameOf(p)
+      const source = sourceName ? byKey.get(nameKey(sourceName)) : undefined
+      const sourceNatural = p.base?.origin === 'natural' || source?.origin === 'natural'
+      const words = parseForms(name).base.split(/\s+/)
+      const genusOk = !!words[0] && (detectGenus(words[0]) || words[0].toLowerCase() === (p.genus ?? '').toLowerCase())
+      // Форма чи відбір природного виду — слова виду з малої, решта (культивар) — у лапках
+      const speciesWords = sourceNatural && sourceName ? parseForms(sourceName).base.split(/\s+/).slice(1).map((w) => w.toLowerCase()) : []
+      const ctx: CaseCtx | null = !genusOk
+        ? null
+        : p.origin === 'natural'
+          ? { mode: 'natural', species: [] }
+          : p.origin === 'hybrid' || p.origin === 'cultivar' || (!p.origin && (p.parents ?? []).length)
+            ? { mode: 'quote', species: speciesWords }
+            : null
+      const fixed = ctx ? caseName(name, ctx) : name
+      if (ctx && fixed !== name) {
+        const rule = ctx.mode === 'natural' || !/'/.test(fixed) ? 'speciesCase' : 'quoteName'
+        add({ productId: p.id, rule, sig: fixed, patch: { 'name.uk': fixed }, caseCtx: ctx, lines: [{ from: name, to: fixed }] })
+      }
     }
 
     // 2. Написання назви

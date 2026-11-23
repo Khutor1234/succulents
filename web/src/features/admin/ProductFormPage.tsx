@@ -250,9 +250,46 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     const from = getValues('parents.0')
     // «Від» ще йде за назвою: збігається з попередньою назвою без культивару (у спільних лапках — її початок)
     const follows = !from.trim() || (selection ? `${nameKey(before)} `.startsWith(`${nameKey(from)} `) : nameKey(from) === nameKey(own?.(before) ?? ''))
-    if (own && target && getValues('origin') === (states || selection ? 'cultivar' : 'hybrid') && follows)
+    if (own && target && getValues('origin') === (states || selection ? 'cultivar' : 'hybrid') && follows) {
       setValue('parents.0', target, { shouldDirty: true })
+      fillBaseFrom(target, from)
+    }
     suggestSlug()
+  }
+
+  /**
+   * Форма сама поставила «Від [рослина]» — якщо ця рослина є в магазині, її походження (батьки, «відбір від» чи природний ареал)
+   * одразу йде в блок «Походження …». Лише коли блок порожній або заповнений так само автоматично з попередньої «Від»
+   * (напр. змінили назву) — вписане вручну не чіпаємо.
+   */
+  function fillBaseFrom(source: string, prevSource = '') {
+    type Lin = { origin: Product['origin'] & string; parents: [string, string]; habitat: string }
+    const find = (n: string) => (n.trim() ? allProducts?.find((q) => q.id !== product?.id && nameKey(q.name.uk) === nameKey(n)) : undefined)
+    const lin = (q?: Product): Lin | null => {
+      if (!q) return null
+      const ps = (q.parents ?? []).filter(Boolean)
+      // Старі картки без типу походження, але з батьками — гібрид (як і скрізь на сайті)
+      const origin = q.origin ?? (ps.length ? 'hybrid' : undefined)
+      if (!origin) return null
+      if (origin === 'natural') return { origin: 'natural', parents: ['', ''], habitat: q.habitat ?? '' }
+      if (ps.length === 0) return null
+      return { origin, parents: [ps[0], origin === 'cultivar' ? '' : (ps[1] ?? '')], habitat: '' }
+    }
+    const sameAs = (a: Lin | null, b: Lin) =>
+      !!a && a.origin === b.origin && a.parents.map(nameKey).join('|') === b.parents.map(nameKey).join('|') && (a.origin !== 'natural' || a.habitat === b.habitat)
+    const cur: Lin = { origin: getValues('baseOrigin'), parents: getValues('baseParents'), habitat: getValues('baseHabitat') }
+    const empty = cur.origin !== 'natural' && !cur.parents.some((x) => x.trim())
+    const auto = !!prevSource && nameKey(prevSource) !== nameKey(source) && sameAs(lin(find(prevSource)), cur)
+    if (!empty && !auto) return
+    const next = lin(find(source))
+    const set = (l: Lin) => {
+      setValue('baseOrigin', l.origin, { shouldDirty: true })
+      setValue('baseParents', l.parents, { shouldDirty: true })
+      setValue('baseHabitat', l.habitat, { shouldDirty: true })
+    }
+    if (next) set(next)
+    // «Від» змінили на рослину, якої в магазині немає — автоматично вписане від попередньої прибираємо
+    else if (auto) set({ origin: 'hybrid', parents: ['', ''], habitat: '' })
   }
 
   /**
@@ -263,9 +300,11 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
   function applyHybridOrigin() {
     const self = plantBase(getValues('genus'), getValues('cultivar'), getValues('selection'))
     setValue('origin', 'hybrid', { shouldDirty: true })
-    if (!self || nameKey(getValues('parents.0')) === nameKey(self)) return
+    const prev = getValues('parents.0')
+    if (!self || nameKey(prev) === nameKey(self)) return fillBaseFrom(self)
     setValue('parents.0', self, { shouldDirty: true })
     setValue('parents.1', '', { shouldDirty: true })
+    fillBaseFrom(self, prev)
   }
 
   /**
@@ -294,6 +333,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     }
     setValue('origin', 'cultivar', { shouldDirty: true })
     setValue('parents', [source, ''], { shouldDirty: true })
+    fillBaseFrom(source, p0)
   }
 
   /**
@@ -304,8 +344,10 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     const tags = currentTags()
     if (!getValues('selection').trim() || tags.includes('hybridName') || tags.some((tg) => STATE_TAGS.includes(tg))) return
     if (!getValues('cultivar').trim() || getValues('origin') === 'cultivar') return
+    const source = [getValues('genus'), getValues('cultivar').trim()].filter(Boolean).join(' ')
     setValue('origin', 'cultivar', { shouldDirty: true })
-    setValue('parents', [[getValues('genus'), getValues('cultivar').trim()].filter(Boolean).join(' '), ''], { shouldDirty: true })
+    setValue('parents', [source, ''], { shouldDirty: true })
+    fillBaseFrom(source)
   }
 
   /**

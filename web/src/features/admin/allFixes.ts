@@ -7,7 +7,7 @@ import { planFormFixes, type FormFix } from './formFixes'
 import { planNameFixes, type LineageChange, type NameChange } from './nameFixes'
 import { useFixDismissals, useOriginChecks } from './api'
 import { rowFromCells, type CheckRow } from './originCheck'
-import { normalizeName, planDataRules, type DataChoices, type DataRule, type DataSuggestion } from './dataRules'
+import { caseName, normalizeName, planDataRules, type DataChoices, type DataRule, type DataSuggestion } from './dataRules'
 
 /**
  * «Інструменти → Виправлення»: усі правила разом (колишні вкладки «Форми», «Назви батьків», «Культивари»
@@ -20,6 +20,8 @@ export type Rule = (typeof FIX_RULES)[number] | DataRule
 /** Порядок показу: спершу назва, далі форми, інші назви, батьки й походження, наприкінці — порядок у магазині */
 export const RULES: Rule[] = [
   'genusField',
+  'quoteName',
+  'speciesCase',
   'nameStyle',
   'formTags',
   'quotes',
@@ -45,7 +47,7 @@ export const RULES: Rule[] = [
 ]
 
 /** У якому порядку зливати зміни однієї рослини, якщо прийнято кілька: пізніші перекривають ті самі поля */
-const APPLY_ORDER: Rule[] = ['genusField', 'names', 'lineage', 'selfParent', 'originConflict', 'habitat', 'habitatSpelling', 'cultivar', 'quotes', 'formTags', 'nameStyle', 'form', 'selection', 'breeder', 'breederSpelling', 'breederCopied', 'aliasGenus', 'aliases', 'aliasSelf']
+const APPLY_ORDER: Rule[] = ['genusField', 'names', 'lineage', 'selfParent', 'originConflict', 'habitat', 'habitatSpelling', 'cultivar', 'quotes', 'formTags', 'quoteName', 'speciesCase', 'nameStyle', 'form', 'selection', 'breeder', 'breederSpelling', 'breederCopied', 'aliasGenus', 'aliases', 'aliasSelf']
 
 export interface Suggestion {
   /** «товар__правило» — і ключ галочки, і документ «Неактуально» */
@@ -60,6 +62,7 @@ export interface Suggestion {
   lines?: DataSuggestion['lines']
   choice?: DataSuggestion['choice']
   nameStates?: DataSuggestion['nameStates']
+  caseCtx?: DataSuggestion['caseCtx']
   /** Позначено «Неактуально»: лишається в списку сірим, без галочки, позначку можна зняти */
   dismissed?: boolean
   form?: FormFix
@@ -183,7 +186,7 @@ export function planAllFixes(
       prev.patch = prev.patch || d.patch ? { ...(prev.patch ?? {}), ...(d.patch ?? {}) } : null
       continue
     }
-    add(d.productId, d.rule, d.sig, d.patch, { lines: d.lines, choice: d.choice, nameStates: d.nameStates })
+    add(d.productId, d.rule, d.sig, d.patch, { lines: d.lines, choice: d.choice, nameStates: d.nameStates, caseCtx: d.caseCtx })
   }
 
   const groups = new Map<string, PlantSuggestions>()
@@ -209,9 +212,11 @@ export function mergePatches(items: Suggestion[], product?: Product): Record<str
   const forms = pick('formTags')
   const formsName = !!forms?.patch && 'name.uk' in forms.patch
   const style = pick('nameStyle')
-  if (product && (quotes || formsName || style)) {
+  const cased = pick('quoteName') ?? pick('speciesCase')
+  if (product && (quotes || formsName || style || cased)) {
     let name = quotes ?? product.name.uk
     if (formsName && forms?.nameStates) name = withForms(parseForms(name).base, forms.nameStates)
+    if (cased?.caseCtx) name = caseName(name, cased.caseCtx)
     if (style) name = normalizeName(name)
     merged['name.uk'] = name
   }
