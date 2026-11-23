@@ -1,5 +1,5 @@
 import { detectGenus, familyKey, nameKey, parseForms, withForms, withoutStates } from '../../lib/plantName'
-import { NAME_TAGS, PLANT_CATEGORY, type PlantTag } from '../../lib/plants'
+import { NAME_TAGS, PLANT_CATEGORY, STATE_TAGS, type PlantTag } from '../../lib/plants'
 import { sourceNameOf } from '../../lib/search'
 import { slugify } from '../../lib/slug'
 import { HABITATS, type Product } from '../../lib/types'
@@ -28,6 +28,7 @@ export const DATA_RULES = [
   'slugGenus',
   'quoteName',
   'speciesCase',
+  'originMissing',
 ] as const
 export type DataRule = (typeof DATA_RULES)[number]
 
@@ -59,6 +60,7 @@ export interface DataChoices {
   breeders?: ReadonlyMap<string, string>
 }
 
+const name0 = (p: Product) => p.name.uk
 const QUOTES = /[‘’‚‛“”„"«»`ʼ′]/g
 const uniqCI = (list: string[]) => {
   const seen = new Set<string>()
@@ -290,6 +292,19 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
         add({ productId: p.id, rule: 'selfParent', sig: `cycle|${q.id}`, patch: null, lines: [{ note: `cycle:${q.name.uk}` }] })
     }
 
+    // Походження не вказане зовсім (ні типу, ні батьків); форми — окремим правилом «Форма — мутація»
+    if (!p.origin && parents.length === 0 && !parseForms(name).states.some((s) => STATE_TAGS.includes(s)) && !p.tags?.some((t) => STATE_TAGS.includes(t))) {
+      // Назва в лапках одразу після роду («Echeveria 'Rezry'») — назва гібрида
+      const hybridLike = /^\S+\s+['‘’"]/u.test(name.trim())
+      add({
+        productId: p.id,
+        rule: 'originMissing',
+        sig: hybridLike ? 'hybrid' : 'none',
+        patch: hybridLike ? { origin: 'hybrid' } : null,
+        lines: hybridLike ? [{ from: '—', to: 'hybrid' }, { note: 'originGuess' }] : [{ note: 'originNone' }],
+      })
+    }
+
     // 10. Суперечності в походженні
     if (p.origin === 'natural' && (parents.length || p.breeder?.trim())) {
       add({
@@ -343,9 +358,18 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
   for (const p of plants) {
     const own = p.breeder?.trim()
     const source = sourceNameOf(p)
-    const theirs = source ? breederByKey.get(nameKey(source)) : ''
-    if (own && theirs && own.toLowerCase() === theirs.toLowerCase())
+    const theirs = source ? breederByKey.get(nameKey(source)) : undefined
+    if (!own || !source) continue
+    // Той самий селекціонер, навіть записаний трохи інакше («Altman Plants» і «Altman Plants (Renee O'Connell)»)
+    const a = own.toLowerCase()
+    const b = (theirs ?? '').toLowerCase()
+    const same = !!b && (a === b || a.startsWith(b) || b.startsWith(a))
+    // Форма (variegata…), а звичайної версії в магазині немає — селекціонер у формі майже напевно від звичайної версії
+    const isForm = !!p.tags?.some((t) => STATE_TAGS.includes(t)) || parseForms(name0(p)).states.some((s) => STATE_TAGS.includes(s))
+    if (same)
       add({ productId: p.id, rule: 'breederCopied', sig: `${own}|${source}`, patch: { breeder: '' }, lines: [{ from: own, to: '—' }, { note: `breederFrom:${source}` }] })
+    else if (theirs === undefined && isForm)
+      add({ productId: p.id, rule: 'breederCopied', sig: `${own}|${source}|nocard`, patch: { breeder: '' }, lines: [{ from: own, to: '—' }, { note: `breederNoCard:${source}` }] })
   }
 
   // 7. Та сама інша назва в різних рослинах. Одна родина — як у «Інші форми цієї рослини» (familyKey): форми, «hybrid» і культивар

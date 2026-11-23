@@ -39,6 +39,7 @@ export const RULES: Rule[] = [
   'names',
   'lineage',
   'selfParent',
+  'originMissing',
   'originConflict',
   'habitat',
   'habitatSpelling',
@@ -178,6 +179,8 @@ export function planAllFixes(
   const has = (id: string, rules: Rule[]) => all.some((x) => x.productId === id && rules.includes(x.rule))
   for (const d of planDataRules(products, checks, choices)) {
     if (d.rule === 'originConflict' && !d.patch && has(d.productId, ['lineage', 'form', 'selection'])) continue
+    // Походження вже пропонує інше правило (з карток форм чи перевірки) — «Немає походження» не дублюємо
+    if (d.rule === 'originMissing' && has(d.productId, ['lineage', 'form', 'selection'])) continue
     // Одна пропозиція одного правила на товар (напр. ареал і ареал у «Походженні» форми — разом)
     const prev = all.find((x) => x.productId === d.productId && x.rule === d.rule)
     if (prev) {
