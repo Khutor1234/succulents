@@ -150,102 +150,102 @@ export function OriginsTab() {
 
       {products && (
         <>
-          <section className="space-y-3 rounded-3xl border-2 border-sand-200 bg-sand-50 p-4">
+          <section className="space-y-4 rounded-3xl border-2 border-sand-200 bg-sand-50 p-4 sm:p-5">
             <h2 className="font-bold">{t("admin.originCheck.step1")}</h2>
-            <div className="flex flex-wrap items-end gap-3">
-              <Select
-                label={t("catalog.genus")}
-                current={genus}
-                value={genus}
-                onChange={(e) => setGenus(e.target.value)}
-                className="min-w-48"
-              >
-                <option value="">
-                  {t("admin.originCheck.allGenera", { count: plants.length })}
-                </option>
-                {genera.map(([g, n]) => (
-                  <option key={g} value={g}>
-                    {g} ({n})
-                  </option>
-                ))}
-              </Select>
-              <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold">
-                <input
-                  type="checkbox"
-                  checked={onlyNew}
-                  onChange={(e) => setOnlyNew(e.target.checked)}
-                  className="h-5 w-5 accent-brand-600"
-                />
-                {t("admin.originCheck.onlyNew", { count: unchecked.length })}
-              </label>
-              <button
-                type="button"
-                onClick={copy}
-                disabled={list.length === 0}
-                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-bold text-sand-50 transition-colors hover:bg-brand-700 disabled:opacity-50"
-              >
-                {copied ? (
-                  <Check size={18} strokeWidth={2.5} aria-hidden />
-                ) : (
-                  <ClipboardCopy size={18} strokeWidth={2.25} aria-hidden />
-                )}
-                {copied
-                  ? t("admin.originCheck.copied")
-                  : t("admin.originCheck.copy", { count: list.length })}
-              </button>
-              <button
-                type="button"
-                onClick={copyAll}
-                disabled={!products?.length}
-                title={t("admin.originCheck.copyAllHint")}
-                className="inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-brand-600 px-4 font-bold text-brand-700 transition-colors hover:bg-brand-100 disabled:opacity-50"
-              >
-                {copiedAll ? (
-                  <Check size={18} strokeWidth={2.5} aria-hidden />
-                ) : (
-                  <ClipboardCopy size={18} strokeWidth={2.25} aria-hidden />
-                )}
-                {copiedAll
-                  ? t("admin.originCheck.copied")
-                  : t("admin.originCheck.copyAll", { count: products?.length ?? 0 })}
-              </button>
-            </div>
-            {/* Що зараз записано — коротко, щоб було видно, що саме піде на перевірку */}
-            <details>
-              <summary className="cursor-pointer text-sm font-bold text-brand-600">
-                {t("admin.originCheck.showList", { count: list.length })}
-              </summary>
-              <ul className="mt-2 divide-y divide-sand-200 text-sm">
-                {list.map((p) => (
-                  <li
-                    key={p.id}
-                    className="flex flex-wrap items-center gap-x-2 py-1.5"
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_17rem]">
+              {/* Головне: які рослини скопіювати на перевірку */}
+              <div className="space-y-4 rounded-2xl bg-sand-100 p-3 sm:p-4">
+                <div className="flex flex-wrap items-end gap-3">
+                  <Select
+                    label={t("catalog.genus")}
+                    current={genus}
+                    value={genus}
+                    onChange={(e) => setGenus(e.target.value)}
+                    className="min-w-48"
                   >
-                    {plan.checked.has(p.id) && (
-                      <CircleCheck
-                        size={16}
-                        strokeWidth={2.5}
-                        className="shrink-0 text-brand-600"
-                        aria-label={t("admin.originCheck.checked")}
-                      />
-                    )}
-                    <span className="font-semibold">{p.name.uk}</span>
-                    <span className="text-sand-700">
-                      {p.origin
-                        ? t(`admin.fields.origins.${p.origin}`)
-                        : t("admin.formFixes.noOrigin")}
-                      {p.origin === "natural"
-                        ? p.habitat
-                          ? `: ${p.habitat}`
-                          : ""
-                        : p.parents?.filter(Boolean).length
-                          ? `: ${p.parents.filter(Boolean).join(" × ")}`
-                          : ""}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </details>
+                    <option value="">
+                      {t("admin.originCheck.allGenera", { count: plants.length })}
+                    </option>
+                    {genera.map(([g, n]) => (
+                      <option key={g} value={g}>
+                        {g} ({n})
+                      </option>
+                    ))}
+                  </Select>
+                  {/* Неперевірені / усі — перемикач замість галочки: одразу видно обидва числа */}
+                  <div>
+                    <p className="mb-1 text-sm font-semibold">{t("admin.originCheck.which")}</p>
+                    <div role="group" aria-label={t("admin.originCheck.which")} className="inline-flex rounded-xl bg-sand-200 p-1">
+                      {([true, false] as const).map((only) => (
+                        <button
+                          key={String(only)}
+                          type="button"
+                          aria-pressed={onlyNew === only}
+                          onClick={() => setOnlyNew(only)}
+                          className={`min-h-9 rounded-lg px-3 text-sm font-bold transition-colors ${
+                            onlyNew === only ? "bg-sand-50 text-ink shadow-sm" : "text-sand-700 hover:text-ink"
+                          }`}
+                        >
+                          {only
+                            ? t("admin.originCheck.unchecked", { count: unchecked.length })
+                            : t("admin.originCheck.everything", { count: inGenus.length })}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-sand-200 pt-3">
+                  <CopyButton
+                    primary
+                    onClick={copy}
+                    disabled={list.length === 0}
+                    done={copied}
+                    label={t("admin.originCheck.copy", { count: list.length })}
+                  />
+                  {/* Що саме піде на перевірку — розгортається під кнопкою */}
+                  <details className="group w-full">
+                    <summary className="cursor-pointer list-none text-sm font-bold text-brand-600 hover:underline">
+                      <span className="group-open:hidden">{t("admin.originCheck.showList", { count: list.length })}</span>
+                      <span className="hidden group-open:inline">{t("admin.originCheck.hideList")}</span>
+                    </summary>
+                    <ul className="mt-2 max-h-80 divide-y divide-sand-200 overflow-y-auto rounded-xl bg-sand-50 px-3 text-sm">
+                      {list.map((p) => (
+                        <li key={p.id} className="flex flex-wrap items-center gap-x-2 py-1.5">
+                          {plan.checked.has(p.id) && (
+                            <CircleCheck size={16} strokeWidth={2.5} className="shrink-0 text-brand-600" aria-label={t("admin.originCheck.checked")} />
+                          )}
+                          <span className="font-semibold">{p.name.uk}</span>
+                          <span className="text-sand-700">
+                            {p.origin ? t(`admin.fields.origins.${p.origin}`) : t("admin.formFixes.noOrigin")}
+                            {p.origin === "natural"
+                              ? p.habitat
+                                ? `: ${p.habitat}`
+                                : ""
+                              : p.parents?.filter(Boolean).length
+                                ? `: ${p.parents.filter(Boolean).join(" × ")}`
+                                : ""}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </div>
+              </div>
+
+              {/* Додатково: уся база одним списком — лише для загальної перевірки, назад не вставляється */}
+              <div className="flex flex-col gap-2 rounded-2xl border-2 border-dashed border-sand-300 p-3 sm:p-4">
+                <p className="font-bold">{t("admin.originCheck.allTitle")}</p>
+                <p className="text-sm text-sand-700">{t("admin.originCheck.copyAllHint")}</p>
+                <div className="mt-auto pt-1">
+                  <CopyButton
+                    onClick={copyAll}
+                    disabled={!products?.length}
+                    done={copiedAll}
+                    label={t("admin.originCheck.copyAll", { count: products?.length ?? 0 })}
+                  />
+                </div>
+              </div>
+            </div>
           </section>
 
           <section className="space-y-3 rounded-3xl border-2 border-sand-200 bg-sand-50 p-4">
@@ -550,5 +550,52 @@ function Missing({ rows }: { rows: CheckRow[] }) {
         })}
       </ul>
     </section>
+  );
+}
+
+/**
+ * Кнопка «Скопіювати»: після натискання на мить показує «Скопійовано» — і не змінює ширину
+ * (обидва написи лежать в одній клітинці, видно один), тож нічого поруч не стрибає.
+ */
+function CopyButton({
+  label,
+  done,
+  onClick,
+  disabled,
+  primary = false,
+}: {
+  label: string;
+  done: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+}) {
+  const { t } = useTranslation();
+  const face = "col-start-1 row-start-1 inline-flex items-center justify-center gap-2";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-live="polite"
+      className={`inline-grid min-h-11 items-center rounded-xl px-4 font-bold transition-colors disabled:opacity-50 ${
+        primary
+          ? done
+            ? "bg-brand-700 text-sand-50"
+            : "bg-brand-600 text-sand-50 hover:bg-brand-700"
+          : done
+            ? "border-2 border-brand-600 bg-brand-100 text-brand-700"
+            : "border-2 border-brand-600 text-brand-700 hover:bg-brand-100"
+      }`}
+    >
+      <span className={`${face} ${done ? "invisible" : ""}`}>
+        <ClipboardCopy size={18} strokeWidth={2.25} aria-hidden />
+        {label}
+      </span>
+      <span className={`${face} ${done ? "" : "invisible"}`} aria-hidden={!done}>
+        <Check size={18} strokeWidth={2.5} aria-hidden />
+        {t("admin.originCheck.copied")}
+      </span>
+    </button>
   );
 }
