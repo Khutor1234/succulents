@@ -158,15 +158,6 @@ export function useToggleForSale() {
   })
 }
 
-/** «Перевірено вручну» — галочка продавця в списку товарів (за замовчуванням не перевірено). */
-export function useToggleVerified() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, verified }: { id: string; verified: boolean }) => updateDoc(doc(db, 'products', id), { verified, updatedAt: serverTimestamp() }),
-    onSuccess: (_, { id, verified }) => patchProduct(queryClient, id, { verified }),
-  })
-}
-
 /** «Живець» — тег 'cutting': швидко з картки, без форми. Інші теги не чіпаємо. */
 export function useToggleCutting() {
   const queryClient = useQueryClient()

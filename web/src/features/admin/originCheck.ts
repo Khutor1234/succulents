@@ -64,7 +64,6 @@ export const FULL_COLUMNS = [
   'Залишок',
   'Ціна, грн',
   'Фото',
-  'Перевірено',
   'Адреса',
   'Опис',
 ] as const
@@ -102,7 +101,6 @@ export function fullTsv(products: Product[], categoryName: (id: string) => strin
         String(p.stock ?? 0),
         String(Math.round((p.price ?? 0) / 100)),
         String(p.images?.length ?? 0),
-        yes(!!p.verified),
         p.slug,
         p.description?.uk ?? '',
       ]

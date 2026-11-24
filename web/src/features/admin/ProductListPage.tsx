@@ -1,5 +1,5 @@
-import { EyeOff, List, Pencil, Plus, Tags } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { Check, ChevronDown, EyeOff, List, Pencil, Plus, Tags } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useLang } from '../../i18n'
@@ -12,7 +12,7 @@ import { useHere } from '../../shared/navigation'
 import { Select, SmallImage, SucculentIcon } from '../../shared/ui'
 import { useProgressive } from '../../shared/useProgressive'
 import { useCategories } from '../catalog/categories'
-import { CopyName, CuttingToggle, DeleteButton, ForSaleButton, HomePin, SellerStock, VerifiedToggle, VisibilityButton } from '../catalog/ProductCard'
+import { CopyName, CuttingToggle, DeleteButton, ForSaleButton, HomePin, SellerStock, VisibilityButton } from '../catalog/ProductCard'
 import { ORIGINS, originOf } from '../catalog/usePlantFilters'
 import { useAllProducts, useSetPrice } from './api'
 import { CategoriesPage } from './CategoriesPage'
@@ -22,7 +22,7 @@ const TABS = ['list', 'categories'] as const
 const TAB_ICONS = { list: List, categories: Tags }
 
 /** Фільтр «Показати»: усі, лише в наявності, у продажу, не продаються, видимі покупцям, приховані. */
-const SHOWS = ['all', 'inStock', 'outOfStock', 'withPhoto', 'noPhoto', 'forSale', 'notForSale', 'visible', 'hidden', 'onHome', 'cutting', 'verified', 'unverified'] as const
+const SHOWS = ['all', 'inStock', 'outOfStock', 'withPhoto', 'noPhoto', 'forSale', 'notForSale', 'visible', 'hidden', 'onHome', 'cutting'] as const
 type Show = (typeof SHOWS)[number]
 // «У продажу» — як зафарбована іконка-цінник: позначено «у продажу» і покупцю справді є що купити (не 0)
 const sellable = (p: Product) => p.forSale !== false && p.stock > 0
@@ -38,12 +38,10 @@ const SHOW_TEST: Record<Show, (p: Product) => boolean> = {
   hidden: (p) => !p.isActive,
   onHome: (p) => !!p.onHome,
   cutting: (p) => !!p.tags?.includes('cutting'),
-  verified: (p) => !!p.verified,
-  unverified: (p) => !p.verified,
 }
 
-type Sort = 'name' | 'new' | 'old' | 'priceDesc' | 'priceAsc' | 'stock'
-const SORTS: Sort[] = ['name', 'new', 'old', 'priceDesc', 'priceAsc', 'stock']
+type Sort = 'name' | 'new' | 'old' | 'priceDesc' | 'priceAsc' | 'stock' | 'stockAsc'
+const SORTS: Sort[] = ['name', 'new', 'old', 'priceDesc', 'priceAsc', 'stock', 'stockAsc']
 const byName = (a: Product, b: Product) => a.name.uk.replace(/['‘’"«»]/g, '').localeCompare(b.name.uk.replace(/['‘’"«»]/g, ''), 'uk')
 const COMPARE: Record<Sort, (a: Product, b: Product) => number> = {
   name: byName,
@@ -52,6 +50,7 @@ const COMPARE: Record<Sort, (a: Product, b: Product) => number> = {
   priceDesc: (a, b) => b.price - a.price || byName(a, b),
   priceAsc: (a, b) => a.price - b.price || byName(a, b),
   stock: (a, b) => b.stock - a.stock || byName(a, b),
+  stockAsc: (a, b) => a.stock - b.stock || byName(a, b),
 }
 
 /**
@@ -120,29 +119,25 @@ export function ProductListPage() {
             </option>
           ))}
         </Select>
-        <Select compact value={show} onChange={(e) => setShow(e.target.value as Show)} aria-label={t('admin.list.show')}>
-          {SHOWS.map((s) => (
-            <option key={s} value={s}>
-              {t(`admin.list.shows.${s}`)}
-            </option>
-          ))}
-        </Select>
-        <Select compact value={origin} onChange={(e) => setOrigin(e.target.value)} aria-label={t('catalog.origin')}>
-          <option value="">{t('admin.list.allOrigins')}</option>
-          {ORIGINS.map((o) => (
-            <option key={o} value={o}>
-              {t(`admin.fields.origins.${o}`)}
-            </option>
-          ))}
-        </Select>
-        <Select compact value={category} onChange={(e) => setCategory(e.target.value)} aria-label={t('admin.list.category')}>
-          <option value="">{t('admin.list.allCategories')}</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </Select>
+        {/* Один список «Фільтр» з трьома частинами: стан товару, походження, у кінці категорія. У кожній частині — свій вибір, вони поєднуються */}
+        <FilterMenu
+          label={t('admin.list.show')}
+          groups={[
+            { value: show, onChange: (v) => setShow(v as Show), options: SHOWS.map((x) => ({ value: x, label: t(`admin.list.shows.${x}`) })) },
+            {
+              title: t('catalog.origin'),
+              value: origin,
+              onChange: setOrigin,
+              options: [{ value: '', label: t('admin.list.allOrigins') }, ...ORIGINS.map((o) => ({ value: o, label: t(`admin.fields.origins.${o}`) }))],
+            },
+            {
+              title: t('admin.list.category'),
+              value: category,
+              onChange: setCategory,
+              options: [{ value: '', label: t('admin.list.allCategories') }, ...categories.map((c) => ({ value: c.id, label: c.name }))],
+            },
+          ]}
+        />
       </div>
 
       {isLoading && <p className="text-sand-700">{t('loading')}</p>}
@@ -219,8 +214,6 @@ function Row({ product }: { product: Product }) {
         <HomePin product={product} name={name} compact />
         {product.category === PLANT_CATEGORY && <CuttingToggle product={product} name={name} compact />}
         <DeleteButton product={product} name={name} compact />
-        {/* «Перевірено вручну» — останньою, праворуч від усіх кнопок */}
-        <VerifiedToggle product={product} className="!my-0 h-9 w-9" />
       </div>
     </li>
   )
@@ -279,5 +272,78 @@ function SellerPrice({ product }: { product: Product }) {
       />
       <span className="ml-0.5 font-display text-lg font-extrabold text-sunset-600">₴</span>
     </label>
+  )
+}
+
+type FilterGroup = { title?: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }
+
+/**
+ * Один випадний список фільтрів, поділений на частини (заголовок над кожною, крім першої). У кожній частині вибирається
+ * одне значення, частини поєднуються; меню не закривається після вибору — можна одразу вибрати й у наступній частині.
+ * На кнопці — усе вибране через «·» (нічого не вибрано — перший пункт першої частини, «Усі товари»).
+ */
+function FilterMenu({ label, groups }: { label: string; groups: FilterGroup[] }) {
+  const [open, setOpen] = useState(false)
+  // Кнопка близько до правого краю екрана — меню відкривається вліво від неї, щоб не вилізти за край
+  const [alignRight, setAlignRight] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => !root.current?.contains(e.target as Node) && setOpen(false)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  const chosen = groups.flatMap((g) => (g.value !== g.options[0]?.value ? [g.options.find((o) => o.value === g.value)?.label ?? ''] : []))
+  const summary = chosen.length ? chosen.join(' · ') : groups[0]?.options[0]?.label
+  return (
+    <div ref={root} className="relative min-w-0">
+      <button
+        type="button"
+        onClick={() => {
+          const r = root.current?.getBoundingClientRect()
+          setAlignRight(!!r && r.left + 272 > window.innerWidth)
+          setOpen(!open)
+        }}
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label={label}
+        className={`flex min-h-10 max-w-full items-center gap-2 rounded-xl border-2 bg-sand-50 py-1.5 pr-3 pl-3 text-left text-sm font-bold text-ink transition-[border-color,box-shadow] hover:border-sand-400 ${
+          open ? 'border-brand-500 ring-4 ring-brand-500/15' : chosen.length ? 'border-brand-500' : 'border-sand-200'
+        }`}
+      >
+        <span className="truncate">{summary}</span>
+        <ChevronDown size={16} strokeWidth={2.5} className={`shrink-0 text-brand-600 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} aria-hidden />
+      </button>
+      {open && (
+        <div className={`absolute top-[calc(100%+6px)] ${alignRight ? 'right-0' : 'left-0'} z-50 max-h-[70vh] w-64 max-w-[calc(100vw-2rem)] origin-top animate-menu-in overflow-auto rounded-2xl border-2 border-sand-200 bg-sand-50 p-1.5 shadow-[0_18px_40px_-12px_rgba(43,33,24,0.35)]`}>
+          {groups.map((g, gi) => (
+            <div key={gi} role="radiogroup" aria-label={g.title ?? label} className={gi ? 'mt-1.5 border-t-2 border-sand-200 pt-1.5' : ''}>
+              {g.title && <p className="px-3 pt-1 pb-1 text-xs font-bold tracking-wide text-sand-700 uppercase">{g.title}</p>}
+              {g.options.map((o) => {
+                const on = o.value === g.value
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => g.onChange(o.value)}
+                    className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-sand-200 ${on ? 'font-bold text-brand-700' : 'font-medium text-ink'}`}
+                  >
+                    <Check size={16} strokeWidth={3} className={`shrink-0 ${on ? '' : 'invisible'}`} aria-hidden />
+                    {o.label}
+                  </button>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

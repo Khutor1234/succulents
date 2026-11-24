@@ -96,7 +96,7 @@ export function RelatedPlants({ product }: { product: Product }) {
           {/* Дрібніші картки: на комп’ютері по 4 в ряд */}
           <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {items.map((p, i) => (
-              <ProductCard key={p.id} product={p} index={i} fullNames noVerified />
+              <ProductCard key={p.id} product={p} index={i} fullNames />
             ))}
           </div>
         </div>

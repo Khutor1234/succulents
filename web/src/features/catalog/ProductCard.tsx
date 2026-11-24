@@ -1,4 +1,4 @@
-import { Ban, Check, CheckSquare, CircleCheck, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Pin, Plus, Scissors, Tag, Trash2 } from 'lucide-react'
+import { Ban, Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Pin, Plus, Scissors, Tag, Trash2 } from 'lucide-react'
 import { useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -11,7 +11,7 @@ import { ProductImage } from '../../shared/ui'
 import { useHere } from '../../shared/navigation'
 import { useProgressive } from '../../shared/useProgressive'
 import { useAuth } from '../auth/authStore'
-import { useDeleteProduct, useSetStock, useToggleCutting, useToggleForSale, useToggleOnHome, useToggleProductActive, useToggleVerified } from '../admin/api'
+import { useDeleteProduct, useSetStock, useToggleCutting, useToggleForSale, useToggleOnHome, useToggleProductActive } from '../admin/api'
 import { BulkBar } from '../admin/BulkBar'
 import { AddToCart } from '../cart/AddToCart'
 import { FavoriteButton } from '../favorites/FavoriteButton'
@@ -36,14 +36,11 @@ export function ProductCard({
   index = 0,
   fullNames = false,
   asBuyer = false,
-  noVerified = false,
 }: {
   product: Product
   index?: number
   fullNames?: boolean
   asBuyer?: boolean
-  /** Без галочки «Перевірено вручну» (напр. у «Пов'язаних рослинах» під товаром) */
-  noVerified?: boolean
 }) {
   const { t } = useTranslation()
   const lang = useLang()
@@ -97,11 +94,9 @@ export function ProductCard({
         </TagBadges>
         {/* Сердечко й кількість лайків поруч — для всіх */}
         <FavoriteButton product={product} className="absolute top-2 right-2" />
-        {/* На фото — сердечко й «Перевірено»; решта кнопок продавця — у ряду внизу картки. Виняток — вітрина «Нові надходження»
+        {/* На фото — лише сердечко; кнопки продавця — у ряду внизу картки. Виняток — вітрина «Нові надходження»
             (asBuyer): там продавцю лишається тільки шпилька «на головну», щоб прибрати рослину з вітрини */}
         {realSeller && !isSeller && <HomePin product={product} name={name} className="absolute top-14 right-2" />}
-        {/* Продавцю — «Перевірено вручну» кружечком під сердечком */}
-        {isSeller && !noVerified && <VerifiedToggle product={product} floating className="absolute top-14 right-2" />}
         {/* Походження — плашкою внизу фото: під назвою не займає місця, тож картки з батьками й без однакові.
             Кожен батько — окреме посилання в пошук. */}
         {product.category === PLANT_CATEGORY && (
@@ -440,45 +435,6 @@ export function CuttingToggle({ product, name, className = '', compact = false }
 }
 
 /** Копіює назву рослини в буфер обміну; на мить показує галочку «Скопійовано». */
-/**
- * «Перевірено вручну»: галочка, яку продавець ставить сама, коли перевірила рослину (назву, походження, фото…).
- * Зелена й зафарбована — перевірено; світла — ні (за замовчуванням). Стоїть одразу після «скопіювати назву»:
- * на картці, на сторінці товару й у списку товарів адмінки.
- */
-export function VerifiedToggle({ product, className = '', floating = false }: { product: Product; className?: string; floating?: boolean }) {
-  const { t } = useTranslation()
-  const toggle = useToggleVerified()
-  const on = !!product.verified
-  const label = t(on ? 'admin.list.verifiedOn' : 'admin.list.verifiedOff')
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        // На картці кнопка лежить на фото-посиланні — не відкриваємо товар
-        e.preventDefault()
-        e.stopPropagation()
-        toggle.mutate({ id: product.id, verified: !on })
-      }}
-      disabled={toggle.isPending}
-      aria-pressed={on}
-      aria-label={label}
-      title={label}
-      className={
-        floating
-          ? // На фото картки — кружечок, як шпилька й ножиці над ним
-            `flex h-10 w-10 items-center justify-center rounded-full shadow-sm transition-transform hover:scale-110 active:scale-95 disabled:opacity-60 ${
-              on ? 'bg-brand-600 text-sand-50' : 'bg-sand-50/95 text-ink'
-            } ${className}`
-          : `-my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors active:scale-95 disabled:opacity-60 ${
-              on ? 'text-brand-600 hover:bg-brand-100' : 'text-sand-400 hover:bg-sand-200 hover:text-sand-700'
-            } ${className}`
-      }
-    >
-      <CircleCheck size={floating ? 18 : 19} strokeWidth={on ? 2.75 : 2.25} className={on && !floating ? 'fill-brand-100' : ''} aria-hidden />
-    </button>
-  )
-}
-
 export function CopyName({ name, className = '' }: { name: string; className?: string }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)

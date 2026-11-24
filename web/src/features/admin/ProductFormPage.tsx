@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { Ban, Check, CircleCheck, CornerDownRight, Copy, CopyPlus, Eye, EyeOff, Link2, Tag, X, Trash2 } from 'lucide-react'
+import { Ban, Check, CornerDownRight, Copy, CopyPlus, Eye, EyeOff, Link2, Tag, X, Trash2 } from 'lucide-react'
 import type { UseFormRegisterReturn } from 'react-hook-form'
 import { detectGenus, nameKey, parseForms, withCuttingMark, withForms, withoutStates } from '../../lib/plantName'
 import { ICON } from '../../shared/icon'
@@ -13,7 +13,7 @@ import { slugify } from '../../lib/slug'
 import type { Product } from '../../lib/types'
 import { Button, Input, Section, Select, StepperInput, Textarea } from '../../shared/ui'
 import { useCategories } from '../catalog/categories'
-import { isSlugTaken, useAllProducts, useDeleteProduct, useProductById, useSaveProduct, useToggleForSale, useToggleProductActive, useToggleVerified } from './api'
+import { isSlugTaken, useAllProducts, useDeleteProduct, useProductById, useSaveProduct, useToggleForSale, useToggleProductActive } from './api'
 import { HomePin } from '../catalog/ProductCard'
 import { canGoBack, useFrom } from '../../shared/navigation'
 import { BackLink } from './BackLink'
@@ -155,22 +155,19 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     leave(product.category, { deleted: true })
   }
 
-  // Іконки біля назви (як у списку товарів): показати, у продажу, перевірено. У вже збереженого товару — одразу, без «Зберегти»
+  // Іконки біля назви (як у списку товарів): показати, у продажу. У вже збереженого товару — одразу, без «Зберегти»
   // (як на картці в магазині), а у формі значення оновлюємо як збережене, щоб «Зберегти» потім не повернуло старе.
   // Новий товар — лише значення у формі, запишеться при «Зберегти».
   const toggle = useToggleProductActive()
   const toggleSale = useToggleForSale()
-  const toggleVerified = useToggleVerified()
   const isActive = useWatch({ control, name: 'isActive' })
   const forSale = useWatch({ control, name: 'forSale' })
-  const verified = useWatch({ control, name: 'verified' })
-  const flagPending = toggle.isPending || toggleSale.isPending || toggleVerified.isPending
-  async function flip(field: 'isActive' | 'forSale' | 'verified') {
+  const flagPending = toggle.isPending || toggleSale.isPending
+  async function flip(field: 'isActive' | 'forSale') {
     const next = !getValues(field)
     if (!product) return setValue(field, next, { shouldDirty: true })
     if (field === 'isActive') await toggle.mutateAsync({ id: product.id, isActive: next })
     if (field === 'forSale') await toggleSale.mutateAsync({ id: product.id, forSale: next })
-    if (field === 'verified') await toggleVerified.mutateAsync({ id: product.id, verified: next })
     // Поле вже не в розмітці (галочки прибрано) — тож і значення, і «збережене» значення ставимо явно
     setValue(field, next)
     resetField(field, { defaultValue: next })
@@ -408,7 +405,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
           </h1>
           {errors.name?.uk && <p className="mt-1 text-sm text-red-700">{t(errors.name.uk.message ?? 'errors.required')}</p>}
         </div>
-        {/* Іконки праворуч від назви — у тому ж порядку, що й у списку товарів: показати, у продажу, на головну, видалити, перевірено */}
+        {/* Іконки праворуч від назви — у тому ж порядку, що й у списку товарів: показати, у продажу, на головну, видалити */}
         <div className="flex flex-wrap gap-1.5">
           <FlagButton
             on={!!isActive}
@@ -437,22 +434,9 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
               <Trash2 {...ICON} />
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => flip('verified')}
-            disabled={flagPending}
-            aria-pressed={!!verified}
-            title={t(verified ? 'admin.list.verifiedOn' : 'admin.list.verifiedOff')}
-            aria-label={t(verified ? 'admin.list.verifiedOn' : 'admin.list.verifiedOff')}
-            className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors disabled:opacity-60 ${
-              verified ? 'text-brand-600 hover:bg-brand-100' : 'text-sand-400 hover:bg-sand-200 hover:text-sand-700'
-            }`}
-          >
-            <CircleCheck size={22} strokeWidth={verified ? 2.75 : 2.25} className={verified ? 'fill-brand-100' : ''} aria-hidden />
-          </button>
         </div>
       </div>
-      {(remove.isError || toggle.isError || toggleSale.isError || toggleVerified.isError) && <p className="text-sm text-red-700">{t('admin.saveError')}</p>}
+      {(remove.isError || toggle.isError || toggleSale.isError) && <p className="text-sm text-red-700">{t('admin.saveError')}</p>}
       {source && (
         <p className="flex items-start gap-2 rounded-2xl border-2 border-sunset-500/40 bg-sunset-100/60 p-4 text-sm leading-relaxed">
           <Copy size={18} strokeWidth={2.25} className="mt-0.5 shrink-0 text-sunset-600" aria-hidden />
