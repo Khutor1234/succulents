@@ -1,4 +1,4 @@
-import { Ban, Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Pin, Plus, Scissors, Tag, Trash2 } from 'lucide-react'
+import { Ban, Check, CheckSquare, ChevronLeft, ChevronRight, Copy, Eye, EyeOff, Package, Pencil, Pin, Plus, Power, PowerOff, Scissors, Tag, Trash2 } from 'lucide-react'
 import { useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -11,7 +11,7 @@ import { ProductImage } from '../../shared/ui'
 import { useHere } from '../../shared/navigation'
 import { useProgressive } from '../../shared/useProgressive'
 import { useAuth } from '../auth/authStore'
-import { useDeleteProduct, useSetStock, useToggleCutting, useToggleForSale, useToggleOnHome, useToggleProductActive } from '../admin/api'
+import { useDeleteProduct, useSetStock, useToggleCutting, useToggleForSale, useToggleOnHome, useToggleProductActive, useToggleDisabled } from '../admin/api'
 import { BulkBar } from '../admin/BulkBar'
 import { AddToCart } from '../cart/AddToCart'
 import { FavoriteButton } from '../favorites/FavoriteButton'
@@ -599,6 +599,31 @@ export function DeleteButton({
       className={`${iconBtn(compact)} border-red-700 text-red-700 hover:bg-red-700 hover:text-sand-50`}
     >
       <Trash2 size={18} strokeWidth={2.25} aria-hidden />
+    </button>
+  )
+}
+
+/**
+ * «Вимкнути» — рослини тимчасово немає: зникає скрізь (і в продавця), лишається лише у «Товари → Вимкнені».
+ * У вимкненої — «Увімкнути» (зелена). `big` — 44 px, як інші кнопки біля назви у формі товару.
+ */
+export function DisableButton({ product, name, big = false, onDone }: { product: Product; name: string; big?: boolean; onDone?: (isActive: boolean) => void }) {
+  const { t } = useTranslation()
+  const toggle = useToggleDisabled()
+  const off = !!product.disabled
+  const label = t(off ? 'admin.enableNamed' : 'admin.disableNamed', { name })
+  return (
+    <button
+      type="button"
+      onClick={() => toggle.mutate({ product, disabled: !off }, { onSuccess: () => onDone?.(off ? (product.activeBefore ?? false) : false) })}
+      disabled={toggle.isPending}
+      aria-label={label}
+      title={t(off ? 'admin.enable' : 'admin.disable')}
+      className={`${ICON_BASE} ${big ? 'h-11 w-11' : 'h-9 w-9'} ${
+        off ? 'border-brand-600 bg-brand-600 text-sand-50 hover:bg-brand-700' : 'border-sand-300 text-sand-700 hover:border-sand-700 hover:text-ink'
+      } disabled:opacity-50`}
+    >
+      {off ? <Power size={18} strokeWidth={2.25} aria-hidden /> : <PowerOff size={18} strokeWidth={2.25} aria-hidden />}
     </button>
   )
 }

@@ -49,7 +49,7 @@ const updateKey = (id: string) => `update:${id}`
 /** «Імпорт з таблиці» — перша вкладка «Інструментів» (/admin/tools). */
 export function ImportPage() {
   const { t } = useTranslation()
-  const { data: products, isLoading } = useAllProducts()
+  const { data: products, isLoading } = useAllProducts(true)
   const apply = useApplyImport()
   const [text, setText] = useState('')
 

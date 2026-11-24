@@ -76,7 +76,7 @@ function SalesAnalytics() {
   const { t } = useTranslation()
   const lang = useLang()
   const { data: orders, isLoading, isError } = useOrders()
-  const { data: products } = useAllProducts()
+  const { data: products } = useAllProducts(true)
   const [period, setPeriod] = useState<Period>(30)
   // «Зараз» фіксуємо при відкритті сторінки — щоб підрахунки не змінювались від перемальовування.
   const [now] = useState(() => new Date())

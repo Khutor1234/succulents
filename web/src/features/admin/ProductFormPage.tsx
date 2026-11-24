@@ -14,7 +14,7 @@ import type { Product } from '../../lib/types'
 import { Button, Input, Section, Select, StepperInput, Textarea } from '../../shared/ui'
 import { useCategories } from '../catalog/categories'
 import { isSlugTaken, useAllProducts, useDeleteProduct, useProductById, useSaveProduct, useToggleForSale, useToggleProductActive } from './api'
-import { HomePin } from '../catalog/ProductCard'
+import { DisableButton, HomePin } from '../catalog/ProductCard'
 import { ListButton } from '../catalog/ListButton'
 import { canGoBack, useFrom } from '../../shared/navigation'
 import { BackLink } from './BackLink'
@@ -93,7 +93,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
   const category = useWatch({ control, name: 'category' })
   const genusValue = useWatch({ control, name: 'genus' })
   // Роди у списку: основні + ті, що вже є в товарах (додані раніше як «новий рід») + поточний
-  const { data: allProducts } = useAllProducts()
+  const { data: allProducts } = useAllProducts(true)
   const generaOptions = [...new Set<string>([...GENERA, ...(allProducts ?? []).map((p) => p.genus ?? '').filter(Boolean), genusValue].filter(Boolean))].sort(
     (a, b) => a.localeCompare(b),
   )
@@ -406,7 +406,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
           </h1>
           {errors.name?.uk && <p className="mt-1 text-sm text-red-700">{t(errors.name.uk.message ?? 'errors.required')}</p>}
         </div>
-        {/* Іконки праворуч від назви — у тому ж порядку, що й у списку товарів: показати, у продажу, на головну, до списку, видалити */}
+        {/* Іконки праворуч від назви — у тому ж порядку, що й у списку товарів: показати, у продажу, на головну, до списку, вимкнути, видалити */}
         <div className="flex flex-wrap gap-1.5">
           <FlagButton
             on={!!isActive}
@@ -424,6 +424,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
           />
           {product && <HomePin product={product} name={product.name.uk} className="!h-11 !w-11" compact />}
           {product && <ListButton product={product} name={product.name.uk} big />}
+          {product && <DisableButton product={product} name={product.name.uk} big onDone={(active) => { setValue('isActive', active); resetField('isActive', { defaultValue: active }) }} />}
           {product && (
             <button
               type="button"

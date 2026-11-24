@@ -21,12 +21,19 @@ import {
 } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import type { Order, OrderStatus, Product } from '../../lib/types'
-import { withKnownTags } from '../catalog/api'
+import { notDisabled, withKnownTags } from '../catalog/api'
 
-/** Усі товари, включно з прихованими (Rules дозволяють це тільки продавцю). */
-export function useAllProducts() {
+const skipDisabled = (list: Product[]) => list.filter(notDisabled)
+
+/**
+ * Усі товари, включно з прихованими (Rules дозволяють це тільки продавцю).
+ * Вимкнених (рослини тимчасово немає) не показуємо; `withDisabled` — разом із ними (вкладка «Вимкнені», імпорт,
+ * перевірка назв у формі — щоб не створити дубль, аналітика продажів).
+ */
+export function useAllProducts(withDisabled = false) {
   return useQuery({
     queryKey: ['admin', 'products'],
+    select: withDisabled ? undefined : skipDisabled,
     queryFn: async () => {
       const snap = await getDocs(query(collection(db, 'products'), orderBy('createdAt', 'desc')))
       return snap.docs.map((d) => withKnownTags({ id: d.id, ...d.data() } as Product))
@@ -127,6 +134,37 @@ export function useToggleProductActive() {
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       updateDoc(doc(db, 'products', id), { isActive, updatedAt: serverTimestamp() }),
     onSuccess: (_, { id, isActive }) => patchProduct(queryClient, id, { isActive }),
+  })
+}
+
+/**
+ * Вимкнути рослину (тимчасово немає) — зникає скрізь, крім «Товари → Вимкнені», і покупцям теж;
+ * увімкнути — повертається з тією видимістю, що була до вимкнення.
+ */
+export function useToggleDisabled() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ product, disabled }: { product: Product; disabled: boolean }) =>
+      updateDoc(
+        doc(db, 'products', product.id),
+        disabled
+          ? { disabled: true, activeBefore: product.isActive, isActive: false, updatedAt: serverTimestamp() }
+          : { disabled: deleteField(), activeBefore: deleteField(), isActive: product.activeBefore ?? false, updatedAt: serverTimestamp() },
+      ),
+    onSuccess: (_, { product, disabled }) => {
+      // Із вітрини (каталог, пошук) — одразу прибираємо; у списках адмінки товар лишається й переходить у «Вимкнені»
+      if (disabled)
+        queryClient.setQueriesData({ queryKey: ['products'] }, (data: unknown) =>
+          Array.isArray(data) ? data.filter((p: Product) => p?.id !== product.id) : data,
+        )
+      return patchProduct(
+        queryClient,
+        product.id,
+        disabled
+          ? { disabled: true, activeBefore: product.isActive, isActive: false }
+          : { disabled: undefined, activeBefore: undefined, isActive: product.activeBefore ?? false },
+      )
+    },
   })
 }
 

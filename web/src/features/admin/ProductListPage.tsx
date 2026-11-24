@@ -1,4 +1,4 @@
-import { Check, ChevronDown, EyeOff, List, ListChecks, Pencil, Plus, Tags } from 'lucide-react'
+import { Check, ChevronDown, EyeOff, List, ListChecks, Pencil, Plus, PowerOff, Tags } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -12,7 +12,7 @@ import { useHere } from '../../shared/navigation'
 import { Select, SmallImage, SucculentIcon } from '../../shared/ui'
 import { useProgressive } from '../../shared/useProgressive'
 import { useCategories } from '../catalog/categories'
-import { CopyName, CuttingToggle, DeleteButton, ForSaleButton, HomePin, SellerStock, VisibilityButton } from '../catalog/ProductCard'
+import { CopyName, CuttingToggle, DeleteButton, DisableButton, ForSaleButton, HomePin, SellerStock, VisibilityButton } from '../catalog/ProductCard'
 import { ORIGINS, originOf } from '../catalog/usePlantFilters'
 import { useAllProducts, useSetPrice } from './api'
 import { CategoriesPage } from './CategoriesPage'
@@ -20,8 +20,8 @@ import { ListsPage } from './ListsPage'
 import { ListButton } from '../catalog/ListButton'
 import { TabBar, useTab } from './TabBar'
 
-const TABS = ['list', 'lists', 'categories'] as const
-const TAB_ICONS = { list: List, lists: ListChecks, categories: Tags }
+const TABS = ['list', 'lists', 'disabled', 'categories'] as const
+const TAB_ICONS = { list: List, lists: ListChecks, disabled: PowerOff, categories: Tags }
 
 /** Фільтр «Показати»: усі, лише в наявності, у продажу, не продаються, видимі покупцям, приховані. */
 const SHOWS = ['all', 'inStock', 'outOfStock', 'withPhoto', 'noPhoto', 'forSale', 'notForSale', 'visible', 'hidden', 'onHome', 'cutting'] as const
@@ -63,7 +63,9 @@ const COMPARE: Record<Sort, (a: Product, b: Product) => number> = {
 export function ProductListPage() {
   const { t } = useTranslation()
   const [tab, setTab] = useTab(TABS)
-  const { data, isLoading, isError } = useAllProducts()
+  const { data: all, isLoading, isError } = useAllProducts(true)
+  // «Список» — без вимкнених; «Вимкнені» (?tab=disabled) — лише вони
+  const data = useMemo(() => all?.filter((p) => !!p.disabled === (tab === 'disabled')), [all, tab])
   const { all: categories, nameOf } = useCategories()
   const [query, setQuery] = useState('')
   // Три окремі фільтри (можна поєднувати): «Показати», «Походження» і в самому кінці «Категорія»
@@ -77,7 +79,7 @@ export function ProductListPage() {
     if (query.trim()) return searchProducts(list, query, { categoryName: nameOf, tagLabel: (tag) => t(`tags.${tag}`) })
     return list.sort(COMPARE[sort])
   }, [data, category, origin, show, query, sort, nameOf, t])
-  const { visible, sentinel } = useProgressive(shown, 60, `${show}|${origin}|${category}|${query}|${sort}`)
+  const { visible, sentinel } = useProgressive(shown, 60, `${tab}|${show}|${origin}|${category}|${query}|${sort}`)
 
   return (
     <div className="space-y-4">
@@ -146,6 +148,7 @@ export function ProductListPage() {
 
       {isLoading && <p className="text-sand-700">{t('loading')}</p>}
       {isError && <p className="text-red-700">{t('errors.loading')}</p>}
+      {tab === 'disabled' && <p className="text-sm text-sand-700">{t('admin.list.disabledHint')}</p>}
       {data && <p className="text-sm font-bold text-sand-700">{t('admin.list.count', { count: shown.length })}</p>}
 
       {/* Без overflow-hidden: збільшене фото при наведенні має виходити за межі списку */}
@@ -218,6 +221,7 @@ function Row({ product }: { product: Product }) {
         <HomePin product={product} name={name} compact />
         <ListButton product={product} name={name} />
         {product.category === PLANT_CATEGORY && <CuttingToggle product={product} name={name} compact />}
+        <DisableButton product={product} name={name} />
         <DeleteButton product={product} name={name} compact />
       </div>
     </li>

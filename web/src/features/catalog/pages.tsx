@@ -49,6 +49,7 @@ import {
   CopyName,
   CuttingToggle,
   DeleteButton,
+  DisableButton,
   ForSaleButton,
   HomePin,
   ProductGrid,
@@ -618,7 +619,7 @@ export function ProductPage() {
       {!product.isActive && (
         <p className="mt-4 flex items-center gap-2 rounded-xl bg-sand-200 px-4 py-3 font-bold text-sand-800">
           <EyeOff {...ICON} />
-          {t("product.hiddenNotice")}
+          {t(product.disabled ? "product.disabledNotice" : "product.hiddenNotice")}
         </p>
       )}
       <div className="mt-5 grid gap-8 md:grid-cols-2">
@@ -665,6 +666,7 @@ export function ProductPage() {
               {product.category === PLANT_CATEGORY && (
                 <CuttingToggle product={product} name={name} compact />
               )}
+              <DisableButton product={product} name={name} />
               <DeleteButton
                 product={product}
                 name={name}

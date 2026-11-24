@@ -95,7 +95,7 @@ export function ListsPage() {
 
 function ListView({ list }: { list: SellerList }) {
   const { t } = useTranslation()
-  const { data: products } = useAllProducts()
+  const { data: products } = useAllProducts(true)
   const toggleDone = useToggleDone()
   const toggleIn = useToggleInList()
   const clearDone = useClearDone()
@@ -105,7 +105,8 @@ function ListView({ list }: { list: SellerList }) {
   const [name, setName] = useState(list.name)
   const byId = new Map((products ?? []).map((p) => [p.id, p]))
   // Спершу те, що ще треба зробити (у порядку додавання), зроблене — внизу
-  const ids = [...list.items.filter((x) => !list.done.includes(x)), ...list.items.filter((x) => list.done.includes(x))]
+  const items = list.items.filter((x) => !byId.get(x)?.disabled)
+  const ids = [...items.filter((x) => !list.done.includes(x)), ...items.filter((x) => list.done.includes(x))]
 
   return (
     <section className="rounded-3xl border-2 border-sand-200 bg-sand-50 p-3 sm:p-4">

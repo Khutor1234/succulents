@@ -18,7 +18,14 @@ export const forBuyer = (p: Product): Product => ({ ...p, stock: buyerStock(p) }
 
 /** Для покупця: лише видимі товари, і ті, що не на продаж, — з нульовим залишком. */
 async function fetchProducts(...constraints: QueryConstraint[]): Promise<Product[]> {
-  return (await fetchAny(where('isActive', '==', true), ...constraints)).map(forBuyer)
+  return (await fetchAny(where('isActive', '==', true), ...constraints)).filter(notDisabled).map(forBuyer)
+}
+
+export const notDisabled = (p: Product) => !p.disabled
+
+/** Продавцю в каталозі, пошуку, пов'язаних рослинах — усе, крім вимкнених. */
+async function fetchSeller(...constraints: QueryConstraint[]): Promise<Product[]> {
+  return (await fetchAny(...constraints)).filter(notDisabled)
 }
 
 /** Без фільтра видимості — приховані товари бачить лише продавець (так дозволяють Rules). */
@@ -36,7 +43,7 @@ export function useProducts(category: Category, withHidden = false) {
     queryFn: () =>
       withHidden
         ? // Сортуємо в браузері — так не потрібен окремий індекс Firestore для «категорія + дата» без isActive
-          fetchAny(where('category', '==', category)).then((list) => list.sort(newestFirst))
+          fetchSeller(where('category', '==', category)).then((list) => list.sort(newestFirst))
         : fetchProducts(where('category', '==', category), orderBy('createdAt', 'desc')),
   })
 }
@@ -86,7 +93,7 @@ export function useProductByName(name: string | undefined, withHidden = false) {
 export function useAllProducts(withHidden = false) {
   return useQuery({
     queryKey: ['products', 'all', withHidden],
-    queryFn: () => (withHidden ? fetchAny() : fetchProducts()),
+    queryFn: () => (withHidden ? fetchSeller() : fetchProducts()),
     staleTime: 5 * 60 * 1000,
   })
 }
