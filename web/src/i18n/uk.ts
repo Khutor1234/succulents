@@ -1048,9 +1048,10 @@ export const uk = {
     cultivarHint: 'Від',
     hybridOfHint: 'Гібрид від',
     sourceParents: 'Батьки {{name}}:',
-    parentsOf: 'Батьки {{name}}',
-    sourceNatural: '{{name}} — природний вид',
-    sourceCultivar: '{{name}} — відбір або мутація від',
+    // Під «Від [рослина]» — без повтору її назви: стрілка й так показує, про кого це
+    parentsOf: 'Батьки',
+    sourceNatural: 'Природний вид',
+    sourceCultivar: 'Відбір або мутація від',
     openPlant: 'Відкрити «{{name}}»',
     addPlant: 'Створити картку «{{name}}»',
     breeder: 'Селекціонер',

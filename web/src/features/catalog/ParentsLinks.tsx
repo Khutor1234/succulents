@@ -138,7 +138,7 @@ function FromRow({ lead, name, base }: { lead: string; name: string; base?: Prod
         {t('search.unknownParent')}
       </span>
     )
-  // Підпис блоку — одразу видно, що це про ту рослину, від якої ця («Батьки Echeveria Orion»)
+  // Підпис блоку («Батьки» / «Природний вид» / «Відбір або мутація від») — без назви: стрілка від «Від [рослина]» і так показує, про кого
   let caption = ''
   let rest: React.ReactNode = null
   if (info?.origin === 'natural') {
@@ -167,7 +167,8 @@ function FromRow({ lead, name, base }: { lead: string; name: string; base?: Prod
   }
   // Селекціонер рослини, від якої ця (у самої форми його може й не бути — форму міг вивести інший)
   const sourceBreeder = source?.breeder?.trim()
-  // «Від [рослина]», під ним стрілка вниз з підписом «Батьки [рослини]», а під підписом на фоні — самі батьки
+  // «Від [рослина]», під ним стрілка вниз, а праворуч від неї одна світла плашка про цю рослину:
+  // підпис і батьки (ареал / «відбір від»), під ними — її селекціонер. Назву рослини вдруге не повторюємо.
   return (
     <div className="mt-3 text-sm text-sand-700">
       <div className="flex items-center gap-2">
@@ -175,16 +176,16 @@ function FromRow({ lead, name, base }: { lead: string; name: string; base?: Prod
         <PlantChip name={name} big known={base ?? undefined} />
       </div>
       {(caption || sourceBreeder) && (
-        <div className="mt-1.5 flex gap-1.5 pl-1">
+        <div className="mt-2.5 flex gap-1.5 pl-1">
           <CornerDownRight size={22} strokeWidth={2.5} className="shrink-0 text-sunset-600" aria-hidden />
-          <div className="min-w-0 flex-1 sm:max-w-md">
-            {caption && <p className="pt-0.5 text-xs font-semibold">{caption}</p>}
-            {rest && <div className="mt-1.5 flex min-w-0 items-center gap-1.5 rounded-2xl bg-sand-100 p-2 sm:gap-2">{rest}</div>}
-            {/* «Селекціонер Echeveria 'Blue Bird': Dick Wright» — видно, що це селекціонер саме тієї рослини */}
+          {/* Компактно: плашки всередині нижчі, ніж «Від [рослина]» (min-h-9 замість min-h-11), відступи менші */}
+          <div className="min-w-0 flex-1 space-y-1.5 rounded-2xl bg-sand-100 px-2 py-1.5 sm:max-w-md [&_.min-h-11]:min-h-9 [&_.min-h-11]:px-2.5 [&_.min-h-11]:py-1 [&_.min-h-11]:text-[13px]">
+            {caption && <p className="px-1 text-xs font-semibold">{caption}</p>}
+            {rest && <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">{rest}</div>}
             {sourceBreeder && (
-              <p className={`flex flex-wrap items-center gap-2 text-xs ${caption ? 'mt-2' : 'pt-0.5'}`}>
+              <p className="flex flex-wrap items-center gap-1.5 px-1 text-xs">
                 <Sprout size={14} strokeWidth={2.25} className="shrink-0" aria-hidden />
-                <span className="font-semibold">{t('search.breederOf', { name })}:</span>
+                <span className="font-semibold">{t('search.breeder')}</span>
                 <Chip to={sourceBreeder} title={t('search.findBreeder', { name: sourceBreeder })} big>
                   {sourceBreeder}
                 </Chip>
