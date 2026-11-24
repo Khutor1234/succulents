@@ -3,9 +3,8 @@ import { ALL_TAGS, type PlantTag } from '../../lib/plants'
 import type { PlantOrigin, Product } from '../../lib/types'
 
 // За замовчуванням — за абеткою (у ProductGrid спершу ті, що в наявності, потім решта — кожна група за абеткою)
-export const SORTS = ['name', 'new', 'price-asc', 'price-desc', 'no-photo-first', 'photo-first'] as const
-/** Сортування лише для продавця (покупцям у списку не показуємо): щоб швидко знайти, кому ще бракує фото. */
-export const SELLER_SORTS: readonly SortOrder[] = ['no-photo-first', 'photo-first']
+// «Спершу з фото / без фото» — лише в адмінці (список товарів, фільтр «Показати»), у каталозі їх прибрано
+export const SORTS = ['name', 'new', 'price-asc', 'price-desc'] as const
 const DEFAULT_SORT = 'name'
 export type SortOrder = (typeof SORTS)[number]
 
@@ -19,17 +18,22 @@ const COMPARE: Record<SortOrder, (a: Product, b: Product) => number> = {
   new: (a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0) || byName(a, b),
   'price-asc': (a, b) => a.price - b.price || byName(a, b),
   'price-desc': (a, b) => b.price - a.price || byName(a, b),
-  'no-photo-first': (a, b) => Number(a.images.length > 0) - Number(b.images.length > 0) || byName(a, b),
-  'photo-first': (a, b) => Number(b.images.length > 0) - Number(a.images.length > 0) || byName(a, b),
 }
 
 /** Походження товару. У старих товарах поле не заповнене — якщо вказані батьки, це гібрид. */
 export const originOf = (p: Product): PlantOrigin | undefined => p.origin ?? (p.parents?.some(Boolean) ? 'hybrid' : undefined)
 
-type Key = 'genus' | 'tag' | 'origin' | 'breeder'
+/**
+ * Ареал рослини — країни/регіони окремо («ПАР, Намібія» → ПАР і Намібія). У форми чи відбору природного виду
+ * свого ареалу немає — береться з блоку «Походження …» (variegata мексиканського виду — теж з Мексики).
+ */
+export const habitatsOf = (p: Product): string[] =>
+  [...new Set((p.habitat?.trim() || p.base?.habitat?.trim() || '').split(/s*[,;]s*/).filter(Boolean))]
+
+type Key = 'genus' | 'tag' | 'origin' | 'breeder' | 'habitat'
 
 /**
- * Фільтри й сортування зберігаються в адресі (?genus=Echeveria&tag=variegata&origin=natural&breeder=Dick%20Wright&sort=price-asc) —
+ * Фільтри й сортування зберігаються в адресі (?genus=Echeveria&tag=variegata&origin=natural&breeder=Dick%20Wright&habitat=Мексика&sort=price-asc) —
  * відфільтрованим списком можна поділитись. У кожному фільтрі вибирається одне значення.
  */
 export function usePlantFilters() {
@@ -40,16 +44,17 @@ export function usePlantFilters() {
   const originParam = params.get('origin') ?? ''
   const origin: PlantOrigin | '' = (ORIGINS as readonly string[]).includes(originParam) ? (originParam as PlantOrigin) : ''
   const breeder = params.get('breeder') ?? ''
+  const habitat = params.get('habitat') ?? ''
   const sortParam = params.get('sort')
   const sort: SortOrder = (SORTS as readonly string[]).includes(sortParam ?? '') ? (sortParam as SortOrder) : DEFAULT_SORT
   // «Лише в наявності» (?stock=1): ховає рослини, яких зараз немає
   const inStock = params.get('stock') === '1'
-  const current = { genus, tag, origin, breeder }
+  const current = { genus, tag, origin, breeder, habitat }
 
   function update(next: Partial<typeof current> & { sort?: SortOrder; inStock?: boolean }) {
     const p = new URLSearchParams()
     const merged = { ...current, ...next }
-    for (const key of ['genus', 'tag', 'origin', 'breeder'] as const) if (merged[key]) p.set(key, merged[key])
+    for (const key of ['genus', 'tag', 'origin', 'breeder', 'habitat'] as const) if (merged[key]) p.set(key, merged[key])
     const s = next.sort ?? sort
     if (s !== DEFAULT_SORT) p.set('sort', s)
     if (next.inStock ?? inStock) p.set('stock', '1')
@@ -65,15 +70,17 @@ export function usePlantFilters() {
     (except === 'tag' || !tag || !!p.tags?.includes(tag)) &&
     (except === 'origin' || !origin || originOf(p) === origin) &&
     (except === 'breeder' || !breeder || p.breeder === breeder || p.sourceBreeder === breeder) &&
+    (except === 'habitat' || !habitat || habitatsOf(p).includes(habitat)) &&
     (!inStock || p.stock > 0)
 
-  const activeCount = Number(!!genus) + Number(!!tag) + Number(!!origin) + Number(!!breeder) + Number(inStock)
+  const activeCount = Number(!!genus) + Number(!!tag) + Number(!!origin) + Number(!!breeder) + Number(!!habitat) + Number(inStock)
 
   return {
     genus,
     tag,
     origin,
     breeder,
+    habitat,
     sort,
     inStock,
     setInStock: (v: boolean) => update({ inStock: v }),
@@ -82,9 +89,10 @@ export function usePlantFilters() {
     setTag: (t: PlantTag | '') => update({ tag: t === tag ? '' : t }),
     setOrigin: (o: PlantOrigin | '') => update({ origin: o === origin ? '' : o }),
     setBreeder: (b: string) => update({ breeder: b === breeder ? '' : b }),
+    setHabitat: (h: string) => update({ habitat: h === habitat ? '' : h }),
     setSort: (s: SortOrder) => update({ sort: s }),
     /** Скидає фільтри, але лишає вибране сортування. */
-    reset: () => update({ genus: '', tag: '', origin: '', breeder: '', inStock: false }),
+    reset: () => update({ genus: '', tag: '', origin: '', breeder: '', habitat: '', inStock: false }),
     matches,
     activeCount,
     active: activeCount > 0,

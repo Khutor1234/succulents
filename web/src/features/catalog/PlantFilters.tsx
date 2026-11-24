@@ -1,10 +1,10 @@
-import { Award, ChevronDown, Leaf, SlidersHorizontal, Sparkles, Sprout } from 'lucide-react'
+import { Award, ChevronDown, Globe2, Leaf, SlidersHorizontal, Sparkles, Sprout } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ICON } from '../../shared/icon'
 import { ALL_TAGS, tagsFor, TAG_DOTS, TAG_STYLES, type PlantTag } from '../../lib/plants'
 import type { Product } from '../../lib/types'
-import { ORIGINS, originOf, type PlantFiltersState as Filters } from './usePlantFilters'
+import { habitatsOf, ORIGINS, originOf, type PlantFiltersState as Filters } from './usePlantFilters'
 
 // Рамка є завжди (у вибраного — того ж кольору, що й фон), тож кнопка не «стрибає» при виборі.
 const chip = (on: boolean) =>
@@ -43,6 +43,8 @@ export function PlantFilters({ products, filters, category }: { products: Produc
   // вибрали Aeonium — біля Variegata стоїть, скільки саме варієгатних еоніумів.
   const genera = [...new Set(products.map((p) => p.genus).filter((g): g is string => !!g))].sort()
   const breeders = [...new Set(products.flatMap((p) => [p.breeder?.trim(), p.sourceBreeder]).filter((b): b is string => !!b))].sort((a, b) => a.localeCompare(b, 'uk'))
+  const habitats = [...new Set(products.flatMap(habitatsOf))].sort((a, b) => a.localeCompare(b, 'uk'))
+  const habitatCounts = new Map<string, number>()
   const genusCounts = new Map<string, number>()
   const tagCounts = new Map<PlantTag, number>()
   const originCounts = new Map<string, number>()
@@ -53,6 +55,7 @@ export function PlantFilters({ products, filters, category }: { products: Produc
     if (filters.matches(p, 'tag')) for (const tag of p.tags ?? []) inc(tagCounts, tag)
     const o = originOf(p)
     if (o && filters.matches(p, 'origin')) inc(originCounts, o)
+    if (filters.matches(p, 'habitat')) for (const h of habitatsOf(p)) inc(habitatCounts, h)
     if (filters.matches(p, 'breeder')) for (const b of new Set([p.breeder?.trim(), p.sourceBreeder])) if (b) inc(breederCounts, b)
   }
   const hasOrigins = products.some((p) => originOf(p))
@@ -60,9 +63,9 @@ export function PlantFilters({ products, filters, category }: { products: Produc
   // навіть якщо зараз таких товарів немає.
   const tags = tagsFor(category)
 
-  if (genera.length === 0 && tags.length === 0 && !hasOrigins && breeders.length === 0) return null
+  if (genera.length === 0 && tags.length === 0 && !hasOrigins && breeders.length === 0 && habitats.length === 0) return null
 
-  const summary = [filters.genus, filters.tag && t(`tags.${filters.tag}`), filters.origin && t(`admin.fields.origins.${filters.origin}`), filters.breeder]
+  const summary = [filters.genus, filters.tag && t(`tags.${filters.tag}`), filters.origin && t(`admin.fields.origins.${filters.origin}`), filters.habitat, filters.breeder]
     .filter(Boolean)
     .join(' · ')
 
@@ -157,6 +160,28 @@ export function PlantFilters({ products, filters, category }: { products: Produc
                 <button key={o} onClick={() => filters.setOrigin(o)} className={`${chip(on)} ${dim(on, originCounts.get(o))}`} aria-pressed={on}>
                   {t(`admin.fields.origins.${o}`)}
                   <Count n={originCounts.get(o)} on={on} />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      {habitats.length > 0 && (
+        <div>
+          <p className="mb-2 flex items-center gap-1.5 text-sm font-bold text-sand-700">
+            <Globe2 size={16} strokeWidth={2.25} aria-hidden />
+            {t('catalog.habitat')}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => filters.setHabitat('')} className={`${chip(!filters.habitat)} pr-4`} aria-pressed={!filters.habitat}>
+              {t('catalog.allGenera')}
+            </button>
+            {habitats.map((h) => {
+              const on = filters.habitat === h
+              return (
+                <button key={h} onClick={() => filters.setHabitat(h)} className={`${chip(on)} ${dim(on, habitatCounts.get(h))}`} aria-pressed={on}>
+                  {h}
+                  <Count n={habitatCounts.get(h)} on={on} />
                 </button>
               )
             })}

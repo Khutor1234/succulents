@@ -40,7 +40,6 @@ import { useCategories } from "./categories";
 import { ParentsLinks } from "./ParentsLinks";
 import { PlantFilters, TagBadges } from "./PlantFilters";
 import {
-  SELLER_SORTS,
   SORTS,
   usePlantFilters,
   type SortOrder,
@@ -407,7 +406,6 @@ export function CategoryPage() {
   // наявність без тих, що не продаються, звичайні картки (лише зі шпилькою «на головну»)
   const [params, setParams] = useSearchParams();
   const buyerView = realSeller && params.get("view") === "buyer";
-  const isSeller = realSeller && !buyerView;
   const setBuyerView = (on: boolean) => {
     const p = new URLSearchParams(params);
     if (on) p.set("view", "buyer");
@@ -512,7 +510,7 @@ export function CategoryPage() {
               value={filters.sort}
               onChange={(e) => filters.setSort(e.target.value as SortOrder)}
             >
-              {SORTS.filter((s) => isSeller || !SELLER_SORTS.includes(s)).map(
+              {SORTS.map(
                 (s) => (
                   <option key={s} value={s}>
                     {t(`catalog.sorts.${s}`)}
@@ -526,12 +524,11 @@ export function CategoryPage() {
       {shown && shown.length === 0 && products.data!.length > 0 && (
         <p className="text-sand-700">{t("catalog.noMatches")}</p>
       )}
-      {/* Продавцю — «Вибрати» (масові дії) і «Додати»; своє сортування (за фото) — без поділу на групи */}
+      {/* Продавцю — «Вибрати» (масові дії) і «Додати» */}
       {shown && (
         <ProductGrid
           products={shown}
           sellerTools={buyerView ? undefined : { category }}
-          keepOrder={isSeller && SELLER_SORTS.includes(filters.sort)}
           asBuyer={buyerView}
         />
       )}

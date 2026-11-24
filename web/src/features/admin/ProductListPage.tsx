@@ -13,6 +13,7 @@ import { Select, SmallImage, SucculentIcon } from '../../shared/ui'
 import { useProgressive } from '../../shared/useProgressive'
 import { useCategories } from '../catalog/categories'
 import { CopyName, CuttingToggle, DeleteButton, ForSaleButton, HomePin, SellerStock, VerifiedToggle, VisibilityButton } from '../catalog/ProductCard'
+import { ORIGINS, originOf } from '../catalog/usePlantFilters'
 import { useAllProducts, useSetPrice } from './api'
 import { CategoriesPage } from './CategoriesPage'
 import { TabBar, useTab } from './TabBar'
@@ -63,17 +64,20 @@ export function ProductListPage() {
   const [tab, setTab] = useTab(TABS)
   const { data, isLoading, isError } = useAllProducts()
   const { all: categories, nameOf } = useCategories()
-  const [category, setCategory] = useState('')
   const [query, setQuery] = useState('')
-  const [show, setShow] = useState<Show>('all')
+  // Один фільтр «Показати»: стан товару, далі походження (origin:…) і в самому кінці категорії (cat:…)
+  const [filter, setFilter] = useState('all')
+  const show: Show = (SHOWS as readonly string[]).includes(filter) ? (filter as Show) : 'all'
+  const origin = filter.startsWith('origin:') ? filter.slice(7) : ''
+  const category = filter.startsWith('cat:') ? filter.slice(4) : ''
   const [sort, setSort] = useState<Sort>('name')
 
   const shown = useMemo(() => {
-    const list = (data ?? []).filter((p) => (!category || p.category === category) && SHOW_TEST[show](p))
+    const list = (data ?? []).filter((p) => (!category || p.category === category) && (!origin || originOf(p) === origin) && SHOW_TEST[show](p))
     if (query.trim()) return searchProducts(list, query, { categoryName: nameOf, tagLabel: (tag) => t(`tags.${tag}`) })
     return list.sort(COMPARE[sort])
-  }, [data, category, show, query, sort, nameOf, t])
-  const { visible, sentinel } = useProgressive(shown, 60, `${category}|${show}|${query}|${sort}`)
+  }, [data, category, origin, show, query, sort, nameOf, t])
+  const { visible, sentinel } = useProgressive(shown, 60, `${filter}|${query}|${sort}`)
 
   return (
     <div className="space-y-4">
@@ -109,14 +113,6 @@ export function ProductListPage() {
           aria-label={t('admin.list.search')}
           className="min-w-0 flex-1 basis-56 rounded-xl border-2 border-sand-200 bg-sand-50 px-3.5 py-2 focus:border-brand-500 focus:outline-none"
         />
-        <Select compact value={category} onChange={(e) => setCategory(e.target.value)} aria-label={t('admin.list.category')}>
-          <option value="">{t('admin.list.allCategories')}</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </Select>
         {/* Під час пошуку порядок — за тим, наскільки збігається запит */}
         <Select compact value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label={t('catalog.sort')} disabled={!!query.trim()}>
           {SORTS.map((s) => (
@@ -125,12 +121,26 @@ export function ProductListPage() {
             </option>
           ))}
         </Select>
-        <Select compact value={show} onChange={(e) => setShow(e.target.value as Show)} aria-label={t('admin.list.show')}>
+        <Select compact value={filter} onChange={(e) => setFilter(e.target.value)} aria-label={t('admin.list.show')}>
           {SHOWS.map((s) => (
             <option key={s} value={s}>
               {t(`admin.list.shows.${s}`)}
             </option>
           ))}
+          <optgroup label={t('catalog.origin')}>
+            {ORIGINS.map((o) => (
+              <option key={o} value={`origin:${o}`}>
+                {t(`admin.fields.origins.${o}`)}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label={t('admin.list.category')}>
+            {categories.map((c) => (
+              <option key={c.id} value={`cat:${c.id}`}>
+                {c.name}
+              </option>
+            ))}
+          </optgroup>
         </Select>
       </div>
 
