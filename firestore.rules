@@ -114,6 +114,11 @@ service cloud.firestore {
       allow read, write: if isSeller();
     }
 
+    // Робочі списки продавця («Перевірити кількість»…) — покупці їх не бачать
+    match /sellerLists/{id} {
+      allow read, write: if isSeller();
+    }
+
     // Службові документи (лічильник номерів замовлень тощо) — тільки для Functions.
     match /counters/{id} {
       allow read, write: if false;

@@ -15,6 +15,7 @@ import { useDeleteProduct, useSetStock, useToggleCutting, useToggleForSale, useT
 import { BulkBar } from '../admin/BulkBar'
 import { AddToCart } from '../cart/AddToCart'
 import { FavoriteButton } from '../favorites/FavoriteButton'
+import { ListButton } from './ListButton'
 import { ParentsLinks } from './ParentsLinks'
 import { TagBadges } from './PlantFilters'
 
@@ -540,6 +541,7 @@ function SellerActions({ product, name }: { product: Product; name: string }) {
       {/* У продажу / не продається */}
       <ForSaleButton product={product} name={name} compact />
       <HomePin product={product} name={name} compact />
+      <ListButton product={product} name={name} />
       {product.category === PLANT_CATEGORY && <CuttingToggle product={product} name={name} compact />}
       <DeleteButton product={product} name={name} compact />
     </>

@@ -1,4 +1,4 @@
-import { Check, ChevronDown, EyeOff, List, Pencil, Plus, Tags } from 'lucide-react'
+import { Check, ChevronDown, EyeOff, List, ListChecks, Pencil, Plus, Tags } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -16,10 +16,12 @@ import { CopyName, CuttingToggle, DeleteButton, ForSaleButton, HomePin, SellerSt
 import { ORIGINS, originOf } from '../catalog/usePlantFilters'
 import { useAllProducts, useSetPrice } from './api'
 import { CategoriesPage } from './CategoriesPage'
+import { ListsPage } from './ListsPage'
+import { ListButton } from '../catalog/ListButton'
 import { TabBar, useTab } from './TabBar'
 
-const TABS = ['list', 'categories'] as const
-const TAB_ICONS = { list: List, categories: Tags }
+const TABS = ['list', 'lists', 'categories'] as const
+const TAB_ICONS = { list: List, lists: ListChecks, categories: Tags }
 
 /** Фільтр «Показати»: усі, лише в наявності, у продажу, не продаються, видимі покупцям, приховані. */
 const SHOWS = ['all', 'inStock', 'outOfStock', 'withPhoto', 'noPhoto', 'forSale', 'notForSale', 'visible', 'hidden', 'onHome', 'cutting'] as const
@@ -98,6 +100,8 @@ export function ProductListPage() {
 
       {tab === 'categories' ? (
         <CategoriesPage />
+      ) : tab === 'lists' ? (
+        <ListsPage />
       ) : (
         <>
       <div className="flex flex-wrap items-center gap-3">
@@ -212,6 +216,7 @@ function Row({ product }: { product: Product }) {
         <VisibilityButton product={product} name={name} compact />
         <ForSaleButton product={product} name={name} compact />
         <HomePin product={product} name={name} compact />
+        <ListButton product={product} name={name} />
         {product.category === PLANT_CATEGORY && <CuttingToggle product={product} name={name} compact />}
         <DeleteButton product={product} name={name} compact />
       </div>

@@ -1,3 +1,4 @@
+import { ListButton } from "./ListButton";
 import {
   ArrowLeft,
   ArrowRight,
@@ -660,6 +661,7 @@ export function ProductPage() {
               <VisibilityButton product={product} name={name} compact />
               <ForSaleButton product={product} name={name} compact />
               <HomePin product={product} name={name} compact />
+              <ListButton product={product} name={name} />
               {product.category === PLANT_CATEGORY && (
                 <CuttingToggle product={product} name={name} compact />
               )}

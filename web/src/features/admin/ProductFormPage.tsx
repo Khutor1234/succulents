@@ -15,6 +15,7 @@ import { Button, Input, Section, Select, StepperInput, Textarea } from '../../sh
 import { useCategories } from '../catalog/categories'
 import { isSlugTaken, useAllProducts, useDeleteProduct, useProductById, useSaveProduct, useToggleForSale, useToggleProductActive } from './api'
 import { HomePin } from '../catalog/ProductCard'
+import { ListButton } from '../catalog/ListButton'
 import { canGoBack, useFrom } from '../../shared/navigation'
 import { BackLink } from './BackLink'
 import { ImagesEditor } from './ImagesEditor'
@@ -405,7 +406,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
           </h1>
           {errors.name?.uk && <p className="mt-1 text-sm text-red-700">{t(errors.name.uk.message ?? 'errors.required')}</p>}
         </div>
-        {/* Іконки праворуч від назви — у тому ж порядку, що й у списку товарів: показати, у продажу, на головну, видалити */}
+        {/* Іконки праворуч від назви — у тому ж порядку, що й у списку товарів: показати, у продажу, на головну, до списку, видалити */}
         <div className="flex flex-wrap gap-1.5">
           <FlagButton
             on={!!isActive}
@@ -422,6 +423,7 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
             icon={forSale ? <Tag {...ICON} /> : <Ban {...ICON} />}
           />
           {product && <HomePin product={product} name={product.name.uk} className="!h-11 !w-11" compact />}
+          {product && <ListButton product={product} name={product.name.uk} big />}
           {product && (
             <button
               type="button"
