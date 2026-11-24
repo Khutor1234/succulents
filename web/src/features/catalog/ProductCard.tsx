@@ -136,6 +136,12 @@ export function ProductCard({
             )
           })}
       </div>
+      {/* Одне фото (чи жодного) — одна крапка, щоб назви в усіх картках стояли на одному рівні */}
+      {photoCount <= 1 && (
+        <div className="mt-1 flex h-6 items-center justify-center" aria-hidden>
+          <span className="block h-1.5 w-4 rounded-full bg-brand-600" />
+        </div>
+      )}
       {photoCount > 1 && (
         <div className="mt-1 flex justify-center select-none [-webkit-tap-highlight-color:transparent]">
           {product.images.map((src, i) => (
@@ -174,7 +180,14 @@ export function ProductCard({
         </Link>
       </div>
       {/* Покупцю — «У кошик»; продавцю — ряд кнопок-іконок (кількість на складі тут не змінюється — лише плашка на фото) */}
-      <div className={`mt-2.5 flex ${isSeller ? 'gap-1 [&>*]:!w-auto [&>*]:min-w-0 [&>*]:flex-1' : 'gap-2'}`}>
+      {/* Продавцю — квадратні кнопки до 44 px, кожна посередині рівної колонки: однакові відстані, хоч 5 кнопок, хоч 6 */}
+      <div
+        className={`mt-2.5 ${
+          isSeller
+            ? 'grid auto-cols-fr grid-flow-col gap-1.5 [&>*]:mx-auto [&>*]:aspect-square [&>*]:!h-auto [&>*]:!w-full [&>*]:max-w-11 [&>span>button]:!h-full [&>span>button]:!w-full'
+            : 'flex gap-2'
+        }`}
+      >
         {isSeller ? (
           <SellerActions product={product} name={name} />
         ) : (
