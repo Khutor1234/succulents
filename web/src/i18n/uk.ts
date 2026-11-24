@@ -754,6 +754,7 @@ export const uk = {
       tabs: { list: 'Список', categories: 'Категорії' },
       search: 'Знайти товар…',
       category: 'Категорія',
+      allOrigins: 'Усе походження',
       allCategories: 'Усі категорії',
       sorts: { name: 'За назвою', new: 'Спершу нові', old: 'Спершу старі', priceDesc: 'Спершу дорожчі', priceAsc: 'Спершу дешевші', stock: 'Спершу більше на складі' },
       show: 'Показати',

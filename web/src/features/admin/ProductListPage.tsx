@@ -65,11 +65,10 @@ export function ProductListPage() {
   const { data, isLoading, isError } = useAllProducts()
   const { all: categories, nameOf } = useCategories()
   const [query, setQuery] = useState('')
-  // Один фільтр «Показати»: стан товару, далі походження (origin:…) і в самому кінці категорії (cat:…)
-  const [filter, setFilter] = useState('all')
-  const show: Show = (SHOWS as readonly string[]).includes(filter) ? (filter as Show) : 'all'
-  const origin = filter.startsWith('origin:') ? filter.slice(7) : ''
-  const category = filter.startsWith('cat:') ? filter.slice(4) : ''
+  // Три окремі фільтри (можна поєднувати): «Показати», «Походження» і в самому кінці «Категорія»
+  const [show, setShow] = useState<Show>('all')
+  const [origin, setOrigin] = useState('')
+  const [category, setCategory] = useState('')
   const [sort, setSort] = useState<Sort>('name')
 
   const shown = useMemo(() => {
@@ -77,7 +76,7 @@ export function ProductListPage() {
     if (query.trim()) return searchProducts(list, query, { categoryName: nameOf, tagLabel: (tag) => t(`tags.${tag}`) })
     return list.sort(COMPARE[sort])
   }, [data, category, origin, show, query, sort, nameOf, t])
-  const { visible, sentinel } = useProgressive(shown, 60, `${filter}|${query}|${sort}`)
+  const { visible, sentinel } = useProgressive(shown, 60, `${show}|${origin}|${category}|${query}|${sort}`)
 
   return (
     <div className="space-y-4">
@@ -121,26 +120,28 @@ export function ProductListPage() {
             </option>
           ))}
         </Select>
-        <Select compact value={filter} onChange={(e) => setFilter(e.target.value)} aria-label={t('admin.list.show')}>
+        <Select compact value={show} onChange={(e) => setShow(e.target.value as Show)} aria-label={t('admin.list.show')}>
           {SHOWS.map((s) => (
             <option key={s} value={s}>
               {t(`admin.list.shows.${s}`)}
             </option>
           ))}
-          <optgroup label={t('catalog.origin')}>
-            {ORIGINS.map((o) => (
-              <option key={o} value={`origin:${o}`}>
-                {t(`admin.fields.origins.${o}`)}
-              </option>
-            ))}
-          </optgroup>
-          <optgroup label={t('admin.list.category')}>
-            {categories.map((c) => (
-              <option key={c.id} value={`cat:${c.id}`}>
-                {c.name}
-              </option>
-            ))}
-          </optgroup>
+        </Select>
+        <Select compact value={origin} onChange={(e) => setOrigin(e.target.value)} aria-label={t('catalog.origin')}>
+          <option value="">{t('admin.list.allOrigins')}</option>
+          {ORIGINS.map((o) => (
+            <option key={o} value={o}>
+              {t(`admin.fields.origins.${o}`)}
+            </option>
+          ))}
+        </Select>
+        <Select compact value={category} onChange={(e) => setCategory(e.target.value)} aria-label={t('admin.list.category')}>
+          <option value="">{t('admin.list.allCategories')}</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
         </Select>
       </div>
 
