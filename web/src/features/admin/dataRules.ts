@@ -317,7 +317,19 @@ export function planDataRules(products: Product[], checks: readonly CheckRow[], 
       const q = from0.search(/['‘’"]/u)
       const words = (q > 0 ? from0.slice(0, q) : from0).trim().split(/\s+/)
       const speciesOk = words.length >= 2 && words.slice(1).every((w) => /^[a-z]/.test(w))
-      if (speciesOk && q > 0) {
+      // Культивар у спільних лапках з назвою (поле «Культивар»): «Echeveria 'Suyon Frill Gold'» + «Frill Gold» → відбір від «Echeveria 'Suyon'»
+      const cv = p.cultivarName?.trim() ?? ''
+      const merged = cv ? new RegExp(`^(.+['‘’"][^'‘’"]*?)\\s+${cv.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(['‘’"])$`, 'u').exec(from0) : null
+      if (merged) {
+        const plain = `${merged[1]}${merged[2]}`
+        add({
+          productId: p.id,
+          rule: 'baseFromName',
+          sig: `selection|${plain}`,
+          patch: { base: { origin: 'cultivar', parents: [plain], habitat: '' } },
+          lines: [{ note: `baseSelection:${plain}` }],
+        })
+      } else if (speciesOk && q > 0) {
         const species = words.join(' ')
         add({
           productId: p.id,

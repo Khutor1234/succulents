@@ -111,6 +111,15 @@ export function useSetStock() {
   })
 }
 
+/** Ціна (у копійках) — прямо зі списку товарів, без форми редагування. */
+export function useSetPrice() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, price }: { id: string; price: number }) => updateDoc(doc(db, 'products', id), { price: Math.max(0, price), updatedAt: serverTimestamp() }),
+    onSuccess: (_, { id, price }) => patchProduct(queryClient, id, { price: Math.max(0, price) }),
+  })
+}
+
 /** Показати / приховати товар. Залишок на складі не змінюється — лише видимість для покупців. */
 export function useToggleProductActive() {
   const queryClient = useQueryClient()

@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useLang } from '../../i18n'
-import { formatPrice, pick } from '../../lib/format'
+import { pick } from '../../lib/format'
 import { withCuttingMark } from '../../lib/plantName'
 import { PLANT_CATEGORY } from '../../lib/plants'
 import { searchProducts } from '../../lib/search'
@@ -13,7 +13,7 @@ import { Select, SmallImage, SucculentIcon } from '../../shared/ui'
 import { useProgressive } from '../../shared/useProgressive'
 import { useCategories } from '../catalog/categories'
 import { CopyName, CuttingToggle, DeleteButton, ForSaleButton, HomePin, SellerStock, VerifiedToggle, VisibilityButton } from '../catalog/ProductCard'
-import { useAllProducts } from './api'
+import { useAllProducts, useSetPrice } from './api'
 import { CategoriesPage } from './CategoriesPage'
 import { TabBar, useTab } from './TabBar'
 
@@ -39,12 +39,13 @@ const SHOW_TEST: Record<Show, (p: Product) => boolean> = {
   unverified: (p) => !p.verified,
 }
 
-type Sort = 'name' | 'new' | 'stock'
-const SORTS: Sort[] = ['name', 'new', 'stock']
+type Sort = 'name' | 'new' | 'old' | 'stock'
+const SORTS: Sort[] = ['name', 'new', 'old', 'stock']
 const byName = (a: Product, b: Product) => a.name.uk.replace(/['‘’"«»]/g, '').localeCompare(b.name.uk.replace(/['‘’"«»]/g, ''), 'uk')
 const COMPARE: Record<Sort, (a: Product, b: Product) => number> = {
   name: byName,
   new: (a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0) || byName(a, b),
+  old: (a, b) => (a.createdAt?.toMillis() ?? 0) - (b.createdAt?.toMillis() ?? 0) || byName(a, b),
   stock: (a, b) => b.stock - a.stock || byName(a, b),
 }
 
@@ -157,38 +158,37 @@ function Row({ product }: { product: Product }) {
       <div className="flex min-w-0 flex-1 basis-60 items-center gap-1">
         {/* На початку рядка — щоб у всіх товарів була на одному місці */}
         <CopyName name={name} />
-        <VerifiedToggle product={product} />
         <Link to={`/product/${product.slug}`} className="flex min-w-0 items-center gap-2.5">
           {product.images[0] ? (
             // Навели мишку на фото — поруч воно ж, але велике (щоб роздивитися рослину)
             <span className="group/photo relative shrink-0">
-              <SmallImage src={product.images[0]} alt="" className="h-10 w-10 rounded-lg object-cover" />
-              <span className="pointer-events-none absolute top-1/2 left-12 z-30 hidden w-72 -translate-y-1/2 overflow-hidden rounded-2xl border-4 border-sand-50 bg-sand-50 shadow-2xl group-hover/photo:block">
+              <SmallImage src={product.images[0]} alt="" className="h-14 w-14 rounded-lg object-cover" />
+              <span className="pointer-events-none absolute top-1/2 left-16 z-30 hidden w-72 -translate-y-1/2 overflow-hidden rounded-2xl border-4 border-sand-50 bg-sand-50 shadow-2xl group-hover/photo:block">
                 <SmallImage src={product.images[0]} alt="" className="block aspect-square w-full object-cover" />
               </span>
             </span>
           ) : (
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sand-200 text-brand-600">
-              <SucculentIcon className="w-6" />
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-sand-200 text-brand-600">
+              <SucculentIcon className="w-7" />
             </span>
           )}
           <span className="min-w-0">
             <span className="block truncate font-bold hover:text-brand-600">
               {withCuttingMark(name, product.tags?.includes('cutting'), t('product.cuttingMark'))}
             </span>
-            <span className="flex items-center gap-2 text-xs text-sand-700">
-              <span className="font-display font-extrabold text-sunset-600">{formatPrice(product.price, lang)}</span>
-              {!product.isActive && (
-                <span className="inline-flex items-center gap-1 font-bold text-lavender-700">
-                  <EyeOff size={12} strokeWidth={2.75} aria-hidden />
-                  {t('product.hidden')}
-                </span>
-              )}
-            </span>
+            {/* Інші назви — під назвою, дрібно */}
+            {!!product.aliases?.length && <span className="block truncate text-xs text-sand-700">{product.aliases.join(', ')}</span>}
+            {!product.isActive && (
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-lavender-700">
+                <EyeOff size={12} strokeWidth={2.75} aria-hidden />
+                {t('product.hidden')}
+              </span>
+            )}
           </span>
         </Link>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
+        <SellerPrice product={product} />
         <SellerStock product={product} compact />
         <Link
           to={`/admin/products/${product.id}`}
@@ -204,7 +204,65 @@ function Row({ product }: { product: Product }) {
         <HomePin product={product} name={name} compact />
         {product.category === PLANT_CATEGORY && <CuttingToggle product={product} name={name} compact />}
         <DeleteButton product={product} name={name} compact />
+        {/* «Перевірено вручну» — останньою, праворуч від усіх кнопок */}
+        <VerifiedToggle product={product} className="!my-0 h-9 w-9" />
       </div>
     </li>
+  )
+}
+
+/**
+ * Ціна в гривнях — поле, яке можна виправити прямо в списку (як «− N +» для залишку).
+ * Зберігаємо, коли вийшли з поля або натиснули Enter; Esc — повернути як було.
+ */
+function SellerPrice({ product }: { product: Product }) {
+  const { t } = useTranslation()
+  const save = useSetPrice()
+  const shown = String(Math.round(product.price) / 100)
+  const [value, setValue] = useState(shown)
+  const [base, setBase] = useState(product.price)
+  const [focused, setFocused] = useState(false)
+  // Ціну змінили деінде (форма) — показуємо нову, якщо поле зараз не редагують
+  if (product.price !== base && !focused && !save.isPending) {
+    setBase(product.price)
+    setValue(shown)
+  }
+  const commit = () => {
+    const uah = Number(value.replace(',', '.').replace(/s/g, ''))
+    if (!value.trim() || !Number.isFinite(uah) || uah < 0) return setValue(shown)
+    const price = Math.round(uah * 100)
+    setValue(String(price / 100))
+    if (price !== product.price) {
+      setBase(price)
+      save.mutate({ id: product.id, price })
+    }
+  }
+  return (
+    <label className="flex h-9 items-center rounded-xl border-2 border-sand-200 bg-sand-50 pr-2.5 focus-within:border-brand-500" title={t('admin.fields.price')}>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onFocus={(e) => {
+          setFocused(true)
+          e.currentTarget.select()
+        }}
+        onBlur={() => {
+          setFocused(false)
+          commit()
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur()
+          if (e.key === 'Escape') {
+            setValue(shown)
+            requestAnimationFrame(() => e.currentTarget?.blur())
+          }
+        }}
+        aria-label={t('admin.fields.price')}
+        className="w-16 bg-transparent text-right font-display text-lg font-extrabold text-sunset-600 tabular-nums focus:outline-none"
+      />
+      <span className="ml-0.5 font-display text-lg font-extrabold text-sunset-600">₴</span>
+    </label>
   )
 }

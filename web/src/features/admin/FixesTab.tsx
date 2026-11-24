@@ -299,7 +299,7 @@ function SuggestionRow({
       })
     if (kind === 'breederNoCard') return t('admin.allFixes.notes.breederNoCard', { name: rest.join(':') })
     if (kind === 'breederFrom') return t('admin.allFixes.notes.breederFrom', { name: rest.join(':') })
-    if (kind === 'baseCultivar' || kind === 'baseNatural' || kind === 'baseNaturalNoHabitat')
+    if (kind === 'baseCultivar' || kind === 'baseSelection' || kind === 'baseNatural' || kind === 'baseNaturalNoHabitat')
       return t(`admin.allFixes.notes.${kind}`, { name: rest.join(':') })
     if (kind === 'slugExtra')
       return t('admin.allFixes.notes.slugExtra', { forms: rest.join(':').split(',').map((f) => t(`tags.${f}`)).join(', ') })
