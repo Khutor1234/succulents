@@ -97,14 +97,11 @@ export function ProductCard({
         </TagBadges>
         {/* Сердечко й кількість лайків поруч — для всіх */}
         <FavoriteButton product={product} className="absolute top-2 right-2" />
-        {/* Продавцю — шпилька «на головну»: позначені рослини першими в «Нових надходженнях» */}
-        {realSeller && <HomePin product={product} name={name} className="absolute top-14 right-2" />}
-        {/* Продавцю — «Живець» під шпилькою (у ряд кнопок унизу картки вже не вміщається) */}
-        {isSeller && product.category === PLANT_CATEGORY && <CuttingToggle product={product} name={name} className="absolute top-26 right-2" />}
-        {/* Продавцю — «Перевірено вручну» під ножицями (у не-рослин ножиць немає — тоді під шпилькою) */}
-        {isSeller && !noVerified && (
-          <VerifiedToggle product={product} floating className={`absolute right-2 ${product.category === PLANT_CATEGORY ? "top-38" : "top-26"}`} />
-        )}
+        {/* На фото — сердечко й «Перевірено»; решта кнопок продавця — у ряду внизу картки. Виняток — вітрина «Нові надходження»
+            (asBuyer): там продавцю лишається тільки шпилька «на головну», щоб прибрати рослину з вітрини */}
+        {realSeller && !isSeller && <HomePin product={product} name={name} className="absolute top-14 right-2" />}
+        {/* Продавцю — «Перевірено вручну» кружечком під сердечком */}
+        {isSeller && !noVerified && <VerifiedToggle product={product} floating className="absolute top-14 right-2" />}
         {/* Походження — плашкою внизу фото: під назвою не займає місця, тож картки з батьками й без однакові.
             Кожен батько — окреме посилання в пошук. */}
         {product.category === PLANT_CATEGORY && (
@@ -176,9 +173,8 @@ export function ProductCard({
           {formatPrice(product.price, lang)}
         </Link>
       </div>
-      {/* Покупцю — «У кошик»; продавцю кошик не потрібен — замість нього редагування, копія й видалення */}
-      {isSeller && <SellerStock product={product} />}
-      <div className="mt-2.5 flex gap-2">
+      {/* Покупцю — «У кошик»; продавцю — ряд кнопок-іконок (кількість на складі тут не змінюється — лише плашка на фото) */}
+      <div className={`mt-2.5 flex ${isSeller ? 'gap-1 [&>*]:!w-auto [&>*]:min-w-0 [&>*]:flex-1' : 'gap-2'}`}>
         {isSeller ? (
           <SellerActions product={product} name={name} />
         ) : (
@@ -566,16 +562,17 @@ function SellerActions({ product, name }: { product: Product; name: string }) {
         to={`/admin/products/${product.id}`}
         state={{ from: here }}
         aria-label={t('admin.editNamed', { name })}
-        className="flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-3 font-bold text-sand-50 transition-colors hover:bg-brand-700"
+        title={t('admin.edit')}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-sand-50 transition-colors hover:bg-brand-700"
       >
         <Pencil size={18} strokeWidth={2.25} aria-hidden />
-        {/* На вузькій картці (дві в ряд на телефоні) — лише олівець, щоб влізли всі кнопки */}
-        <span className="hidden @[18rem]:inline">{t('admin.edit')}</span>
       </Link>
-      <VisibilityButton product={product} name={name} />
+      <VisibilityButton product={product} name={name} compact />
       {/* У продажу / не продається */}
-      <ForSaleButton product={product} name={name} />
-      <DeleteButton product={product} name={name} />
+      <ForSaleButton product={product} name={name} compact />
+      <HomePin product={product} name={name} compact />
+      {product.category === PLANT_CATEGORY && <CuttingToggle product={product} name={name} compact />}
+      <DeleteButton product={product} name={name} compact />
     </>
   )
 }
