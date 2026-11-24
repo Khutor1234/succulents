@@ -21,7 +21,7 @@ const TABS = ['list', 'categories'] as const
 const TAB_ICONS = { list: List, categories: Tags }
 
 /** Фільтр «Показати»: усі, лише в наявності, у продажу, не продаються, видимі покупцям, приховані. */
-const SHOWS = ['all', 'inStock', 'outOfStock', 'withPhoto', 'noPhoto', 'forSale', 'notForSale', 'visible', 'hidden', 'verified', 'unverified'] as const
+const SHOWS = ['all', 'inStock', 'outOfStock', 'withPhoto', 'noPhoto', 'forSale', 'notForSale', 'visible', 'hidden', 'onHome', 'cutting', 'verified', 'unverified'] as const
 type Show = (typeof SHOWS)[number]
 // «У продажу» — як зафарбована іконка-цінник: позначено «у продажу» і покупцю справді є що купити (не 0)
 const sellable = (p: Product) => p.forSale !== false && p.stock > 0
@@ -35,17 +35,21 @@ const SHOW_TEST: Record<Show, (p: Product) => boolean> = {
   notForSale: (p) => !sellable(p),
   visible: (p) => p.isActive,
   hidden: (p) => !p.isActive,
+  onHome: (p) => !!p.onHome,
+  cutting: (p) => !!p.tags?.includes('cutting'),
   verified: (p) => !!p.verified,
   unverified: (p) => !p.verified,
 }
 
-type Sort = 'name' | 'new' | 'old' | 'stock'
-const SORTS: Sort[] = ['name', 'new', 'old', 'stock']
+type Sort = 'name' | 'new' | 'old' | 'priceDesc' | 'priceAsc' | 'stock'
+const SORTS: Sort[] = ['name', 'new', 'old', 'priceDesc', 'priceAsc', 'stock']
 const byName = (a: Product, b: Product) => a.name.uk.replace(/['‘’"«»]/g, '').localeCompare(b.name.uk.replace(/['‘’"«»]/g, ''), 'uk')
 const COMPARE: Record<Sort, (a: Product, b: Product) => number> = {
   name: byName,
   new: (a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0) || byName(a, b),
   old: (a, b) => (a.createdAt?.toMillis() ?? 0) - (b.createdAt?.toMillis() ?? 0) || byName(a, b),
+  priceDesc: (a, b) => b.price - a.price || byName(a, b),
+  priceAsc: (a, b) => a.price - b.price || byName(a, b),
   stock: (a, b) => b.stock - a.stock || byName(a, b),
 }
 
