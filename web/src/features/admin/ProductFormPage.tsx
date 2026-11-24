@@ -3,7 +3,8 @@ import { useRef, useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { Check, ChevronDown, Copy, CopyPlus, Eye, EyeOff, Link2, Lock, X, Trash2 } from 'lucide-react'
+import { Ban, Check, CircleCheck, CornerDownRight, Copy, CopyPlus, Eye, EyeOff, Link2, Tag, X, Trash2 } from 'lucide-react'
+import type { UseFormRegisterReturn } from 'react-hook-form'
 import { detectGenus, nameKey, parseForms, withCuttingMark, withForms, withoutStates } from '../../lib/plantName'
 import { ICON } from '../../shared/icon'
 import { HABITATS, ORIGINS } from '../../lib/types'
@@ -12,7 +13,8 @@ import { slugify } from '../../lib/slug'
 import type { Product } from '../../lib/types'
 import { Button, Input, Section, Select, StepperInput, Textarea } from '../../shared/ui'
 import { useCategories } from '../catalog/categories'
-import { isSlugTaken, useAllProducts, useDeleteProduct, useProductById, useSaveProduct, useToggleProductActive } from './api'
+import { isSlugTaken, useAllProducts, useDeleteProduct, useProductById, useSaveProduct, useToggleForSale, useToggleProductActive, useToggleVerified } from './api'
+import { HomePin } from '../catalog/ProductCard'
 import { canGoBack, useFrom } from '../../shared/navigation'
 import { BackLink } from './BackLink'
 import { ImagesEditor } from './ImagesEditor'
@@ -117,14 +119,12 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
   const watchedTags = useWatch({ control, name: 'tags' }) as unknown
   const isCutting = (Array.isArray(watchedTags) ? watchedTags : watchedTags ? [watchedTags] : []).includes('cutting')
   const slugValue = useWatch({ control, name: 'slug' })
+  const [slugEditing, setSlugEditing] = useState(false)
   const origin = useWatch({ control, name: 'origin' })
   // Походження звичайної версії (для форм) — у згорнутому блоці; за замовчуванням закритий
   const tagList = Array.isArray(watchedTags) ? (watchedTags as string[]) : watchedTags ? [watchedTags as string] : []
   const baseName = useWatch({ control, name: 'parents.0' })
   const baseOrigin = useWatch({ control, name: 'baseOrigin' })
-  const baseParents = useWatch({ control, name: 'baseParents' })
-  const baseFilled = baseOrigin === 'natural' || baseParents.some((p) => p.trim())
-  const [baseOpen, setBaseOpen] = useState(false)
   const isPlant = category === PLANT_CATEGORY
   const categoryTags = tagsFor(category)
 
@@ -155,15 +155,25 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
     leave(product.category, { deleted: true })
   }
 
-  // Око: показати / приховати товар одразу, без «Зберегти» (як на картці в магазині).
-  // Галочку у формі оновлюємо як збережену, щоб «Зберегти» потім не повернуло старе. Залишок не змінюється.
+  // Іконки біля назви (як у списку товарів): показати, у продажу, перевірено. У вже збереженого товару — одразу, без «Зберегти»
+  // (як на картці в магазині), а у формі значення оновлюємо як збережене, щоб «Зберегти» потім не повернуло старе.
+  // Новий товар — лише значення у формі, запишеться при «Зберегти».
   const toggle = useToggleProductActive()
+  const toggleSale = useToggleForSale()
+  const toggleVerified = useToggleVerified()
   const isActive = useWatch({ control, name: 'isActive' })
-  async function onToggleActive() {
-    if (!product) return
-    const next = !isActive
-    await toggle.mutateAsync({ id: product.id, isActive: next })
-    resetField('isActive', { defaultValue: next })
+  const forSale = useWatch({ control, name: 'forSale' })
+  const verified = useWatch({ control, name: 'verified' })
+  const flagPending = toggle.isPending || toggleSale.isPending || toggleVerified.isPending
+  async function flip(field: 'isActive' | 'forSale' | 'verified') {
+    const next = !getValues(field)
+    if (!product) return setValue(field, next, { shouldDirty: true })
+    if (field === 'isActive') await toggle.mutateAsync({ id: product.id, isActive: next })
+    if (field === 'forSale') await toggleSale.mutateAsync({ id: product.id, forSale: next })
+    if (field === 'verified') await toggleVerified.mutateAsync({ id: product.id, verified: next })
+    // Поле вже не в розмітці (галочки прибрано) — тож і значення, і «збережене» значення ставимо явно
+    setValue(field, next)
+    resetField(field, { defaultValue: next })
   }
 
   // «Зберегти як новий товар»: зберігаємо форму як новий товар, а цей лишаємо без змін
@@ -383,40 +393,39 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
         if (!getValues('slug').trim()) setValue('slug', slugify(getValues('name.uk')))
         return handleSubmit(onSubmit)(e)
       }}
-      className="space-y-6"
+      // Компактніше, ніж решта адмінки: розділи (Section) з меншими відступами всередині й між собою
+      className="space-y-4 [&_fieldset.rounded-3xl]:space-y-3 [&_fieldset.rounded-3xl]:px-4 [&_fieldset.rounded-3xl]:pt-2 [&_fieldset.rounded-3xl]:pb-4"
     >
       {/* На телефоні верхнього меню адмінки немає — повернутися до списку можна стрілкою (або хрестиком унизу) */}
       <BackLink fallback={product ? `/c/${product.category}` : '/admin'} />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-3xl font-extrabold text-brand-600">{product ? t('admin.editProduct') : t('admin.createProduct')}</h1>
-        {/* Дії з уже існуючим товаром — іконками праворуч від заголовка */}
-        {product && (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={saveAsNew}
-              disabled={isSubmitting || uploading || !changed}
-              title={t(changed ? 'admin.saveAsNewHint' : 'admin.saveAsNewNoChanges')}
-              aria-label={t('admin.saveAsNew')}
-              className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-brand-600 text-brand-600 transition-colors hover:bg-brand-600 hover:text-sand-50 disabled:opacity-50"
-            >
-              <CopyPlus {...ICON} />
-            </button>
-            {/* Око: видимий — сховати від покупців, прихований — показати */}
-            <button
-              type="button"
-              onClick={onToggleActive}
-              disabled={toggle.isPending}
-              title={t(isActive ? 'admin.hide' : 'admin.show')}
-              aria-label={t(isActive ? 'admin.hideNamed' : 'admin.showNamed', { name: product.name.uk })}
-              className={`flex h-11 w-11 items-center justify-center rounded-xl border-2 transition-colors disabled:opacity-50 ${
-                isActive
-                  ? 'border-sand-700 text-sand-700 hover:bg-sand-700 hover:text-sand-50'
-                  : 'border-brand-600 bg-brand-600 text-sand-50 hover:bg-brand-700'
-              }`}
-            >
-              {isActive ? <EyeOff {...ICON} /> : <Eye {...ICON} />}
-            </button>
+      {/* Зверху — повна назва, як буде на сайті (складається сама з полів нижче); над нею дрібно — «Редагування товару» */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        {/* Телефон: назва на всю ширину, іконки — рядком під нею; ширше — іконки праворуч */}
+        <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
+          <p className="text-xs font-bold tracking-wider text-sand-700 uppercase">{product ? t('admin.editProduct') : t('admin.createProduct')}</p>
+          <h1 aria-live="polite" className="mt-1 font-display text-2xl leading-tight font-extrabold break-words text-brand-600 sm:text-4xl">
+            {fullName?.trim() ? withCuttingMark(fullName, isCutting, t('product.cuttingMark')) : <span className="text-sand-400">{t('admin.fields.noName')}</span>}
+          </h1>
+          {errors.name?.uk && <p className="mt-1 text-sm text-red-700">{t(errors.name.uk.message ?? 'errors.required')}</p>}
+        </div>
+        {/* Іконки праворуч від назви — у тому ж порядку, що й у списку товарів: показати, у продажу, на головну, видалити, перевірено */}
+        <div className="flex flex-wrap gap-1.5">
+          <FlagButton
+            on={!!isActive}
+            onClick={() => flip('isActive')}
+            disabled={flagPending}
+            label={t(isActive ? 'admin.hide' : 'admin.show')}
+            icon={isActive ? <Eye {...ICON} /> : <EyeOff {...ICON} />}
+          />
+          <FlagButton
+            on={!!forSale}
+            onClick={() => flip('forSale')}
+            disabled={flagPending}
+            label={t(forSale ? 'admin.unsell' : 'admin.sell')}
+            icon={forSale ? <Tag {...ICON} /> : <Ban {...ICON} />}
+          />
+          {product && <HomePin product={product} name={product.name.uk} className="!h-11 !w-11" compact />}
+          {product && (
             <button
               type="button"
               onClick={onDelete}
@@ -427,10 +436,23 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
             >
               <Trash2 {...ICON} />
             </button>
-          </div>
-        )}
+          )}
+          <button
+            type="button"
+            onClick={() => flip('verified')}
+            disabled={flagPending}
+            aria-pressed={!!verified}
+            title={t(verified ? 'admin.list.verifiedOn' : 'admin.list.verifiedOff')}
+            aria-label={t(verified ? 'admin.list.verifiedOn' : 'admin.list.verifiedOff')}
+            className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors disabled:opacity-60 ${
+              verified ? 'text-brand-600 hover:bg-brand-100' : 'text-sand-400 hover:bg-sand-200 hover:text-sand-700'
+            }`}
+          >
+            <CircleCheck size={22} strokeWidth={verified ? 2.75 : 2.25} className={verified ? 'fill-brand-100' : ''} aria-hidden />
+          </button>
+        </div>
       </div>
-      {(remove.isError || toggle.isError) && <p className="text-sm text-red-700">{t('admin.saveError')}</p>}
+      {(remove.isError || toggle.isError || toggleSale.isError || toggleVerified.isError) && <p className="text-sm text-red-700">{t('admin.saveError')}</p>}
       {source && (
         <p className="flex items-start gap-2 rounded-2xl border-2 border-sunset-500/40 bg-sunset-100/60 p-4 text-sm leading-relaxed">
           <Copy size={18} strokeWidth={2.25} className="mt-0.5 shrink-0 text-sunset-600" aria-hidden />
@@ -440,8 +462,8 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
 
       {/* Телефон: спершу фото, ціна й залишок (найчастіше змінюють саме їх), далі назва, опис і характеристики.
           Широкий екран: дві колонки — зліва назва й опис, справа фото, ціна, характеристики. */}
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-[auto_1fr] [&>*]:min-w-0">
-      <div className="space-y-6 lg:col-start-1 lg:row-span-2 lg:row-start-1">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:grid-rows-[auto_1fr] [&>*]:min-w-0">
+      <div className="space-y-4 lg:col-start-1 lg:row-span-2 lg:row-start-1">
       <Section title={t('admin.name')}>
         <Select
           label={t('admin.fields.category')}
@@ -571,30 +593,19 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
           />
           <p className="mt-1.5 text-sm text-sand-700">{t('admin.fields.aliasesHint')}</p>
         </div>
-        {/* Походження: гібрид двох рослин (можна знати лише одного з батьків) або сорт/форма від однієї рослини.
-            На сайті кожне ім'я клікабельне — веде на сторінку цієї рослини, а якщо її в магазині немає — просто назва. */}
-        {isPlant && (
-          <fieldset>
-            <legend className="mb-2 text-sm font-medium text-sand-700">{t('admin.fields.origin')}</legend>
-            <div className="mb-2 inline-flex rounded-xl bg-sand-200 p-1" role="radiogroup" aria-label={t('admin.fields.origin')}>
-              {ORIGINS.map((o) => (
-                <label
-                  key={o}
-                  className="cursor-pointer rounded-lg px-3 py-1.5 text-sm font-bold text-sand-700 transition-colors has-checked:bg-sand-50 has-checked:text-ink has-checked:shadow-sm"
-                >
-                  <input
-                    type="radio"
-                    value={o}
-                    className="sr-only"
-                    {...register('origin', {
-                      // Найчастіше рослини з природи — з Мексики: підставляємо, якщо ареал ще порожній.
-                      onChange: (e) => e.target.value === 'natural' && !getValues('habitat') && setValue('habitat', 'Мексика'),
-                    })}
-                  />
-                  {t(`admin.fields.origins.${o}`)}
-                </label>
-              ))}
-            </div>
+      </Section>
+
+      {/* Походження — окремим розділом: тип, батьки (і батьки звичайної версії форми — одразу під ними), у кінці селекціонер */}
+      {isPlant && (
+        <Section title={t('admin.fields.origin')}>
+          <OriginPicker
+            label={t('admin.fields.origin')}
+            register={register('origin', {
+              // Найчастіше рослини з природи — з Мексики: підставляємо, якщо ареал ще порожній.
+              onChange: (e) => e.target.value === 'natural' && !getValues('habitat') && setValue('habitat', 'Мексика'),
+            })}
+          />
+          <div>
             {origin === 'natural' ? (
               <>
                 <Input label={t('admin.fields.habitat')} list="habitats" placeholder="Мексика" {...register('habitat')} />
@@ -605,121 +616,69 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
                 </datalist>
               </>
             ) : origin === 'cultivar' ? (
-              <Input label={t('admin.fields.cultivarOf')} className="[&>span]:sr-only" placeholder="Echeveria lilacina" {...register('parents.0')} />
+              <Input label={t('admin.fields.cultivarOf')} placeholder="Echeveria lilacina" {...register('parents.0')} />
             ) : (
-              <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-                <Input label={t('admin.fields.parentA')} placeholder="Echeveria Lola" {...register('parents.0')} />
-                <span className="hidden pb-3 text-center font-display text-xl font-extrabold text-sand-700 sm:block" aria-hidden>
-                  ×
-                </span>
-                <Input
-                  label={t('admin.fields.parentB')}
-                  placeholder={t('admin.fields.parentUnknown')}
-                  {...register('parents.1')}
-                />
-              </div>
+              <ParentsInputs a={register('parents.0')} b={register('parents.1')} placeholderA="Echeveria Lola" />
             )}
             <p className="mt-1.5 text-sm text-sand-700">
-              {t(
-                origin === 'natural'
-                  ? 'admin.fields.habitatHint'
-                  : origin === 'cultivar'
-                    ? 'admin.fields.cultivarOfHint'
-                    : 'admin.fields.parentsHint',
-              )}
+              {t(origin === 'natural' ? 'admin.fields.habitatHint' : origin === 'cultivar' ? 'admin.fields.cultivarOfHint' : 'admin.fields.parentsHint')}
             </p>
-            {/* Хто вивів — лише для гібрида чи відбору; у природного виду селекціонера немає */}
-            {origin !== 'natural' && (
-              <div className="mt-4">
-                <Input label={t('admin.fields.breeder')} placeholder="Dick Wright" {...register('breeder')} />
-                <p className="mt-1.5 text-sm text-sand-700">{t('admin.fields.breederHint')}</p>
+          </div>
+          {/* Форма (variegata…) чи «hybrid»: звідки сама звичайна версія — одразу під «Від», стрілкою, як на сторінці товару */}
+          {hasBase(origin, baseName ?? '', tagList) && (
+            <div className="flex gap-1.5">
+              <CornerDownRight size={22} strokeWidth={2.5} className="mt-2 shrink-0 text-sunset-600" aria-hidden />
+              <div className="min-w-0 flex-1 space-y-3 rounded-2xl bg-sand-100 p-3">
+                <p className="text-sm font-bold text-sand-700">{t('admin.fields.baseTitle', { name: baseName })}</p>
+                <OriginPicker
+                  small
+                  label={t('admin.fields.baseTitle', { name: baseName })}
+                  register={register('baseOrigin', {
+                    onChange: (e) => e.target.value === 'natural' && !getValues('baseHabitat') && setValue('baseHabitat', 'Мексика'),
+                  })}
+                />
+                {baseOrigin === 'natural' ? (
+                  <Input label={t('admin.fields.habitat')} list="habitats" placeholder="Мексика" {...register('baseHabitat')} />
+                ) : baseOrigin === 'cultivar' ? (
+                  <Input label={t('admin.fields.cultivarOf')} placeholder="Echeveria lilacina" {...register('baseParents.0')} />
+                ) : (
+                  <ParentsInputs a={register('baseParents.0')} b={register('baseParents.1')} placeholderA="Echeveria elegans" />
+                )}
+                <p className="text-xs text-sand-700">{t('admin.fields.baseHint', { name: baseName })}</p>
               </div>
-            )}
-            {/* Форма (variegata…) чи «hybrid» від звичайної версії — її походження, якщо відоме. Згорнуто, щоб не заважало. */}
-            {hasBase(origin, baseName ?? '', tagList) && (
-              <details className="group mt-4 rounded-2xl border-2 border-sand-200 bg-sand-50" open={baseOpen} onToggle={(e) => setBaseOpen(e.currentTarget.open)}>
-                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-2 text-sm font-bold text-sand-700 [&::-webkit-details-marker]:hidden">
-                  <ChevronDown size={18} className="shrink-0 transition-transform group-open:rotate-180" aria-hidden />
-                  <span className="min-w-0 flex-1">{t('admin.fields.baseTitle', { name: baseName })}</span>
-                  {baseFilled && <span className="shrink-0 font-normal">{t('admin.fields.baseFilled')}</span>}
-                </summary>
-                <div className="border-t-2 border-sand-200 px-4 pt-3 pb-4">
-                  <div className="mb-2 inline-flex rounded-xl bg-sand-200 p-1" role="radiogroup" aria-label={t('admin.fields.baseTitle', { name: baseName })}>
-                    {ORIGINS.map((o) => (
-                      <label
-                        key={o}
-                        className="cursor-pointer rounded-lg px-3 py-1.5 text-sm font-bold text-sand-700 transition-colors has-checked:bg-sand-50 has-checked:text-ink has-checked:shadow-sm"
-                      >
-                        <input
-                          type="radio"
-                          value={o}
-                          className="sr-only"
-                          {...register('baseOrigin', {
-                            onChange: (e) => e.target.value === 'natural' && !getValues('baseHabitat') && setValue('baseHabitat', 'Мексика'),
-                          })}
-                        />
-                        {t(`admin.fields.origins.${o}`)}
-                      </label>
-                    ))}
-                  </div>
-                  {baseOrigin === 'natural' ? (
-                    <Input label={t('admin.fields.habitat')} list="habitats" placeholder="Мексика" {...register('baseHabitat')} />
-                  ) : baseOrigin === 'cultivar' ? (
-                    <Input label={t('admin.fields.cultivarOf')} className="[&>span]:sr-only" placeholder="Echeveria lilacina" {...register('baseParents.0')} />
-                  ) : (
-                    <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-                      <Input label={t('admin.fields.parentA')} placeholder="Echeveria elegans" {...register('baseParents.0')} />
-                      <span className="hidden pb-3 text-center font-display text-xl font-extrabold text-sand-700 sm:block" aria-hidden>
-                        ×
-                      </span>
-                      <Input label={t('admin.fields.parentB')} placeholder={t('admin.fields.parentUnknown')} {...register('baseParents.1')} />
-                    </div>
-                  )}
-                  <p className="mt-1.5 text-sm text-sand-700">{t('admin.fields.baseHint', { name: baseName })}</p>
-                </div>
-              </details>
-            )}
-          </fieldset>
-        )}
-        {/* Підсумок: так назва буде на сайті. Поле лише для читання — міняється через вид, назву й галочки. */}
-        {isPlant && (
-          <div>
-            <p className="mb-1.5 text-sm font-medium text-sand-700">{t('admin.fields.fullName')}</p>
-            <output
-              aria-live="polite"
-              className="flex min-h-12 items-center gap-2 rounded-xl border-2 border-dashed border-brand-500 bg-brand-50 px-4 py-2.5 font-display text-lg font-bold text-brand-700"
-            >
-              <Lock size={16} strokeWidth={2.25} className="shrink-0 text-brand-500" aria-hidden />
-              <span className="min-w-0 break-words">{fullName ? withCuttingMark(fullName, isCutting, t('product.cuttingMark')) : '—'}</span>
-            </output>
-            <p className={`mt-1.5 text-sm ${errors.name?.uk ? 'text-red-700' : 'text-sand-700'}`}>
-              {errors.name?.uk ? t(errors.name.uk.message ?? 'errors.required') : t('admin.fields.fullNameHint')}
-            </p>
+            </div>
+          )}
+          {/* Хто вивів — у самому кінці; у природного виду селекціонера немає */}
+          {origin !== 'natural' && (
+            <div className="border-t-2 border-sand-200 pt-4">
+              <Input label={t('admin.fields.breeder')} placeholder="Dick Wright" {...register('breeder')} />
+              <p className="mt-1.5 text-sm text-sand-700">{t('admin.fields.breederHint')}</p>
+            </div>
+          )}
+        </Section>
+      )}
+
+      <Section title={t('admin.fields.specs')}>
+        {specs.fields.map((field, i) => (
+          <div key={field.id} className="grid gap-2 rounded-lg bg-sand-100 p-3 sm:grid-cols-2">
+            <Input label={t('admin.fields.specLabelUk')} placeholder="Діаметр горщика" {...register(`specs.${i}.label.uk`)} />
+            <Input label={t('admin.fields.specValueUk')} placeholder="8 см" {...register(`specs.${i}.value.uk`)} />
+            <button type="button" className="text-left text-sm text-red-700" onClick={() => specs.remove(i)}>
+              {t('admin.fields.removePhoto')}
+            </button>
           </div>
-        )}
-        {/* Посилання заповнюється само з назви — тому сховане; розгортається, лише якщо з ним щось не так */}
-        <details className="group rounded-xl border-2 border-sand-200 bg-sand-50" open={errors.slug ? true : undefined}>
-          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 text-sm font-medium text-sand-700 [&::-webkit-details-marker]:hidden">
-            <Link2 size={16} strokeWidth={2.25} aria-hidden />
-            {t('admin.fields.slug')}
-            <span className="truncate font-normal">/product/{slugValue || '…'}</span>
-            <ChevronDown size={16} strokeWidth={2.25} className="ml-auto shrink-0 transition-transform group-open:rotate-180" aria-hidden />
-          </summary>
-          <div className="px-3 pb-3">
-            <Input
-              label={t('admin.fields.slugEdit')}
-              placeholder="echeveria-lola-variegata"
-              {...register('slug')}
-              error={err(errors.slug?.message)}
-            />
-            <p className="mt-1.5 text-sm text-sand-700">{t('admin.fields.slugHint')}</p>
-          </div>
-        </details>
-        <Textarea label={t('admin.fields.descriptionUk')} rows={6} {...register('description.uk')} />
+        ))}
+        {errors.specs && <p className="text-sm text-red-700">{t('errors.required')}</p>}
+        <Button
+          variant="secondary"
+          onClick={() => specs.append({ label: { uk: '' }, value: { uk: '' } })}
+        >
+          {t('admin.fields.addSpec')}
+        </Button>
       </Section>
       </div>
 
-      <div className="order-first space-y-6 lg:order-none lg:col-start-2 lg:row-start-1">
+      <div className="order-first space-y-4 lg:order-none lg:col-start-2 lg:row-start-1">
       <Section title={t('admin.fields.photos')}>
         <ImagesEditor images={images} onChange={setImages} onUploadingChange={setUploading} />
       </Section>
@@ -753,48 +712,31 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
             plusLabel={t('cart.increase')}
           />
         </div>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" {...register('isActive')} /> {t('admin.fields.isActive')}
-        </label>
-        <label className="flex items-start gap-2">
-          <input type="checkbox" className="mt-1" {...register('forSale')} />
-          <span>
-            {t('admin.fields.forSale')}
-            <span className="block text-sm text-sand-700">{t('admin.fields.forSaleHint')}</span>
-          </span>
-        </label>
-        <label className="flex items-start gap-2">
-          <input type="checkbox" className="mt-1" {...register('verified')} />
-          <span>
-            {t('admin.fields.verified')}
-            <span className="block text-sm text-sand-700">{t('admin.fields.verifiedHint')}</span>
-          </span>
-        </label>
       </Section>
       </div>
 
       <div className="lg:col-start-2 lg:row-start-2">
-      <Section title={t('admin.fields.specs')}>
-        {specs.fields.map((field, i) => (
-          <div key={field.id} className="grid gap-2 rounded-lg bg-sand-100 p-3 sm:grid-cols-2">
-            <Input label={t('admin.fields.specLabelUk')} placeholder="Діаметр горщика" {...register(`specs.${i}.label.uk`)} />
-            <Input label={t('admin.fields.specValueUk')} placeholder="8 см" {...register(`specs.${i}.value.uk`)} />
-            <button type="button" className="text-left text-sm text-red-700" onClick={() => specs.remove(i)}>
-              {t('admin.fields.removePhoto')}
-            </button>
-          </div>
-        ))}
-        {errors.specs && <p className="text-sm text-red-700">{t('errors.required')}</p>}
-        <Button
-          variant="secondary"
-          onClick={() => specs.append({ label: { uk: '' }, value: { uk: '' } })}
-        >
-          {t('admin.fields.addSpec')}
-        </Button>
+      <Section title={t('admin.fields.descriptionUk')}>
+        <Textarea label={t('admin.fields.descriptionUk')} className="[&>span]:sr-only" rows={6} {...register('description.uk')} />
       </Section>
       </div>
       </div>
 
+      {/* Адреса сторінки — дрібною приміткою внизу форми, над «Зберегти» (складається сама з назви, правлять її рідко) */}
+      {slugEditing || errors.slug ? (
+        <div className="max-w-md">
+          <Input label={t('admin.fields.slugEdit')} placeholder="echeveria-lola-variegata" {...register('slug')} error={err(errors.slug?.message)} />
+          <p className="mt-1 text-xs text-sand-700">{t('admin.fields.slugHint')}</p>
+        </div>
+      ) : (
+        <p className="flex min-w-0 items-center gap-1 text-xs text-sand-600">
+          <Link2 size={12} strokeWidth={2.25} className="shrink-0" aria-hidden />
+          <span className="truncate">/product/{slugValue || '…'}</span>
+          <button type="button" onClick={() => setSlugEditing(true)} className="shrink-0 underline decoration-dotted underline-offset-2 hover:text-brand-600">
+            {t('admin.fields.slugChange')}
+          </button>
+        </p>
+      )}
       {save.isError && <p className="text-red-700">{t('admin.saveError')}</p>}
       {/* На телефоні кнопки прикріплені до низу екрана — не треба гортати довгу форму до кінця */}
       <div className="sticky bottom-0 z-30 -mx-4 flex gap-3 border-t-2 border-sand-200 bg-sand-100/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
@@ -830,5 +772,56 @@ function ProductForm({ product, source }: { product: Product | null; source?: Pr
         </button>
       </div>
     </form>
+  )
+}
+
+/** Тип походження перемикачем: природний вид / гібрид / відбір або мутація. `small` — для вкладеного блоку звичайної версії. */
+function OriginPicker({ register, label, small = false }: { register: UseFormRegisterReturn; label: string; small?: boolean }) {
+  const { t } = useTranslation()
+  return (
+    <div className={`inline-flex max-w-full flex-wrap rounded-xl p-1 ${small ? 'bg-sand-200/70' : 'bg-sand-200'}`} role="radiogroup" aria-label={label}>
+      {ORIGINS.map((o) => (
+        <label
+          key={o}
+          className={`cursor-pointer rounded-lg font-bold text-sand-700 transition-colors has-checked:bg-sand-50 has-checked:text-ink has-checked:shadow-sm ${small ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm'}`}
+        >
+          <input type="radio" value={o} className="sr-only" {...register} />
+          {t(`admin.fields.origins.${o}`)}
+        </label>
+      ))}
+    </div>
+  )
+}
+
+/** Два батьки через «×»: на телефоні одне під одним, ширше — в один ряд. */
+function ParentsInputs({ a, b, placeholderA }: { a: UseFormRegisterReturn; b: UseFormRegisterReturn; placeholderA: string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+      <Input label={t('admin.fields.parentA')} placeholder={placeholderA} {...a} />
+      <span className="hidden pb-3 text-center font-display text-xl font-extrabold text-sunset-600 sm:block" aria-hidden>
+        ×
+      </span>
+      <Input label={t('admin.fields.parentB')} placeholder={t('admin.fields.parentUnknown')} {...b} />
+    </div>
+  )
+}
+
+/** Іконка-перемикач біля назви (як у списку товарів): увімкнено — зелена зафарбована, вимкнено — контур. */
+function FlagButton({ on, onClick, disabled, label, icon }: { on: boolean; onClick: () => void; disabled?: boolean; label: string; icon: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={on}
+      title={label}
+      aria-label={label}
+      className={`flex h-11 w-11 items-center justify-center rounded-xl border-2 transition-colors disabled:opacity-50 ${
+        on ? 'border-brand-600 bg-brand-600 text-sand-50 hover:bg-brand-700' : 'border-sand-700 text-sand-700 hover:bg-sand-200'
+      }`}
+    >
+      {icon}
+    </button>
   )
 }

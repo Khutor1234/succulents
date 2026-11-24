@@ -648,7 +648,6 @@ export function ProductPage() {
           {isSeller && (
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
               <CopyName name={name} />
-              <VerifiedToggle product={product} />
               <SellerStock product={product} compact />
               <Link
                 to={`/admin/products/${product.id}`}
@@ -675,6 +674,8 @@ export function ProductPage() {
                     : navigate(`/c/${product.category}`, { replace: true })
                 }
               />
+              {/* «Перевірено вручну» — останньою, як у списку товарів */}
+              <VerifiedToggle product={product} className="!my-0 h-9 w-9" />
             </div>
           )}
           <TagBadges tags={product.tags} className="mt-3" />

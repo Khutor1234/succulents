@@ -94,7 +94,7 @@ export function ImagesEditor({ images, onChange, onUploadingChange }: Props) {
           onCancel={() => setQueue((q) => q.slice(1))}
         />
       )}
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-3 [&>*:first-child]:col-span-2 [&>*:first-child]:row-span-2">
         {images.map((url, i) => (
           <div key={url} className="group relative">
             <button
